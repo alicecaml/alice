@@ -1,0 +1,8 @@
+(version 1)
+
+(depends
+ (choice
+  ((((os win32))) (ocaml-env-mingw32))))
+
+(enabled_on_platforms
+ (only ((os win32))))
