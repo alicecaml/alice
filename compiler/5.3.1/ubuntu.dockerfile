@@ -9,7 +9,7 @@ RUN useradd --create-home --gid users user
 USER user
 WORKDIR /home/user
 
-RUN wget https://git.sr.ht/~gridbugs/spice-compiler-sources/refs/download/5.3.1/ocaml-relocatable-5.3.1.tar.gz
+RUN wget https://s3.g.s4.mega.io/ycsnsngpe2elgjdd2uzbdpyj6s54q5itlvy6g/spice/compiler-sources/ocaml-relocatable-5.3.1.tar.gz
 RUN tar xf ocaml-relocatable-5.3.1.tar.gz
 WORKDIR /home/user/ocaml-relocatable-5.3.1
 
