@@ -2,14 +2,22 @@
 
 (package
  (name spice)
- (depends ocaml spice_engine))
+ (depends ocaml))
 
 (package
  (name spice_engine)
  (depends ocaml))
 
 (package
+ (name spice_io)
+ (depends ocaml))
+
+(package
  (name spice_policy)
+ (depends ocaml))
+
+(package
+ (name spice_source_tree)
  (depends ocaml))
 
 (package
