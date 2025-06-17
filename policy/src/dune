@@ -1,0 +1,3 @@
+(library
+ (public_name spice_policy)
+ (libraries spice_engine spice_stdlib))
