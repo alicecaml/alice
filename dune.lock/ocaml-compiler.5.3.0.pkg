@@ -60,11 +60,6 @@
          --with-afl)
         (when
          (catch_undefined_var
-          %{pkg:ocaml-option-bytecode-only:installed}
-          false)
-         --disable-native-compiler)
-        (when
-         (catch_undefined_var
           %{pkg:ocaml-option-no-flat-float-array:installed}
           false)
          --disable-flat-float-array)
@@ -194,11 +189,6 @@
         (when
          (catch_undefined_var %{pkg:ocaml-option-afl:installed} false)
          --with-afl)
-        (when
-         (catch_undefined_var
-          %{pkg:ocaml-option-bytecode-only:installed}
-          false)
-         --disable-native-compiler)
         (when
          (catch_undefined_var
           %{pkg:ocaml-option-no-flat-float-array:installed}
@@ -348,11 +338,6 @@
          --with-afl)
         (when
          (catch_undefined_var
-          %{pkg:ocaml-option-bytecode-only:installed}
-          false)
-         --disable-native-compiler)
-        (when
-         (catch_undefined_var
           %{pkg:ocaml-option-no-flat-float-array:installed}
           false)
          --disable-flat-float-array)
@@ -428,9 +413,9 @@
 (depends
  (choice
   ((((os linux)) ((os macos)))
-   (ocaml-option-bytecode-only))
+   ())
   ((((os win32)))
-   (system-mingw ocaml-option-bytecode-only flexdll))))
+   (system-mingw flexdll))))
 
 (source
  (fetch
