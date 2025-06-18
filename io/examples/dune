@@ -1,3 +1,0 @@
-(executable
- (name source_tree)
- (libraries spice_io unix))

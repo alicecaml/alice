@@ -5,6 +5,10 @@
  (depends ocaml))
 
 (package
+ (name spice_demo)
+ (depends ocaml))
+
+(package
  (name spice_engine)
  (depends ocaml))
 
@@ -17,7 +21,7 @@
  (depends ocaml))
 
 (package
- (name spice_source_tree)
+ (name spice_hierarchy)
  (depends ocaml))
 
 (package

@@ -1,2 +1,1 @@
-module Source_tree = Source_tree
-
+module Hierarchy = Hierarchy

@@ -1,5 +1,3 @@
-include module type of struct
-  include Stdlib.Filename
-end
+include module type of Stdlib.Filename
 
 type t = string
