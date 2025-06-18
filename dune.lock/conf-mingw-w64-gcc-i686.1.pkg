@@ -2,7 +2,8 @@
 
 (build
  (choice
-  ((((os win32))) ((action (run i686-w64-mingw32-gcc --version))))))
+  ((((arch arm64) (os win32)))
+   ((action (run i686-w64-mingw32-gcc --version))))))
 
 (depexts
  ((mingw64-i686-gcc-core)
@@ -15,4 +16,6 @@
    (= %{os_distribution} msys2))))
 
 (enabled_on_platforms
- (only ((os win32))))
+ (only
+  ((arch arm64)
+   (os win32))))

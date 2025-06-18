@@ -12,4 +12,16 @@
   ((source
     https://github.com/ocaml/opam-repository.git#c7269f729a780d8cad2232be10de94ac8da8381e))))
 
-(solved_for_platforms ((os linux)) ((os macos)) ((os win32)))
+(solved_for_platforms
+ ((arch x86_64)
+  (os linux))
+ ((arch arm64)
+  (os linux))
+ ((arch x86_64)
+  (os macos))
+ ((arch arm64)
+  (os macos))
+ ((arch x86_64)
+  (os win32))
+ ((arch arm64)
+  (os win32)))

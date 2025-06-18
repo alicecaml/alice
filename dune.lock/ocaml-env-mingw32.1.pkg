@@ -2,7 +2,9 @@
 
 (depends
  (choice
-  ((((os win32))) (conf-mingw-w64-gcc-i686))))
+  ((((arch arm64) (os win32))) (conf-mingw-w64-gcc-i686))))
 
 (enabled_on_platforms
- (only ((os win32))))
+ (only
+  ((arch arm64)
+   (os win32))))
