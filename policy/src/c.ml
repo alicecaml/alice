@@ -1,6 +1,7 @@
 open! Spice_stdlib
 module Command = Spice_engine.Command
 module Abstract_rule = Spice_engine.Abstract_rule
+module Dir = Spice_hierarchy.Dir
 
 module Ctx = struct
   type t =
@@ -23,16 +24,52 @@ module Ctx = struct
     in
     Command.create prog ~args
   ;;
+
+  let debug = { optimization_level = Some `O0; debug = true; override_c_compiler = None }
+
+  let release =
+    { optimization_level = Some `O2; debug = false; override_c_compiler = None }
+  ;;
 end
 
-let c_to_o_rule ctx =
+let all_files_with_extension dir ~ext =
+  Dir.traverse dir ~descend_into_subdirs:false
+  |> Seq.map ~f:(fun (entry : Dir.Entry.t) -> entry.path)
+  |> Seq.filter ~f:(Filename.has_extension ~ext)
+  |> List.of_seq
+;;
+
+let all_header_files = all_files_with_extension ~ext:".h"
+let all_source_files = all_files_with_extension ~ext:".c"
+
+let all_object_files dir =
+  all_source_files dir |> List.map ~f:(Filename.replace_extension ~ext:".o")
+;;
+
+let c_to_o_rule ctx dir =
+  let all_header_files = all_header_files dir in
   Abstract_rule.create ~f:(fun target ->
     match Filename.extension target with
     | ".o" ->
-      let without_extension = Filename.chop_extension target in
-      let with_c_extension = Filename.concat without_extension ".c" in
+      let with_c_extension = Filename.replace_extension target ~ext:".c" in
+      let inputs =
+        (* Each object file depends on all header files because it's possible
+           that any .c file could #include any .h file. *)
+        with_c_extension :: all_header_files
+      in
       Some
-        ( `Inputs [ with_c_extension ]
-        , `Actions [ Ctx.cc_command ctx ~args:[ "-c"; with_c_extension ] ] )
+        ( `Inputs inputs
+        , `Actions [ Ctx.cc_command ctx ~args:[ "-c"; with_c_extension; "-o"; target ] ]
+        )
     | _ -> None)
 ;;
+
+let link_exe_rule ~exe_name ctx dir =
+  let all_object_files = all_object_files dir in
+  Abstract_rule.create_fixed_output
+    exe_name
+    ~inputs:all_object_files
+    ~actions:[ Ctx.cc_command ctx ~args:(all_object_files @ [ "-o"; exe_name ]) ]
+;;
+
+let exe_rules ~exe_name ctx dir = [ c_to_o_rule ctx dir; link_exe_rule ~exe_name ctx dir ]
