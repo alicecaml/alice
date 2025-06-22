@@ -1,4 +1,4 @@
 (executable
  (public_name spice)
  (package spice)
- (libraries spice_engine))
+ (libraries spice_engine climate))

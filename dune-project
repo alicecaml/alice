@@ -2,7 +2,7 @@
 
 (package
  (name spice)
- (depends ocaml))
+ (depends ocaml climate))
 
 (package
  (name spice_demo)
