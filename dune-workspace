@@ -3,3 +3,15 @@
 (env
  (dev
   (flags :standard -warn-error -26-27-32-33-34-37-39-23-38-69)))
+
+(repository
+ (name spice)
+ (url git+https://github.com/spiceml/spice-opam-repo))
+
+(lock_dir
+ (constraints
+  (ocaml-system
+   (= 5.3.1+relocatable)))
+ (repositories upstream overlay spice)
+ (solver_env
+  (sys-ocaml-version 5.3.1+relocatable)))

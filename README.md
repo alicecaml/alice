@@ -27,3 +27,17 @@ Concrete differences from Opam/Dune:
    the source code of unfamiliar projects.
  - The build/install commands of a package cannot be configured.
  - Packages have the same dependencies regardless of environment.
+
+## Dev Environment Notes
+
+It's recommended to use direnv with the following .envrc while working on this:
+```
+export PATH=$HOME/.spice/root/bin:$PATH
+export DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled
+export DUNE_CONFIG__PKG_BUILD_PROGRESS=enabled
+```
+
+Construct an environment in `$HOME/.spice/root` by combining binary releases of
+the compiler and development tools for your platform. This is an alternative to
+letting dune manage the dependency on the compiler, and to letting dune manage
+the installation of development tools.
