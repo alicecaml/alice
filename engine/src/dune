@@ -1,3 +1,3 @@
 (library
- (public_name spice_engine)
- (libraries spice_stdlib spice_hierarchy))
+ (public_name alice_engine)
+ (libraries alice_stdlib alice_hierarchy))

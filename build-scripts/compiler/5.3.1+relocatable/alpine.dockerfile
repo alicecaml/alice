@@ -9,7 +9,7 @@ RUN adduser -D -G users -G wheel user
 USER user
 WORKDIR /home/user
 
-RUN wget https://s3.g.s4.mega.io/ycsnsngpe2elgjdd2uzbdpyj6s54q5itlvy6g/spice/compiler-sources/ocaml-relocatable-5.3.1.tar.gz
+RUN wget https://s3.g.s4.mega.io/ycsnsngpe2elgjdd2uzbdpyj6s54q5itlvy6g/alice/compiler-sources/ocaml-relocatable-5.3.1.tar.gz
 RUN tar xf ocaml-relocatable-5.3.1.tar.gz
 WORKDIR /home/user/ocaml-relocatable-5.3.1
 

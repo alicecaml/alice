@@ -1,7 +1,7 @@
-open! Spice_stdlib
+open! Alice_stdlib
 
 module Dir : sig
-  include module type of Spice_hierarchy.Dir
+  include module type of Alice_hierarchy.Dir
 
   val read : dir_path:Filename.t -> t
 end

@@ -29,4 +29,3 @@ module Make (Key : OrderedType) : S with type key = Key.t = struct
     fun l -> loop empty l
   ;;
 end
-

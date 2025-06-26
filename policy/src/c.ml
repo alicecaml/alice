@@ -1,7 +1,7 @@
-open! Spice_stdlib
-module Command = Spice_engine.Command
-module Abstract_rule = Spice_engine.Abstract_rule
-module Dir = Spice_hierarchy.Dir
+open! Alice_stdlib
+module Command = Alice_engine.Command
+module Abstract_rule = Alice_engine.Abstract_rule
+module Dir = Alice_hierarchy.Dir
 
 module Ctx = struct
   type t =

@@ -1,5 +1,5 @@
-module Dir := Spice_hierarchy.Dir
-module Abstract_rule := Spice_engine.Abstract_rule
+module Dir := Alice_hierarchy.Dir
+module Abstract_rule := Alice_engine.Abstract_rule
 
 module Ctx : sig
   (** Settings that affect the way that files will be built *)

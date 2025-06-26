@@ -1,3 +1,3 @@
 # IO
 
-IO operations for the spice build system.
+IO operations for the alice build system.

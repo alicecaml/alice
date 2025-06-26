@@ -1,6 +1,6 @@
 (lang package 0.1)
 
-(dependency_hash 9e8a5b66249bfb3b13be1700f0d25509)
+(dependency_hash 2381b9a75b50aa400396fe0a84965f3f)
 
 (ocaml ocaml-system)
 
@@ -8,11 +8,11 @@
  (complete true)
  (used
   ((source
-    https://github.com/ocaml/opam-repository.git#2cd8e78594a8943245b8061dbdabd39e7ca492fb))
+    https://github.com/ocaml/opam-repository.git#eb1c31096c67d2f03b97ad71332ed5f2fc15f762))
   ((source
     https://github.com/ocaml-dune/opam-overlays.git#2a9543286ff0e0656058fee5c0da7abc16b8717d))
   ((source
-    https://github.com/spiceml/spice-opam-repo#ed694492973185fbbd72e0a891928ca0a1eda4c6))))
+    https://github.com/alicecaml/alice-opam-repo#d806c5bf465f3982b93b9826c57eed8df015d9e1))))
 
 (solved_for_platforms
  ((arch x86_64)

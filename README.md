@@ -1,4 +1,4 @@
-# Spice - An OCaml package management experiment
+# Alice the Caml - An OCaml package management experiment
 
 The goal of this project is to explore a radically different approach to OCaml
 build systems and package management, breaking from the Opam/Dune-based ecosystem
@@ -12,9 +12,9 @@ Concrete differences from Opam/Dune:
    auto-formatting rules.
  - The OCaml compiler and dev tools are not packages, and will be provided as
    binary downloads, managed by this tool.
- - Packages that build with spice do not depend on spice. This allows spice to
+ - Packages that build with alice do not depend on alice. This allows alice to
    depend on packages from its own ecosystem (once it's bootstrapped).
- - Users cannot define build rules. Spice will know how to compile OCaml and C
+ - Users cannot define build rules. alice will know how to compile OCaml and C
    executables and libraries. This lets us keep the config file format simple.
  - Discourage open upper/lower bounds on dependency versions. Packages
    (including ports of Opam packages) will be versioned with semver.
@@ -32,12 +32,12 @@ Concrete differences from Opam/Dune:
 
 It's recommended to use direnv with the following .envrc while working on this:
 ```
-export PATH=$HOME/.spice/root/bin:$PATH
+export PATH=$HOME/.alice/root/bin:$PATH
 export DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled
 export DUNE_CONFIG__PKG_BUILD_PROGRESS=enabled
 ```
 
-Construct an environment in `$HOME/.spice/root` by combining binary releases of
+Construct an environment in `$HOME/.alice/root` by combining binary releases of
 the compiler and development tools for your platform. This is an alternative to
 letting dune manage the dependency on the compiler, and to letting dune manage
 the installation of development tools.

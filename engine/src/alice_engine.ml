@@ -1,4 +1,4 @@
-open! Spice_stdlib
+open! Alice_stdlib
 
 module Target = struct
   type t = Filename.t

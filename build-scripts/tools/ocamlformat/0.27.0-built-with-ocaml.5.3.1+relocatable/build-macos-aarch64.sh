@@ -1,30 +1,26 @@
 #!/bin/sh
 
 # Build ocamlformat with the relocatable compiler. This script is mostly
-# hermetic however currently it requires "dune" be in your PATH, with some
-# patches applied (use this branch:
-# https://github.com/gridbugs/dune/tree/spice-patches).
+# hermetic however currently it requires "dune" be in your PATH when the script
+# is run.
 
 set -ex
 
-COMPILER_URL="https://s3.g.s4.mega.io/ycsnsngpe2elgjdd2uzbdpyj6s54q5itlvy6g/spice/compilers/ocaml-macos-aarch64.5.3.1%2Brelocatable.tar.gz"
+COMPILER_URL="https://s3.g.s4.mega.io/ycsnsngpe2elgjdd2uzbdpyj6s54q5itlvy6g/alice/compilers/ocaml-macos-aarch64.5.3.1%2Brelocatable.tar.gz"
 
-TMP=$(mktemp -d -t spice)
-echo $TMP
+TMP=$(mktemp -d -t alice)
 trap 'rm -rf $TMP' EXIT
 
 ORIGINAL_DIR="$PWD"
 cd "$TMP"
 
-#wget "$COMPILER_URL"
-cp -v ~/src/spice/build-scripts/compiler/5.3.1+relocatable/ocaml-macos-aarch64.5.3.1+relocatable.tar.gz .
+wget "$COMPILER_URL"
 tar xf ocaml-macos-aarch64.5.3.1+relocatable.tar.gz
 
-export PATH=$PWD/ocaml.5.3.1+relocatable/bin:$PATH
 which ocamlc
 which dune
 
-git clone --depth 1 --single-branch --branch 0.27.0-build-with-ocaml.5.3.1+relocatable https://github.com/spiceml/ocamlformat
+git clone --depth 1 --single-branch --branch 0.27.0-build-with-ocaml.5.3.1+relocatable https://github.com/alicecaml/ocamlformat
 cd ocamlformat
 dune build
 cd ..

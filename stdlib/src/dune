@@ -1,3 +1,3 @@
 (library
- (public_name spice_stdlib)
+ (public_name alice_stdlib)
  (libraries dyn ordering pp))

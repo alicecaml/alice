@@ -8,7 +8,7 @@ trap 'rm -rf $TMP' EXIT
 ORIGINAL_DIR="$PWD"
 
 cd "$TMP"
-wget https://s3.g.s4.mega.io/ycsnsngpe2elgjdd2uzbdpyj6s54q5itlvy6g/spice/compiler-sources/ocaml-relocatable-5.3.1.tar.gz
+wget https://s3.g.s4.mega.io/ycsnsngpe2elgjdd2uzbdpyj6s54q5itlvy6g/alice/compiler-sources/ocaml-relocatable-5.3.1.tar.gz
 tar xf ocaml-relocatable-5.3.1.tar.gz
 cd ocaml-relocatable-5.3.1
 ./configure \

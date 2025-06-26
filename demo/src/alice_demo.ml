@@ -1,5 +1,5 @@
-module Dir = Spice_io.Hierarchy.Dir
-module C_policy = Spice_policy.C
+module Dir = Alice_io.Hierarchy.Dir
+module C_policy = Alice_policy.C
 
 let () =
   let dir_path = Sys.argv.(1) in

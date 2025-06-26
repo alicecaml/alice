@@ -13,5 +13,5 @@ let () =
         "up"
         (singleton up ~doc:"Install a compiler toolchain and accompanying tools.")
     ]
-  |> run ~program_name:(Literal "spice")
+  |> run ~program_name:(Literal "alice")
 ;;

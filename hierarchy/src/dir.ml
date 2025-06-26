@@ -1,4 +1,4 @@
-open! Spice_stdlib
+open! Alice_stdlib
 
 type file_kind =
   | Regular

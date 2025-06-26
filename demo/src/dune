@@ -1,4 +1,4 @@
 (executable
- (package spice_demo)
- (public_name spice_demo)
- (libraries spice_policy spice_io))
+ (package alice_demo)
+ (public_name alice_demo)
+ (libraries alice_policy alice_io))

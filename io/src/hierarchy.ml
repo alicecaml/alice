@@ -1,4 +1,4 @@
-open! Spice_stdlib
+open! Alice_stdlib
 
 let entries dir_path =
   let dir_handle = Unix.opendir dir_path in
@@ -21,7 +21,7 @@ let entries_without_current_or_parent dir_path =
 ;;
 
 module Dir = struct
-  include Spice_hierarchy.Dir
+  include Alice_hierarchy.Dir
 
   let read ~dir_path =
     let rec loop dir_path =

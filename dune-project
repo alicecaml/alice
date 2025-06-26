@@ -1,23 +1,23 @@
 (lang dune 3.20)
 
 (package
- (name spice)
- (depends ocaml climate))
+ (name alice)
+ (depends ocaml climate digestif))
 
 (package
- (name spice_demo)
+ (name alice_demo)
  (depends ocaml))
 
 (package
- (name spice_engine)
+ (name alice_engine)
  (depends ocaml))
 
 (package
- (name spice_io)
+ (name alice_io)
  (depends ocaml))
 
 (package
- (name spice_manifest)
+ (name alice_manifest)
  (depends
   ocaml
   (toml
@@ -26,15 +26,15 @@
     (< 8)))))
 
 (package
- (name spice_policy)
+ (name alice_policy)
  (depends ocaml))
 
 (package
- (name spice_hierarchy)
+ (name alice_hierarchy)
  (depends ocaml))
 
 (package
- (name spice_stdlib)
+ (name alice_stdlib)
  (depends
   ocaml
   (dyn
