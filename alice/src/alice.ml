@@ -1,4 +1,5 @@
 open Climate
+module Tools = Tools
 
 let up =
   let open Arg_parser in
@@ -10,8 +11,8 @@ let () =
   let open Command in
   group
     [ subcommand
-        "up"
-        (singleton up ~doc:"Install a compiler toolchain and accompanying tools.")
+        "tools"
+        (singleton up ~doc:"Commands for managing installation of development tools.")
     ]
-  |> run ~program_name:(Literal "alice")
+  |> run
 ;;

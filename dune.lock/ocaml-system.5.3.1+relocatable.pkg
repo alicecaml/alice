@@ -3,8 +3,6 @@
 (build
  (all_platforms ((action (run ocaml gen_ocaml_config.ml)))))
 
-(avoid)
-
 (extra_sources
  (gen_ocaml_config.ml
   (fetch

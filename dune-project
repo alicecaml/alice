@@ -2,7 +2,7 @@
 
 (package
  (name alice)
- (depends ocaml climate digestif))
+ (depends ocaml climate sha))
 
 (package
  (name alice_demo)
@@ -11,6 +11,10 @@
 (package
  (name alice_engine)
  (depends ocaml))
+
+(package
+ (name alice_error)
+ (depends ocaml alice_stdlib))
 
 (package
  (name alice_io)
