@@ -8,15 +8,6 @@ module Target = struct
   module Map = Filename.Map
 end
 
-module Command = struct
-  type t =
-    { prog : string
-    ; args : string list
-    }
-
-  let create prog ~args = { prog; args }
-end
-
 module Action = struct
   type t = Command.t
 end

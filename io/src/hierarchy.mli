@@ -1,7 +1,8 @@
 open! Alice_stdlib
+include module type of Alice_hierarchy
 
-module Dir : sig
-  include module type of Alice_hierarchy.Dir
+module File : sig
+  include module type of File
 
-  val read : dir_path:Filename.t -> t
+  val read : Filename.t -> (t, [ `Not_found ]) result
 end

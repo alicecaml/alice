@@ -1,4 +1,4 @@
-module Dir := Alice_hierarchy.Dir
+module Dir := Alice_hierarchy.File.Dir
 module Abstract_rule := Alice_engine.Abstract_rule
 
 module Ctx : sig

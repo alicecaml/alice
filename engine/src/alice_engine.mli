@@ -4,15 +4,6 @@ module Target : sig
   type t = Filename.t
 end
 
-module Command : sig
-  type t =
-    { prog : string
-    ; args : string list
-    }
-
-  val create : string -> args:string list -> t
-end
-
 module Action : sig
   type t = Command.t
 end

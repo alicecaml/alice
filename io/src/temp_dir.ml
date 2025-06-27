@@ -3,7 +3,7 @@ open! Alice_stdlib
 let rng = lazy (Random.State.make_self_init ())
 
 let mkdir ~prefix ~suffix =
-  let perms = 0o600 in
+  let perms = 0o755 in
   let rng = Lazy.force rng in
   let temp_dir_base = Filename.get_temp_dir_name () in
   let rec loop () =
@@ -15,4 +15,11 @@ let mkdir ~prefix ~suffix =
   let path = loop () in
   Unix.mkdir path perms;
   path
+;;
+
+let with_ ~prefix ~suffix ~f =
+  let path = mkdir ~prefix ~suffix in
+  let ret = f path in
+  Rm_rf.rm_rf path;
+  ret
 ;;

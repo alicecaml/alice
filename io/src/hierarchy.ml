@@ -1,4 +1,5 @@
 open! Alice_stdlib
+include Alice_hierarchy
 
 let entries dir_path =
   let dir_handle = Unix.opendir dir_path in
@@ -20,26 +21,33 @@ let entries_without_current_or_parent dir_path =
     | _ -> true)
 ;;
 
-module Dir = struct
-  include Alice_hierarchy.Dir
+module File = struct
+  include File
 
-  let read ~dir_path =
-    let rec loop dir_path =
-      entries_without_current_or_parent dir_path
-      |> List.filter_map ~f:(fun entry ->
-        let entry_path = Filename.concat dir_path entry in
-        let stats = Unix.lstat entry_path in
-        match stats.st_kind with
-        | S_REG -> Some { kind = Regular; name = entry }
-        | S_DIR ->
-          let dir = loop entry_path in
-          Some { kind = Dir dir; name = entry }
-        | S_LNK ->
-          let dest = Unix.readlink entry_path in
-          Some { kind = Link dest; name = entry }
-        | _ -> None)
-    in
-    let entries = loop dir_path in
-    { path = dir_path; entries }
+  let read path =
+    match Sys.file_exists path with
+    | false -> Error `Not_found
+    | true ->
+      let rec loop path =
+        let stat = Unix.lstat path in
+        let kind =
+          match stat.st_kind with
+          | S_REG -> Regular
+          | S_LNK ->
+            let dest = Unix.readlink path in
+            Link dest
+          | S_DIR ->
+            let files =
+              entries_without_current_or_parent path
+              |> List.map ~f:(fun name ->
+                let path = Filename.concat path name in
+                loop path)
+            in
+            Dir files
+          | _ -> Unknown
+        in
+        { path; kind }
+      in
+      Ok (loop path)
   ;;
 end
