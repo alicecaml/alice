@@ -20,6 +20,8 @@ module File : sig
   end
 
   val as_dir : t -> Dir.t option
+  val is_dir : t -> bool
   val is_regular_or_link : t -> bool
   val traverse_bottom_up : t -> f:(t -> unit) -> unit
+  val traverse_top_down : t -> f:(t -> unit) -> unit
 end

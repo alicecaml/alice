@@ -18,3 +18,35 @@ let replace_extension t ~ext =
   let without_extension = chop_extension t in
   concat without_extension ext
 ;;
+
+let is_root t = equal t (dirname t)
+
+let to_components t =
+  let rec loop t =
+    if equal t (dirname t)
+    then
+      (* This happens at the top of a relative path ("." in unix - even
+         if the original path did not begin with a ".") or the root of
+         the filesystem in the case of absolute paths. *)
+      Nonempty_list.singleton t
+    else Nonempty_list.cons (basename t) (loop (dirname t))
+  in
+  loop t |> Nonempty_list.rev
+;;
+
+let chop_prefix_opt ~prefix t =
+  if String.starts_with ~prefix t
+  then (
+    let pos = String.length prefix in
+    let len = String.length t - pos in
+    Some (String.sub t ~pos ~len))
+  else None
+;;
+
+let chop_prefix ~prefix t =
+  match chop_prefix_opt ~prefix t with
+  | Some t -> t
+  | None ->
+    raise
+      (Invalid_argument (Printf.sprintf "Path %S doesn't start with prefix %S" t prefix))
+;;

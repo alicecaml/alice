@@ -25,6 +25,12 @@ module File = struct
     | _ -> None
   ;;
 
+  let is_dir t =
+    match t.kind with
+    | Dir _ -> true
+    | _ -> false
+  ;;
+
   let is_regular_or_link t =
     match t.kind with
     | Regular | Link _ -> true
@@ -37,6 +43,15 @@ module File = struct
     | Dir contents ->
       List.iter contents ~f:(traverse_bottom_up ~f);
       f t
+    | Unknown -> ()
+  ;;
+
+  let rec traverse_top_down t ~f =
+    match t.kind with
+    | Regular | Link _ -> f t
+    | Dir contents ->
+      f t;
+      List.iter contents ~f:(traverse_bottom_up ~f)
     | Unknown -> ()
   ;;
 end

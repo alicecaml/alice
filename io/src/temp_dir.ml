@@ -20,6 +20,6 @@ let mkdir ~prefix ~suffix =
 let with_ ~prefix ~suffix ~f =
   let path = mkdir ~prefix ~suffix in
   let ret = f path in
-  Rm_rf.rm_rf path;
+  File_ops.rm_rf path;
   ret
 ;;
