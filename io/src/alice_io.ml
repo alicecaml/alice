@@ -1,3 +1,4 @@
+module Env = Env
 module Fetch = Fetch
 module File_ops = File_ops
 module Extract = Extract

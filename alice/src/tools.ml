@@ -46,7 +46,11 @@ module Remote_tarballs = struct
 
   let rt = Remote_tarball.create
   let all { compiler; ocamllsp; ocamlformat } = [ compiler; ocamllsp; ocamlformat ]
-  let url_base = "https://s3.g.s4.mega.io/ycsnsngpe2elgjdd2uzbdpyj6s54q5itlvy6g/alice/"
+
+  let url_base =
+    "https://s3.g.s4.mega.io/ycsnsngpe2elgjdd2uzbdpyj6s54q5itlvy6g/alice/tools/"
+  ;;
+
   let url_base = "http://localhost:8000/"
   let mk_url rel = String.cat url_base rel
 
@@ -55,7 +59,7 @@ module Remote_tarballs = struct
     { compiler =
         rt
           ~name:"ocaml"
-          ~url:(mk_url "compilers/ocaml-macos-aarch64.5.3.1%2Brelocatable.tar.gz")
+          ~url:(mk_url "ocaml-macos-aarch64.5.3.1%2Brelocatable.tar.gz")
           ~top_level_dir:"ocaml.5.3.1+relocatable"
           ~sha256:
             (Sha256.of_hex
@@ -65,7 +69,7 @@ module Remote_tarballs = struct
           ~name:"ocamllsp"
           ~url:
             (mk_url
-               "tools/ocamllsp/ocamllsp-macos-aarch64.1.22.0-built-with-ocaml.5.3.1%2Brelocatable.tar.gz")
+               "ocamllsp-macos-aarch64.1.22.0-built-with-ocaml.5.3.1%2Brelocatable.tar.gz")
           ~top_level_dir:"ocamllsp.1.22.0-built-with-ocaml.5.3.1+relocatable"
           ~sha256:
             (Sha256.of_hex
@@ -75,7 +79,7 @@ module Remote_tarballs = struct
           ~name:"ocamlformat"
           ~url:
             (mk_url
-               "tools/ocamlformat/ocamlformat-macos-aarch64.0.27.0-built-with-ocaml.5.3.1+relocatable.tar.gz")
+               "ocamlformat-macos-aarch64.0.27.0-built-with-ocaml.5.3.1%2Brelocatable.tar.gz")
           ~top_level_dir:"ocamlformat.0.27.0-built-with-ocaml.5.3.1+relocatable"
           ~sha256:
             (Sha256.of_hex
@@ -121,16 +125,92 @@ module Root = struct
     Remote_tarballs.get_all remote_tarballs ~dst
   ;;
 
-  let make_current t = Unix.link
+  let make_current t =
+    let current_path = current_path () in
+    if Sys.file_exists current_path then Unix.unlink current_path;
+    Unix.symlink (dir t) current_path
+  ;;
+
+  let conv =
+    let open Arg_parser in
+    enum
+      ~eq:(fun a b -> String.equal a.name b.name)
+      ~default_value_name:"ROOT"
+      [ "5.3.1", root_5_3_1 ]
+  ;;
 end
 
 let get =
   let open Arg_parser in
   let+ () = unit in
-  Root.get Root.root_5_3_1
+  let root = Root.root_5_3_1 in
+  Root.get root;
+  if not (Sys.file_exists (current_path ())) then Root.make_current root
+;;
+
+module Shell = struct
+  type t =
+    | Bash
+    | Zsh
+    | Fish
+
+  let equal a b =
+    match a, b with
+    | Bash, Bash | Zsh, Zsh | Fish, Fish -> true
+    | _ -> false
+  ;;
+
+  let conv =
+    let open Arg_parser in
+    enum ~eq:equal ~default_value_name:"SHELL" [ "bash", Bash; "zsh", Zsh; "fish", Fish ]
+  ;;
+
+  let of_string_opt = function
+    | "bash" -> Some Bash
+    | "zsh" -> Some Zsh
+    | "fish" -> Some Fish
+    | _ -> None
+  ;;
+
+  let from_env () =
+    match Alice_io.Env.shell () with
+    | None -> Bash
+    | Some shell_basename ->
+      (match of_string_opt shell_basename with
+       | Some shell -> shell
+       | None ->
+         Alice_error.panic
+           [ Pp.textf "Don't know how to handle shell: %s" shell_basename ])
+  ;;
+
+  let update_path t ~root =
+    let base_dir =
+      match root with
+      | None -> current_path ()
+      | Some root -> Root.dir root
+    in
+    let bin_dir = Filename.concat base_dir "bin" in
+    match t with
+    | Bash | Zsh -> sprintf "export PATH=\"%s:$PATH\"" bin_dir
+    | Fish -> sprintf "fish_add_path --prepend --path \"%s\"" bin_dir
+  ;;
+end
+
+let env =
+  let open Arg_parser in
+  let+ shell = named_opt [ "s"; "shell" ] Shell.conv
+  and+ root = named_opt [ "r"; "root" ] Root.conv in
+  let shell =
+    match shell with
+    | Some shell -> shell
+    | None -> Shell.from_env ()
+  in
+  print_endline (Shell.update_path shell ~root)
 ;;
 
 let subcommand =
   let open Command in
-  subcommand "tools" (group [ subcommand "get" (singleton get) ])
+  subcommand
+    "tools"
+    (group [ subcommand "get" (singleton get); subcommand "env" (singleton env) ])
 ;;
