@@ -30,6 +30,10 @@
     (< 8)))))
 
 (package
+ (name alice_print)
+ (depends ocaml))
+
+(package
  (name alice_policy)
  (depends ocaml))
 

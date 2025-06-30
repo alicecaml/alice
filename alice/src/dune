@@ -1,4 +1,4 @@
 (executable
  (public_name alice)
  (package alice)
- (libraries alice_engine alice_error alice_io climate sha))
+ (libraries alice_engine alice_error alice_print alice_io climate sha))

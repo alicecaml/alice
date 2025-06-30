@@ -26,7 +26,9 @@ type t =
   ; color : Color.t option
   }
 
+val create : ?bold:bool -> ?dim:bool -> ?underline:bool -> ?color:Color.t -> unit -> t
 val default : t
+val default_with_color : Color.t -> t
 
 (** Call a given function on a formatter with a given style. It is not safe to
     call [pp_with_style] inside [f]. *)

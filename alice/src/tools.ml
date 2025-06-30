@@ -20,20 +20,31 @@ module Remote_tarball = struct
 
   type t =
     { name : string
+    ; version : string
     ; url : Url.t
     ; top_level_dir : Filename.t
     ; sha256 : Sha256.t
     }
 
-  let create ~name ~url ~top_level_dir ~sha256 = { name; url; top_level_dir; sha256 }
+  let create ~name ~version ~url ~top_level_dir ~sha256 =
+    { name; version; url; top_level_dir; sha256 }
+  ;;
 
-  let get { name; url; top_level_dir; sha256 } ~dst =
+  let get { name; version; url; top_level_dir; sha256 } ~dst =
+    let open Alice_print in
     Temp_dir.with_ ~prefix:"alice." ~suffix:".tools" ~f:(fun dir ->
       let tarball_file = Filename.concat dir (sprintf "%s.tar.gz" name) in
+      pp_print (Pp.textf "Fetching %s.%s..." name version);
       Fetch.fetch ~url ~output_file:tarball_file;
       panic_if_hashes_don't_match tarball_file sha256;
+      pp_println (Pp.text "Done!" |> Pp.tag (Ansi_style.default_with_color `Green));
+      pp_print (Pp.textf "Unpacking %s.%s..." name version);
       Extract.extract ~tarball_file ~output_dir:dir;
-      File_ops.recursive_move_between_dirs ~src:(Filename.concat dir top_level_dir) ~dst)
+      File_ops.recursive_move_between_dirs ~src:(Filename.concat dir top_level_dir) ~dst;
+      pp_println (Pp.text "Done!" |> Pp.tag (Ansi_style.default_with_color `Green));
+      pp_println
+        (Pp.textf "Successfully installed %s.%s!\n" name version
+         |> Pp.tag (Ansi_style.default_with_color `Green)))
   ;;
 end
 
@@ -59,31 +70,34 @@ module Remote_tarballs = struct
     { compiler =
         rt
           ~name:"ocaml"
-          ~url:(mk_url "ocaml-macos-aarch64.5.3.1%2Brelocatable.tar.gz")
+          ~version:"5.3.1+relocatable"
+          ~url:(mk_url "5.3.1/ocaml-macos-aarch64.5.3.1%2Brelocatable.tar.gz")
           ~top_level_dir:"ocaml.5.3.1+relocatable"
           ~sha256:
             (Sha256.of_hex
-               "3d88de1ecb28a2071c843a8faf6e8bbfa54ca704b7915b61f982d3286e59929d")
+               "5df182e10051f927a04f186092f34472a5a12d837ddb2531acbc2d4d2544e5d6")
     ; ocamllsp =
         rt
           ~name:"ocamllsp"
+          ~version:"1.22.0"
           ~url:
             (mk_url
-               "ocamllsp-macos-aarch64.1.22.0-built-with-ocaml.5.3.1%2Brelocatable.tar.gz")
+               "5.3.1/ocamllsp-macos-aarch64.1.22.0-built-with-ocaml.5.3.1%2Brelocatable.tar.gz")
           ~top_level_dir:"ocamllsp.1.22.0-built-with-ocaml.5.3.1+relocatable"
           ~sha256:
             (Sha256.of_hex
-               "7706597a5ca9800a68fcd464e86397f0f81a9fc53ee51ad1f546ed20f2730110")
+               "f3165deb01ff54f77628a0b7d83e78553c24705e20e2c3d240b591eb809f59a3")
     ; ocamlformat =
         rt
           ~name:"ocamlformat"
+          ~version:"0.27.0"
           ~url:
             (mk_url
-               "ocamlformat-macos-aarch64.0.27.0-built-with-ocaml.5.3.1%2Brelocatable.tar.gz")
+               "5.3.1/ocamlformat-macos-aarch64.0.27.0-built-with-ocaml.5.3.1%2Brelocatable.tar.gz")
           ~top_level_dir:"ocamlformat.0.27.0-built-with-ocaml.5.3.1+relocatable"
           ~sha256:
             (Sha256.of_hex
-               "28821b4d1aada07e5f8cca47c27a2f238219b70ee898bf905e4d6e8cf14b5808")
+               "24408bbd0206ad32d49ee75c3a63085c66c57c789ca38d14c71dda3555d2902f")
     }
   ;;
 
@@ -131,6 +145,9 @@ module Root = struct
     Unix.symlink (dir t) current_path
   ;;
 
+  let is_installed t = Sys.file_exists (dir t)
+  let latest = root_5_3_1
+
   let conv =
     let open Arg_parser in
     enum
@@ -139,14 +156,6 @@ module Root = struct
       [ "5.3.1", root_5_3_1 ]
   ;;
 end
-
-let get =
-  let open Arg_parser in
-  let+ () = unit in
-  let root = Root.root_5_3_1 in
-  Root.get root;
-  if not (Sys.file_exists (current_path ())) then Root.make_current root
-;;
 
 module Shell = struct
   type t =
@@ -196,10 +205,27 @@ module Shell = struct
   ;;
 end
 
+let get =
+  let open Arg_parser in
+  let+ root = named_with_default [ "r"; "root" ] Root.conv ~default:Root.latest in
+  Root.get root;
+  if not (Sys.file_exists (current_path ()))
+  then (
+    Alice_print.pp_println
+      (Pp.textf "No current root was found so making %s the current root." root.name);
+    Root.make_current root)
+;;
+
 let env =
   let open Arg_parser in
-  let+ shell = named_opt [ "s"; "shell" ] Shell.conv
-  and+ root = named_opt [ "r"; "root" ] Root.conv in
+  let+ shell =
+    named_opt
+      [ "s"; "shell" ]
+      Shell.conv
+      ~doc:"Print the env in the syntax for this shell rather than the current shell."
+  and+ root =
+    named_opt [ "r"; "root" ] Root.conv ~doc:"Use this root rather than the current root."
+  in
   let shell =
     match shell with
     | Some shell -> shell
@@ -208,9 +234,27 @@ let env =
   print_endline (Shell.update_path shell ~root)
 ;;
 
+let change =
+  let open Arg_parser in
+  let+ root = pos_req 0 Root.conv in
+  if Root.is_installed root
+  then Root.make_current root
+  else
+    Alice_error.panic
+      [ Pp.textf
+          "Root %s is not installed. Run `alice tools get %s` first."
+          root.name
+          root.name
+      ]
+;;
+
 let subcommand =
   let open Command in
   subcommand
     "tools"
-    (group [ subcommand "get" (singleton get); subcommand "env" (singleton env) ])
+    (group
+       [ subcommand "get" (singleton get)
+       ; subcommand "env" (singleton env)
+       ; subcommand "change" (singleton change)
+       ])
 ;;

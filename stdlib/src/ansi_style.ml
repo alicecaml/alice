@@ -26,8 +26,13 @@ type t =
   ; color : Color.t option
   }
 
+let create ?(bold = false) ?(dim = false) ?(underline = false) ?color () =
+  { bold; dim; underline; color }
+;;
+
 (* This is what the style will be after the terminal is reset. *)
 let default = { bold = false; dim = false; underline = false; color = None }
+let default_with_color color = { default with color = Some color }
 let reset = "\x1b[0m"
 
 let is_default { bold; dim; underline; color } =

@@ -32,12 +32,10 @@ Concrete differences from Opam/Dune:
 
 It's recommended to use direnv with the following .envrc while working on this:
 ```
-export PATH=$HOME/.alice/root/bin:$PATH
+export PATH=$HOME/.alice/current/bin:$PATH
 export DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled
 export DUNE_CONFIG__PKG_BUILD_PROGRESS=enabled
 ```
 
-Construct an environment in `$HOME/.alice/root` by combining binary releases of
-the compiler and development tools for your platform. This is an alternative to
-letting dune manage the dependency on the compiler, and to letting dune manage
-the installation of development tools.
+Run the script in `boot` for your system to bootstrap an environment with the
+tools needed to build alice.
