@@ -18,6 +18,8 @@ ENV LDFLAGS=-static
 RUN ./configure \
     --prefix=/home/user/ocaml.5.3.1 \
     --enable-shared=no \
+    --with-relative-libdir=../lib/ocaml \
+    --enable-runtime-search=always \
     ;
 RUN make -j
 RUN make install

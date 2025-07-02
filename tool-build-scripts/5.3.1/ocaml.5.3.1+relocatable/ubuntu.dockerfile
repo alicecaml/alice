@@ -14,7 +14,11 @@ RUN tar xf ocaml-relocatable-5.3.1.tar.gz
 WORKDIR /home/user/ocaml-relocatable-5.3.1
 
 RUN ./configure \
-    --prefix=/home/user/ocaml.5.3.1
+    --prefix=/home/user/ocaml.5.3.1 \
+    --with-relative-libdir=../lib/ocaml \
+    --enable-runtime-search=always \
+    ;
+
 RUN make -j
 RUN make install
 
