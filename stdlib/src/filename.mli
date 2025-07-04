@@ -2,6 +2,8 @@ include module type of Stdlib.Filename
 
 type t = string
 
+val to_dyn : t -> Dyn.t
+
 module Set : Set.S with type elt = t
 module Map : Map.S with type key = t
 

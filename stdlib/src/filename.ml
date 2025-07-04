@@ -4,6 +4,7 @@ module T = struct
   type t = string
 
   let compare = String.compare
+  let to_dyn = Dyn.string
 end
 
 include T
@@ -16,10 +17,8 @@ let has_extension t ~ext = String.equal (extension t) ext
 let replace_extension t ~ext =
   assert (Char.equal (String.get ext 0) '.');
   let without_extension = chop_extension t in
-  concat without_extension ext
+  String.cat without_extension ext
 ;;
-
-let is_root t = equal t (dirname t)
 
 let to_components t =
   let rec loop t =

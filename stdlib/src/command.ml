@@ -5,6 +5,10 @@ type t =
 
 let create prog ~args = { prog; args }
 
+let equal t { prog; args } =
+  String.equal t.prog prog && List.equal ~eq:String.equal t.args args
+;;
+
 let to_dyn { prog; args } =
   Dyn.record [ "prog", Dyn.string prog; "args", Dyn.list Dyn.string args ]
 ;;

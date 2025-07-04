@@ -10,6 +10,7 @@ module Ordering = Ordering
 module Pp = Pp
 module Result = Result
 module Seq = Seq
+module Set = Set
 module String = String
 module Url = Url
 module Xdg = Xdg

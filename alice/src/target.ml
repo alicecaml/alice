@@ -5,6 +5,11 @@ module Os = struct
     | Macos
     | Linux
 
+  let to_dyn = function
+    | Macos -> Dyn.variant "Macos" []
+    | Linux -> Dyn.variant "Linux" []
+  ;;
+
   let to_string = function
     | Macos -> "macos"
     | Linux -> "linux"
@@ -21,6 +26,11 @@ module Arch = struct
   type t =
     | Aarch64
     | X86_64
+
+  let to_dyn = function
+    | Aarch64 -> Dyn.variant "Aarch64" []
+    | X86_64 -> Dyn.variant "X86_64" []
+  ;;
 
   let to_string = function
     | Aarch64 -> "aarch64"
@@ -39,6 +49,11 @@ module Linked = struct
     | Dynamic
     | Static
 
+  let to_dyn = function
+    | Dynamic -> Dyn.variant "Dynamic" []
+    | Static -> Dyn.variant "Static" []
+  ;;
+
   let to_string = function
     | Dynamic -> "dynamic"
     | Static -> "static"
@@ -51,6 +66,11 @@ module T = struct
     ; arch : Arch.t
     ; linked : Linked.t
     }
+
+  let to_dyn { os; arch; linked } =
+    Dyn.record
+      [ "os", Os.to_dyn os; "arch", Arch.to_dyn arch; "linked", Linked.to_dyn linked ]
+  ;;
 
   let create ~os ~arch ~linked = { os; arch; linked }
 
@@ -70,4 +90,3 @@ let poll () =
      Linux if the distro is NixOS or Alpine) *)
   create ~os:(Os.poll ()) ~arch:(Arch.poll ()) ~linked:Dynamic
 ;;
-

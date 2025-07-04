@@ -62,7 +62,6 @@ module Remote_tarballs = struct
     "https://s3.g.s4.mega.io/ycsnsngpe2elgjdd2uzbdpyj6s54q5itlvy6g/alice/tools/"
   ;;
 
-  let url_base = "http://localhost:8000/"
   let mk_url rel = String.cat url_base rel
 
   (* Just hard-code these for now to keep things simple! *)
@@ -126,7 +125,7 @@ module Root = struct
   ;;
 
   let choose_remote_tarballs t ~target =
-    Target.Map.find_exn t.remote_tarballs_by_target target
+    Target.Map.find target t.remote_tarballs_by_target
   ;;
 
   let dir { name; _ } = Filename.concat (roots_dir ()) name

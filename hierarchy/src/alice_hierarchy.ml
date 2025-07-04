@@ -12,16 +12,28 @@ module File = struct
     ; kind : kind
     }
 
-  module Dir = struct
-    type nonrec t =
-      { path : Filename.t
-      ; contents : t list
-      }
-  end
+  let rec to_dyn { path; kind } =
+    Dyn.record [ "path", Filename.to_dyn path; "kind", kind_to_dyn kind ]
+
+  and kind_to_dyn = function
+    | Regular -> Dyn.variant "Regular" []
+    | Link dest -> Dyn.variant "Link" [ Filename.to_dyn dest ]
+    | Dir contents -> Dyn.variant "Dir" [ Dyn.list to_dyn contents ]
+    | Unknown -> Dyn.variant "Unknown" []
+  ;;
+
+  type dir =
+    { path : Filename.t
+    ; contents : t list
+    }
+
+  let dir_to_dyn { path; contents } =
+    Dyn.record [ "path", Filename.to_dyn path; "contents", Dyn.list to_dyn contents ]
+  ;;
 
   let as_dir { kind; path } =
     match kind with
-    | Dir contents -> Some { Dir.path; contents }
+    | Dir contents -> Some { path; contents }
     | _ -> None
   ;;
 
@@ -51,7 +63,16 @@ module File = struct
     | Regular | Link _ -> f t
     | Dir contents ->
       f t;
-      List.iter contents ~f:(traverse_bottom_up ~f)
+      List.iter contents ~f:(traverse_top_down ~f)
     | Unknown -> ()
   ;;
+end
+
+module Dir = struct
+  type t = File.dir =
+    { path : Filename.t
+    ; contents : File.t list
+    }
+
+  let to_dyn = File.dir_to_dyn
 end

@@ -1,5 +1,5 @@
-module Dir := Alice_hierarchy.File.Dir
-module Abstract_rule := Alice_engine.Abstract_rule
+module Dir := Alice_hierarchy.Dir
+module Rule = Alice_engine.Rule
 
 module Ctx : sig
   (** Settings that affect the way that files will be built *)
@@ -13,4 +13,4 @@ module Ctx : sig
   val release : t
 end
 
-val exe_rules : exe_name:string -> Ctx.t -> Dir.t -> Abstract_rule.t list
+val exe_rules : exe_name:string -> Ctx.t -> Dir.t -> Rule.Database.t

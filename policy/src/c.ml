@@ -1,6 +1,8 @@
 open! Alice_stdlib
-module Abstract_rule = Alice_engine.Abstract_rule
+module Rule = Alice_engine.Rule
+module Build = Alice_engine.Build_plan.Build
 module File = Alice_hierarchy.File
+module Dir = Alice_hierarchy.Dir
 
 module Ctx = struct
   type t =
@@ -31,7 +33,7 @@ module Ctx = struct
   ;;
 end
 
-let all_files_with_extension (dir : File.Dir.t) ~ext =
+let all_files_with_extension (dir : Dir.t) ~ext =
   List.filter_map dir.contents ~f:(fun (file : File.t) ->
     if File.is_regular_or_link file && Filename.has_extension file.path ~ext
     then Some file.path
@@ -47,7 +49,7 @@ let all_object_files dir =
 
 let c_to_o_rule ctx dir =
   let all_header_files = all_header_files dir in
-  Abstract_rule.create ~f:(fun target ->
+  Rule.create ~f:(fun target ->
     match Filename.extension target with
     | ".o" ->
       let with_c_extension = Filename.replace_extension target ~ext:".c" in
@@ -57,18 +59,20 @@ let c_to_o_rule ctx dir =
         with_c_extension :: all_header_files
       in
       Some
-        ( `Inputs inputs
-        , `Actions [ Ctx.cc_command ctx ~args:[ "-c"; with_c_extension; "-o"; target ] ]
-        )
+        { Build.inputs = Filename.Set.of_list inputs
+        ; commands = [ Ctx.cc_command ctx ~args:[ "-c"; with_c_extension; "-o"; target ] ]
+        }
     | _ -> None)
 ;;
 
 let link_exe_rule ~exe_name ctx dir =
   let all_object_files = all_object_files dir in
-  Abstract_rule.create_fixed_output
-    exe_name
-    ~inputs:all_object_files
-    ~actions:[ Ctx.cc_command ctx ~args:(all_object_files @ [ "-o"; exe_name ]) ]
+  Rule.create_fixed_output
+    ~output:exe_name
+    ~build:
+      { Build.inputs = Filename.Set.of_list all_object_files
+      ; commands = [ Ctx.cc_command ctx ~args:(all_object_files @ [ "-o"; exe_name ]) ]
+      }
 ;;
 
 let exe_rules ~exe_name ctx dir = [ c_to_o_rule ctx dir; link_exe_rule ~exe_name ctx dir ]
