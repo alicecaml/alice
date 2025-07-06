@@ -1,0 +1,24 @@
+diff --git a/bin/ocamlformat-rpc/dune b/bin/ocamlformat-rpc/dune
+index f1bda4fa..11e8e369 100644
+--- a/bin/ocamlformat-rpc/dune
++++ b/bin/ocamlformat-rpc/dune
+@@ -13,6 +13,7 @@
+  (name main)
+  (public_name ocamlformat-rpc)
+  (package ocamlformat)
++ (link_flags (:standard -cclib -static))
+  (flags
+   (:standard -open Ocamlformat_stdlib))
+  (instrumentation
+diff --git a/bin/ocamlformat/dune b/bin/ocamlformat/dune
+index 86de53ed..7e0eb858 100644
+--- a/bin/ocamlformat/dune
++++ b/bin/ocamlformat/dune
+@@ -14,6 +14,7 @@
+  (public_name ocamlformat)
+  (package ocamlformat)
+  (modules main)
++ (link_flags (:standard -cclib -static))
+  (flags
+   (:standard -open Ocamlformat_stdlib))
+  (instrumentation
