@@ -65,7 +65,7 @@ let recursive_move_hier_between_dirs ~src_hier ~dst =
          ([Unix.rmdir] only deletes empty directories). *)
       mkdir_p dst_path;
       Unix.rmdir src_file.path)
-    else Unix.rename src_file.path dst_path)
+    else Fileutils.mv src_file.path dst_path)
 ;;
 
 let recursive_move_between_dirs ~src ~dst =

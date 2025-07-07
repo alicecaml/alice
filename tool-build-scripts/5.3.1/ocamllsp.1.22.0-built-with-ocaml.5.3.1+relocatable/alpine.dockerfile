@@ -23,14 +23,14 @@ RUN echo 0f052512674e626eb66d90c59e6c076361058ecb7c84098ee882b689de9dbdc1  ocaml
 RUN tar xf ocaml-x86_64-linux-musl-static.5.3.1+relocatable.tar.gz
 RUN cp -r ocaml.5.3.1+relocatable/* .local
 
-RUN git clone --depth 1 --single-branch --branch 0.27.0-build-with-ocaml.5.3.1+relocatable https://github.com/alicecaml/ocamlformat
-WORKDIR ocamlformat
+RUN git clone --depth 1 --single-branch --branch 1.22.0-build-with-ocaml.5.3.1+relocatable https://github.com/alicecaml/ocaml-lsp
+WORKDIR ocaml-lsp
 ENV PATH=/home/user/.local/bin:$PATH
 COPY statically-link.diff statically-link.diff
 RUN patch -p1 < statically-link.diff
 RUN dune build
-RUN cp -rvL _build/install/default ocamlformat.0.27.0-built-with-ocaml.5.3.1+relocatable
-RUN tar czf ocamlformat-x86_64-linux-musl-static.0.27.0-built-with-ocaml.5.3.1+relocatable.tar.gz ocamlformat.0.27.0-built-with-ocaml.5.3.1+relocatable
+RUN cp -rvL _build/install/default ocamllsp.1.22.0-built-with-ocaml.5.3.1+relocatable
+RUN tar czf ocamllsp-x86_64-linux-musl-static.1.22.0-built-with-ocaml.5.3.1+relocatable.tar.gz ocamllsp.1.22.0-built-with-ocaml.5.3.1+relocatable
 
 FROM scratch
-COPY --from=builder /home/user/ocamlformat/ocamlformat-x86_64-linux-musl-static.0.27.0-built-with-ocaml.5.3.1+relocatable.tar.gz .
+COPY --from=builder /home/user/ocaml-lsp/ocamllsp-x86_64-linux-musl-static.1.22.0-built-with-ocaml.5.3.1+relocatable.tar.gz .

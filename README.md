@@ -39,3 +39,8 @@ export DUNE_CONFIG__PKG_BUILD_PROGRESS=enabled
 
 Run the script in `boot` for your system to bootstrap an environment with the
 tools needed to build alice.
+
+### NixOS
+
+On NixOS, use the musl-static builds of the binaries, and add `use nix` to
+`.envrc` to install the musl libraries via `shell.nix`.

@@ -3,6 +3,7 @@ module Fetch = Fetch
 module File_ops = File_ops
 module Extract = Extract
 module Hierarchy = Hierarchy
+module Infer_linux_distro = Infer_linux_distro
 module Process = Process
 module Temp_dir = Temp_dir
 module Uname = Uname

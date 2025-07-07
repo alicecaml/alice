@@ -65,7 +65,7 @@ module Remote_tarballs = struct
   let mk_url rel = String.cat url_base rel
 
   (* Just hard-code these for now to keep things simple! *)
-  let macos_aarch64_5_3_1 =
+  let aarch64_macos_5_3_1 =
     { compiler =
         rt
           ~name:"ocaml"
@@ -100,6 +100,41 @@ module Remote_tarballs = struct
     }
   ;;
 
+  let x86_64_linux_musl_static_5_3_1 =
+    { compiler =
+        rt
+          ~name:"ocaml"
+          ~version:"5.3.1+relocatable"
+          ~url:(mk_url "5.3.1/ocaml-x86_64-linux-musl-static.5.3.1%2Brelocatable.tar.gz")
+          ~top_level_dir:"ocaml.5.3.1+relocatable"
+          ~sha256:
+            (Sha256.of_hex
+               "0f052512674e626eb66d90c59e6c076361058ecb7c84098ee882b689de9dbdc1")
+    ; ocamllsp =
+        rt
+          ~name:"ocamllsp"
+          ~version:"1.22.0"
+          ~url:
+            (mk_url
+               "5.3.1/ocamllsp-x86_64-linux-musl-static.1.22.0-built-with-ocaml.5.3.1%2Brelocatable.tar.gz")
+          ~top_level_dir:"ocamllsp.1.22.0-built-with-ocaml.5.3.1+relocatable"
+          ~sha256:
+            (Sha256.of_hex
+               "b57771fab764dbf2fc1703809f8238bafc35a811c150471e14498ee26fe50a00")
+    ; ocamlformat =
+        rt
+          ~name:"ocamlformat"
+          ~version:"0.27.0"
+          ~url:
+            (mk_url
+               "5.3.1/ocamlformat-x86_64-linux-musl-static.0.27.0-built-with-ocaml.5.3.1%2Brelocatable.tar.gz")
+          ~top_level_dir:"ocamlformat.0.27.0-built-with-ocaml.5.3.1+relocatable"
+          ~sha256:
+            (Sha256.of_hex
+               "7e8393a1b0501693c505c2bebacfe5357d8a466c0158739a05283670579eb4da")
+    }
+  ;;
+
   let get_all t ~dst = List.iter (all t) ~f:(fun rt -> Remote_tarball.get rt ~dst)
 end
 
@@ -119,7 +154,9 @@ module Root = struct
     ; remote_tarballs_by_target =
         Target.Map.of_list_exn
           [ ( Target.create ~os:Macos ~arch:Aarch64 ~linked:Dynamic
-            , Remote_tarballs.macos_aarch64_5_3_1 )
+            , Remote_tarballs.aarch64_macos_5_3_1 )
+          ; ( Target.create ~os:Linux ~arch:X86_64 ~linked:Static
+            , Remote_tarballs.x86_64_linux_musl_static_5_3_1 )
           ]
     }
   ;;

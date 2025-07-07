@@ -1,0 +1,12 @@
+diff --git a/ocaml-lsp-server/bin/dune b/ocaml-lsp-server/bin/dune
+index e28bbbf2..86016708 100644
+--- a/ocaml-lsp-server/bin/dune
++++ b/ocaml-lsp-server/bin/dune
+@@ -2,6 +2,7 @@
+  (name main)
+  (package ocaml-lsp-server)
+  (public_name ocamllsp)
++ (link_flags (:standard -cclib -static))
+  (libraries dune-build-info stdune lsp ocaml_lsp_server)
+  (instrumentation
+   (backend bisect_ppx)))

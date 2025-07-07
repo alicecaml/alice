@@ -9,10 +9,6 @@ COMPILER_URL="https://s3.g.s4.mega.io/ycsnsngpe2elgjdd2uzbdpyj6s54q5itlvy6g/alic
 OCAMLLSP_URL="https://s3.g.s4.mega.io/ycsnsngpe2elgjdd2uzbdpyj6s54q5itlvy6g/alice/tools/5.3.1/ocamllsp-aarch64-macos.1.22.0-built-with-ocaml.5.3.1%2Brelocatable.tar.gz"
 OCAMLFORMAT_URL="https://s3.g.s4.mega.io/ycsnsngpe2elgjdd2uzbdpyj6s54q5itlvy6g/alice/tools/5.3.1/ocamlformat-aarch64-macos.0.27.0-built-with-ocaml.5.3.1%2Brelocatable.tar.gz"
 
-COMPILER_URL="http://localhost:8000/5.3.1/ocaml-aarch64-macos.5.3.1%2Brelocatable.tar.gz"
-OCAMLLSP_URL="http://localhost:8000/5.3.1/ocamllsp-aarch64-macos.1.22.0-built-with-ocaml.5.3.1%2Brelocatable.tar.gz"
-OCAMLFORMAT_URL="http://localhost:8000/5.3.1/ocamlformat-aarch64-macos.0.27.0-built-with-ocaml.5.3.1%2Brelocatable.tar.gz"
-
 TMP=$(mktemp -d -t alice)
 trap 'rm -rf $TMP' EXIT
 

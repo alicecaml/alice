@@ -18,6 +18,7 @@ module Os = struct
   let poll () =
     match Alice_io.Uname.uname_s () with
     | "Darwin" -> Macos
+    | "Linux" -> Linux
     | other -> Alice_error.panic [ Pp.textf "Unknown system: %s" other ]
   ;;
 end
@@ -40,6 +41,7 @@ module Arch = struct
   let poll () =
     match Alice_io.Uname.uname_m () with
     | "arm64" -> Aarch64
+    | "x86_64" -> X86_64
     | other -> Alice_error.panic [ Pp.textf "Unknown architecture: %s" other ]
   ;;
 end
@@ -86,7 +88,15 @@ module Map = Map.Make (T)
 module Set = Set.Make (T)
 
 let poll () =
-  (* TODO: detect whether statically-linked binaries should be used (e.g. on
-     Linux if the distro is NixOS or Alpine) *)
-  create ~os:(Os.poll ()) ~arch:(Arch.poll ()) ~linked:Dynamic
+  let os = Os.poll () in
+  let arch = Arch.poll () in
+  let linked =
+    match os with
+    | Linux ->
+      if Alice_io.Infer_linux_distro.current_distro_requires_statically_linked_tools ()
+      then Linked.Static
+      else Dynamic
+    | _ -> Dynamic
+  in
+  create ~os ~arch ~linked
 ;;
