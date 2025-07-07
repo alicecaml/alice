@@ -1,0 +1,3 @@
+(library
+ (public_name alice_scheduler)
+ (libraries alice_stdlib alice_engine alice_error))

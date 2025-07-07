@@ -1,4 +1,5 @@
 open! Alice_stdlib
+open Alice_hierarchy
 
 module Status = struct
   type t =
@@ -35,9 +36,11 @@ module Blocking = struct
 
   let run_capturing_stdout_lines ?(stdin = Unix.stdin) ?(stderr = Unix.stderr) prog ~args =
     Temp_dir.with_ ~prefix:"alice." ~suffix:".stdout" ~f:(fun dir ->
-      let path = Filename.concat dir "stdout" in
+      let path = Path.concat dir (Path.relative "stdout") in
       let perms = 0o755 in
-      let output_file_desc = Unix.openfile path [ O_CREAT; O_RDWR ] perms in
+      let output_file_desc =
+        Unix.openfile (Path.to_filename path) [ O_CREAT; O_RDWR ] perms
+      in
       let result = run ~stdin ~stdout:output_file_desc ~stderr prog ~args in
       let result =
         Result.map result ~f:(fun status ->

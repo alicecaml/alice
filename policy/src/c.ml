@@ -1,8 +1,7 @@
 open! Alice_stdlib
+open Alice_hierarchy
 module Rule = Alice_engine.Rule
 module Build = Alice_engine.Build_plan.Build
-module File = Alice_hierarchy.File
-module Dir = Alice_hierarchy.Dir
 
 module Ctx = struct
   type t =
@@ -33,10 +32,12 @@ module Ctx = struct
   ;;
 end
 
-let all_files_with_extension (dir : Dir.t) ~ext =
-  List.filter_map dir.contents ~f:(fun (file : File.t) ->
-    if File.is_regular_or_link file && Filename.has_extension file.path ~ext
-    then Some file.path
+let all_files_with_extension (dir : _ Dir.t) ~ext =
+  List.filter_map dir.contents ~f:(fun (file : _ File.t) ->
+    if
+      File.is_regular_or_link file
+      && Filename.has_extension (Path.to_filename file.path) ~ext
+    then Some (Path.to_filename file.path)
     else None)
 ;;
 

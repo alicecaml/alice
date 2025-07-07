@@ -42,6 +42,10 @@
  (depends ocaml))
 
 (package
+ (name alice_scheduler)
+ (depends ocaml))
+
+(package
  (name alice_stdlib)
  (depends
   ocaml

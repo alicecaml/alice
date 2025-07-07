@@ -13,4 +13,4 @@ module Ctx : sig
   val release : t
 end
 
-val exe_rules : exe_name:string -> Ctx.t -> Dir.t -> Rule.Database.t
+val exe_rules : exe_name:string -> Ctx.t -> _ Dir.t -> Rule.Database.t

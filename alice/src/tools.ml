@@ -1,13 +1,14 @@
 open! Alice_stdlib
+open Alice_hierarchy
 open Climate
 
 let panic_if_hashes_don't_match path expected_hash =
-  let actual_hash = Sha256.file path in
+  let actual_hash = Sha256.file (Path.to_filename path) in
   if Sha256.equal actual_hash expected_hash
   then ()
   else
     Alice_error.panic
-      [ Pp.textf "Hash mismatch for file: %s" path
+      [ Pp.textf "Hash mismatch for file: %s" (Path.to_filename path)
       ; Pp.newline
       ; Pp.textf "Expected hash: %s" (Sha256.to_hex expected_hash)
       ; Pp.newline
@@ -22,25 +23,30 @@ module Remote_tarball = struct
     { name : string
     ; version : string
     ; url : Url.t
-    ; top_level_dir : Filename.t
+    ; top_level_dir : Path.Relative.t
     ; sha256 : Sha256.t
     }
 
   let create ~name ~version ~url ~top_level_dir ~sha256 =
-    { name; version; url; top_level_dir; sha256 }
+    { name
+    ; version
+    ; url
+    ; top_level_dir = Path.relative top_level_dir
+    ; sha256 = Sha256.of_hex sha256
+    }
   ;;
 
   let get { name; version; url; top_level_dir; sha256 } ~dst =
     let open Alice_print in
     Temp_dir.with_ ~prefix:"alice." ~suffix:".tools" ~f:(fun dir ->
-      let tarball_file = Filename.concat dir (sprintf "%s.tar.gz" name) in
+      let tarball_file = Path.concat dir (Path.relative (sprintf "%s.tar.gz" name)) in
       pp_print (Pp.textf "Fetching %s.%s..." name version);
       Fetch.fetch ~url ~output_file:tarball_file;
       panic_if_hashes_don't_match tarball_file sha256;
       pp_println (Pp.text "Done!" |> Pp.tag (Ansi_style.default_with_color `Green));
       pp_print (Pp.textf "Unpacking %s.%s..." name version);
       Extract.extract ~tarball_file ~output_dir:dir;
-      File_ops.recursive_move_between_dirs ~src:(Filename.concat dir top_level_dir) ~dst;
+      File_ops.recursive_move_between_dirs ~src:(Path.concat dir top_level_dir) ~dst;
       pp_println (Pp.text "Done!" |> Pp.tag (Ansi_style.default_with_color `Green));
       pp_println
         (Pp.textf "Successfully installed %s.%s!\n" name version
@@ -72,9 +78,7 @@ module Remote_tarballs = struct
           ~version:"5.3.1+relocatable"
           ~url:(mk_url "5.3.1/ocaml-aarch64-macos.5.3.1%2Brelocatable.tar.gz")
           ~top_level_dir:"ocaml.5.3.1+relocatable"
-          ~sha256:
-            (Sha256.of_hex
-               "5df182e10051f927a04f186092f34472a5a12d837ddb2531acbc2d4d2544e5d6")
+          ~sha256:"5df182e10051f927a04f186092f34472a5a12d837ddb2531acbc2d4d2544e5d6"
     ; ocamllsp =
         rt
           ~name:"ocamllsp"
@@ -83,9 +87,7 @@ module Remote_tarballs = struct
             (mk_url
                "5.3.1/ocamllsp-aarch64-macos.1.22.0-built-with-ocaml.5.3.1%2Brelocatable.tar.gz")
           ~top_level_dir:"ocamllsp.1.22.0-built-with-ocaml.5.3.1+relocatable"
-          ~sha256:
-            (Sha256.of_hex
-               "f3165deb01ff54f77628a0b7d83e78553c24705e20e2c3d240b591eb809f59a3")
+          ~sha256:"f3165deb01ff54f77628a0b7d83e78553c24705e20e2c3d240b591eb809f59a3"
     ; ocamlformat =
         rt
           ~name:"ocamlformat"
@@ -94,9 +96,7 @@ module Remote_tarballs = struct
             (mk_url
                "5.3.1/ocamlformat-aarch64-macos.0.27.0-built-with-ocaml.5.3.1%2Brelocatable.tar.gz")
           ~top_level_dir:"ocamlformat.0.27.0-built-with-ocaml.5.3.1+relocatable"
-          ~sha256:
-            (Sha256.of_hex
-               "24408bbd0206ad32d49ee75c3a63085c66c57c789ca38d14c71dda3555d2902f")
+          ~sha256:"24408bbd0206ad32d49ee75c3a63085c66c57c789ca38d14c71dda3555d2902f"
     }
   ;;
 
@@ -107,9 +107,7 @@ module Remote_tarballs = struct
           ~version:"5.3.1+relocatable"
           ~url:(mk_url "5.3.1/ocaml-x86_64-linux-musl-static.5.3.1%2Brelocatable.tar.gz")
           ~top_level_dir:"ocaml.5.3.1+relocatable"
-          ~sha256:
-            (Sha256.of_hex
-               "0f052512674e626eb66d90c59e6c076361058ecb7c84098ee882b689de9dbdc1")
+          ~sha256:"0f052512674e626eb66d90c59e6c076361058ecb7c84098ee882b689de9dbdc1"
     ; ocamllsp =
         rt
           ~name:"ocamllsp"
@@ -118,9 +116,7 @@ module Remote_tarballs = struct
             (mk_url
                "5.3.1/ocamllsp-x86_64-linux-musl-static.1.22.0-built-with-ocaml.5.3.1%2Brelocatable.tar.gz")
           ~top_level_dir:"ocamllsp.1.22.0-built-with-ocaml.5.3.1+relocatable"
-          ~sha256:
-            (Sha256.of_hex
-               "b57771fab764dbf2fc1703809f8238bafc35a811c150471e14498ee26fe50a00")
+          ~sha256:"b57771fab764dbf2fc1703809f8238bafc35a811c150471e14498ee26fe50a00"
     ; ocamlformat =
         rt
           ~name:"ocamlformat"
@@ -129,9 +125,7 @@ module Remote_tarballs = struct
             (mk_url
                "5.3.1/ocamlformat-x86_64-linux-musl-static.0.27.0-built-with-ocaml.5.3.1%2Brelocatable.tar.gz")
           ~top_level_dir:"ocamlformat.0.27.0-built-with-ocaml.5.3.1+relocatable"
-          ~sha256:
-            (Sha256.of_hex
-               "7e8393a1b0501693c505c2bebacfe5357d8a466c0158739a05283670579eb4da")
+          ~sha256:"7e8393a1b0501693c505c2bebacfe5357d8a466c0158739a05283670579eb4da"
     }
   ;;
 
@@ -170,9 +164,14 @@ module Root = struct
   let get t =
     let target = Target.poll () in
     let remote_tarballs = choose_remote_tarballs t ~target in
-    let dst = dir t in
-    Alice_io.File_ops.mkdir_p dst;
-    Remote_tarballs.get_all remote_tarballs ~dst
+    Path.with_filename
+      (dir t)
+      ~f:
+        { Path.f =
+            (fun dst ->
+              Alice_io.File_ops.mkdir_p dst;
+              Remote_tarballs.get_all remote_tarballs ~dst)
+        }
   ;;
 
   let make_current t =

@@ -113,3 +113,29 @@ module Staging = struct
     t
   ;;
 end
+
+module Traverse = struct
+  type nonrec t =
+    { output : Filename.t
+    ; origin : Origin.t
+    ; build_plan : t
+    }
+
+  let output t = t.output
+  let origin t = t.origin
+
+  let deps t =
+    match (t.origin : Origin.t) with
+    | Source -> []
+    | Build { Build.inputs; _ } ->
+      Filename.Set.to_list inputs
+      |> List.map ~f:(fun output ->
+        let origin = Filename.Map.find output t.build_plan in
+        { output; origin; build_plan = t.build_plan })
+  ;;
+end
+
+let traverse t ~output =
+  Filename.Map.find_opt output t
+  |> Option.map ~f:(fun origin -> { Traverse.output; origin; build_plan = t })
+;;

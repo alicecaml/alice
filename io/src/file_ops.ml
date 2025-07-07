@@ -1,24 +1,24 @@
 open! Alice_stdlib
 open Alice_error
-module File = Hierarchy.File
+open Alice_hierarchy
 
 let rm_rf path =
-  match File.read path with
+  match Read_hierarchy.read path with
   | Error `Not_found ->
     (* Ignore the case when the file is missing as this is the
        behaviour of "rm -f". *)
     ()
   | Ok file ->
     File.traverse_bottom_up file ~f:(fun file ->
-      match (file.kind : File.kind) with
-      | Regular | Link _ | Unknown -> Unix.unlink file.path
+      match (file.kind : _ File.kind) with
+      | Regular | Link | Unknown -> Unix.unlink (Path.to_filename file.path)
       | Dir _ ->
         (* The directory will be empty by this point because the traversal is
            bottom-up. *)
-        Unix.rmdir file.path)
+        Unix.rmdir (Path.to_filename file.path))
 ;;
 
-let mkdir_p path =
+let mkdir_p_filename path =
   let perms = 0o755 in
   let (first :: rest) = Filename.to_components path in
   List.fold_left
@@ -47,11 +47,13 @@ let mkdir_p path =
     else Unix.mkdir partial_path perms)
 ;;
 
+let mkdir_p path = mkdir_p_filename (Path.to_filename path)
+
 let recursive_move_hier_between_dirs ~src_hier ~dst =
-  Hierarchy.File.traverse_bottom_up src_hier ~f:(fun src_file ->
-    let relative_path = Filename.chop_prefix src_file.path ~prefix:src_hier.path in
-    let dst_path = Filename.concat dst relative_path in
-    mkdir_p (Filename.dirname dst_path);
+  File.traverse_bottom_up src_hier ~f:(fun src_file ->
+    let relative_path = Path.chop_prefix src_file.path ~prefix:src_hier.path in
+    let dst_path = Path.concat dst relative_path in
+    mkdir_p_filename (Filename.dirname (Path.to_filename dst_path));
     if File.is_dir src_file
     then (
       (* If the file is a directory then don't call [rename] to move it.
@@ -64,28 +66,41 @@ let recursive_move_hier_between_dirs ~src_hier ~dst =
          function from accidentally deleting an important directory
          ([Unix.rmdir] only deletes empty directories). *)
       mkdir_p dst_path;
-      Unix.rmdir src_file.path)
-    else Fileutils.mv src_file.path dst_path)
+      Unix.rmdir (Path.to_filename src_file.path))
+    else Fileutils.mv (Path.to_filename src_file.path) (Path.to_filename dst_path))
 ;;
 
 let recursive_move_between_dirs ~src ~dst =
-  if Sys.file_exists dst
+  if Sys.file_exists (Path.to_filename dst)
   then
-    if Sys.is_directory dst
+    if Sys.is_directory (Path.to_filename dst)
     then ()
     else
-      panic [ Pp.textf "Tried moving files to %S but that file is not a directory." dst ]
+      panic
+        [ Pp.textf
+            "Tried moving files to %S but that file is not a directory."
+            (Path.to_filename dst)
+        ]
   else
-    panic [ Pp.textf "Tried moving files to %S but that directory does not exist." dst ];
-  match File.read src with
+    panic
+      [ Pp.textf
+          "Tried moving files to %S but that directory does not exist."
+          (Path.to_filename dst)
+      ];
+  match Read_hierarchy.read src with
   | Error `Not_found ->
     panic
-      [ Pp.textf "Tried moving files from %S but that that directory does not exist." src
+      [ Pp.textf
+          "Tried moving files from %S but that that directory does not exist."
+          (Path.to_filename src)
       ]
   | Ok src_hier ->
-    if not (Hierarchy.File.is_dir src_hier)
+    if not (File.is_dir src_hier)
     then
       panic
-        [ Pp.textf "Tried moving files from %S but that file is not a directory." src ];
+        [ Pp.textf
+            "Tried moving files from %S but that file is not a directory."
+            (Path.to_filename src)
+        ];
     recursive_move_hier_between_dirs ~src_hier ~dst
 ;;

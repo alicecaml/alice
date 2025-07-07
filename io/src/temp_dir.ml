@@ -1,4 +1,5 @@
 open! Alice_stdlib
+open Alice_hierarchy
 
 let rng = lazy (Random.State.make_self_init ())
 
@@ -12,8 +13,8 @@ let mkdir ~prefix ~suffix =
     let path = Filename.concat temp_dir_base dir_name in
     if Sys.file_exists path then loop () else path
   in
-  let path = loop () in
-  Unix.mkdir path perms;
+  let path = Path.absolute (loop ()) in
+  Unix.mkdir (Path.to_filename path) perms;
   path
 ;;
 
