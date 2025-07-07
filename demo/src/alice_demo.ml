@@ -10,10 +10,10 @@ let () =
       { Path.f =
           (fun dir ->
             let dir =
-              Alice_io.Read_hierarchy.read dir
-              |> Result.get_ok
-              |> File.as_dir
-              |> Option.get
+              match Alice_io.Read_hierarchy.read dir with
+              | Error `Not_found ->
+                Alice_error.panic [ Pp.textf "Dir not found: %s" (Path.to_filename dir) ]
+              | Ok file -> File.as_dir file |> Option.get
             in
             let ctx = C_policy.Ctx.debug in
             let output = "a.out" in
