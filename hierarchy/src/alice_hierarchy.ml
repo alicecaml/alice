@@ -1,8 +1,8 @@
 open! Alice_stdlib
 
 module Path = struct
-  type absolute = Absolute
-  type relative = Relative
+  type absolute = |
+  type relative = |
 
   type _ t =
     | Absolute : Filename.t -> absolute t
