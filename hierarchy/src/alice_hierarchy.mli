@@ -8,14 +8,10 @@ module Path : sig
 
   module Absolute : sig
     type nonrec t = absolute t
-
-    val getcwd : unit -> t
   end
 
   module Relative : sig
     type nonrec t = relative t
-
-    val to_absolute : cwd:Absolute.t -> t -> Absolute.t
   end
 
   module Either : sig
@@ -25,7 +21,6 @@ module Path : sig
       ]
 
     val with_ : t -> f:'a with_path -> 'a
-    val to_absolute : cwd:Absolute.t -> t -> Absolute.t
   end
 
   val of_filename : Filename.t -> Either.t

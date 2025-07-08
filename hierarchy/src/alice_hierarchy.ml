@@ -63,21 +63,10 @@ module Path = struct
 
   module Absolute = struct
     type nonrec t = absolute t
-
-    let getcwd () =
-      let cwd = Unix.getcwd () in
-      if Filename.is_relative cwd
-      then
-        Alice_error.panic
-          [ Pp.textf "Current working directory is not absolute path: %s" cwd ];
-      Absolute cwd
-    ;;
   end
 
   module Relative = struct
     type nonrec t = relative t
-
-    let to_absolute ~cwd t = concat cwd t
   end
 
   module Either = struct
@@ -90,11 +79,6 @@ module Path = struct
       match t with
       | `Absolute absolute -> f.f absolute
       | `Relative relative -> f.f relative
-    ;;
-
-    let to_absolute ~cwd = function
-      | `Absolute absolute -> absolute
-      | `Relative relative -> Relative.to_absolute relative ~cwd
     ;;
   end
 
