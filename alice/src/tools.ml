@@ -129,6 +129,64 @@ module Remote_tarballs = struct
     }
   ;;
 
+  let x86_64_linux_gnu_5_3_1 =
+    { compiler =
+        rt
+          ~name:"ocaml"
+          ~version:"5.3.1+relocatable"
+          ~url:(mk_url "5.3.1/ocaml-x86_64-linux-gnu.5.3.1%2Brelocatable.tar.gz")
+          ~top_level_dir:"ocaml.5.3.1+relocatable"
+          ~sha256:"6044ea2cf088d83655f27b3844f6526f098610b591057c4c3de3af61bb4d338f"
+    ; ocamllsp =
+        rt
+          ~name:"ocamllsp"
+          ~version:"1.22.0"
+          ~url:
+            (mk_url
+               "5.3.1/ocamllsp-x86_64-linux-gnu.1.22.0-built-with-ocaml.5.3.1%2Brelocatable.tar.gz")
+          ~top_level_dir:"ocamllsp.1.22.0-built-with-ocaml.5.3.1+relocatable"
+          ~sha256:"4be70889928acc75c09480306067514b4114fe68252fa0bdb7be9604ac7405de"
+    ; ocamlformat =
+        rt
+          ~name:"ocamlformat"
+          ~version:"0.27.0"
+          ~url:
+            (mk_url
+               "5.3.1/ocamlformat-x86_64-linux-gnu.0.27.0-built-with-ocaml.5.3.1%2Brelocatable.tar.gz")
+          ~top_level_dir:"ocamlformat.0.27.0-built-with-ocaml.5.3.1+relocatable"
+          ~sha256:"581b33a29c7f58d4e004021ca1dd1eb40e22555906e779de2ec6bd9def879318"
+    }
+  ;;
+
+  let x86_64_macos_5_3_1 =
+    { compiler =
+        rt
+          ~name:"ocaml"
+          ~version:"5.3.1+relocatable"
+          ~url:(mk_url "5.3.1/ocaml-x86_64-macos.5.3.1%2Brelocatable.tar.gz")
+          ~top_level_dir:"ocaml.5.3.1+relocatable"
+          ~sha256:"993bd258d2b26979888d8c52960115b64b060056b6d17cdf442e8f7d0ff47fbf"
+    ; ocamllsp =
+        rt
+          ~name:"ocamllsp"
+          ~version:"1.22.0"
+          ~url:
+            (mk_url
+               "5.3.1/ocamllsp-x86_64-macos.1.22.0-built-with-ocaml.5.3.1%2Brelocatable.tar.gz")
+          ~top_level_dir:"ocamllsp.1.22.0-built-with-ocaml.5.3.1+relocatable"
+          ~sha256:"be35dfd1299aeb286995287734e7a5ec09d00d41194c3e795b437942758ddf47"
+    ; ocamlformat =
+        rt
+          ~name:"ocamlformat"
+          ~version:"0.27.0"
+          ~url:
+            (mk_url
+               "5.3.1/ocamlformat-x86_64-macos.0.27.0-built-with-ocaml.5.3.1%2Brelocatable.tar.gz")
+          ~top_level_dir:"ocamlformat.0.27.0-built-with-ocaml.5.3.1+relocatable"
+          ~sha256:"1c7a27c36fa8f97866990cea3e228f457d5bf0caae623e0b498b8132233897ff"
+    }
+  ;;
+
   let get_all t ~dst = List.iter (all t) ~f:(fun rt -> Remote_tarball.get rt ~dst)
 end
 
@@ -151,6 +209,10 @@ module Root = struct
             , Remote_tarballs.aarch64_macos_5_3_1 )
           ; ( Target.create ~os:Linux ~arch:X86_64 ~linked:Static
             , Remote_tarballs.x86_64_linux_musl_static_5_3_1 )
+          ; ( Target.create ~os:Linux ~arch:X86_64 ~linked:Dynamic
+            , Remote_tarballs.x86_64_linux_gnu_5_3_1 )
+          ; ( Target.create ~os:Macos ~arch:X86_64 ~linked:Dynamic
+            , Remote_tarballs.x86_64_macos_5_3_1 )
           ]
     }
   ;;
