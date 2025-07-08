@@ -3,7 +3,7 @@
 # Bootsrapping script for x86_64-linux-gnu. Creates an alice environment similar
 # to the one created by `alice tools get` which can be used to build alice.
 
-set -euxo pipefail
+set -eux
 
 COMPILER_URL="https://s3.g.s4.mega.io/ycsnsngpe2elgjdd2uzbdpyj6s54q5itlvy6g/alice/tools/5.3.1/ocaml-x86_64-linux-gnu.5.3.1%2Brelocatable.tar.gz"
 OCAMLLSP_URL="https://s3.g.s4.mega.io/ycsnsngpe2elgjdd2uzbdpyj6s54q5itlvy6g/alice/tools/5.3.1/ocamllsp-x86_64-linux-gnu.1.22.0-built-with-ocaml.5.3.1%2Brelocatable.tar.gz"
