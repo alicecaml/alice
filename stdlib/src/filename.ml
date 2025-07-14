@@ -34,12 +34,23 @@ let to_components t =
 ;;
 
 let chop_prefix_opt ~prefix t =
-  if String.starts_with ~prefix t
-  then (
-    let pos = String.length prefix in
-    let len = String.length t - pos in
-    if len == 0 then Some current_dir_name else Some (String.sub t ~pos ~len))
-  else None
+  let rec loop components prefix_components =
+    match components, prefix_components with
+    | [], [] ->
+      (* The path and the prefix are the same. *)
+      Some current_dir_name
+    | [], _ :: _ ->
+      (* The given prefix is not a prefix of the path. *)
+      None
+    | _ :: _, [] ->
+      (* Reassemble the remainder of the path. *)
+      Some (String.concat components ~sep:dir_sep)
+    | components_hd :: components_tl, prefix_hd :: prefix_tl ->
+      if String.equal components_hd prefix_hd then loop components_tl prefix_tl else None
+  in
+  loop
+    (to_components t |> Nonempty_list.to_list)
+    (to_components prefix |> Nonempty_list.to_list)
 ;;
 
 let chop_prefix ~prefix t =
