@@ -10,20 +10,26 @@ module Path = struct
 
   type 'a with_path = { f : 'kind. 'kind t -> 'a }
 
+  let equal : type a. a t -> a t -> bool =
+    fun a b ->
+    match a, b with
+    | Absolute a, Absolute b | Relative a, Relative b -> Filename.equal a b
+  ;;
+
   let to_dyn : type a. a t -> Dyn.t = function
     | Absolute filename -> Dyn.variant "Absolute" [ Filename.to_dyn filename ]
     | Relative filename -> Dyn.variant "Relative" [ Filename.to_dyn filename ]
+  ;;
+
+  let to_filename : type a. a t -> Filename.t = function
+    | Absolute filename -> filename
+    | Relative filename -> filename
   ;;
 
   let of_filename filename =
     if Filename.is_relative filename
     then `Relative (Relative filename)
     else `Absolute (Absolute filename)
-  ;;
-
-  let to_filename : type a. a t -> Filename.t = function
-    | Absolute filename -> filename
-    | Relative filename -> filename
   ;;
 
   let absolute filename =
@@ -37,6 +43,8 @@ module Path = struct
     | `Absolute _ -> Alice_error.panic [ Pp.textf "Not a relative path: %s" filename ]
     | `Relative path -> path
   ;;
+
+  let current_dir = Relative Filename.current_dir_name
 
   let map_filename : type a. a t -> f:(Filename.t -> Filename.t) -> a t =
     fun t ~f ->
@@ -61,13 +69,59 @@ module Path = struct
     Relative (Filename.chop_prefix ~prefix:(to_filename prefix) (to_filename t))
   ;;
 
-  module Absolute = struct
-    type nonrec t = absolute t
+  let extension t = Filename.extension (to_filename t)
+  let has_extension t ~ext = Filename.has_extension (to_filename t) ~ext
+  let replace_extension t ~ext = map_filename t ~f:(Filename.replace_extension ~ext)
+
+  let match_
+    : type a. a t -> absolute:(absolute t -> 'b) -> relative:(relative t -> 'b) -> 'b
+    =
+    fun t ~absolute ~relative ->
+    match t with
+    | Absolute filename -> absolute (Absolute filename)
+    | Relative filename -> relative (Relative filename)
+  ;;
+
+  module Make (T : sig
+      type t
+
+      val compare : t -> t -> int
+      val to_dyn : t -> Dyn.t
+      val to_filename : t -> Filename.t
+      val of_filename_internal : Filename.t -> t
+    end) =
+  struct
+    include T
+    module Map = Map.Make (T)
+    module Set = Set.Make (T)
+
+    let equal a b = Filename.equal (to_filename a) (to_filename b)
+    let has_extension t ~ext = Filename.has_extension (to_filename t) ~ext
+
+    let replace_extension t ~ext =
+      Filename.replace_extension (to_filename t) ~ext |> of_filename_internal
+    ;;
+
+    let extension t = Filename.extension (to_filename t)
   end
 
-  module Relative = struct
-    type nonrec t = relative t
-  end
+  module Absolute = Make (struct
+      type nonrec t = absolute t
+
+      let compare (Absolute a) (Absolute b) = Filename.compare a b
+      let to_dyn (Absolute t) = Filename.to_dyn t
+      let to_filename (Absolute t) = t
+      let of_filename_internal t = Absolute t
+    end)
+
+  module Relative = Make (struct
+      type nonrec t = relative t
+
+      let compare (Relative a) (Relative b) = Filename.compare a b
+      let to_dyn (Relative t) = Filename.to_dyn t
+      let to_filename (Relative t) = t
+      let of_filename_internal t = Relative t
+    end)
 
   module Either = struct
     type t =
@@ -142,6 +196,18 @@ module File = struct
       f t
     | Unknown -> ()
   ;;
+
+  let rec map_paths { path; kind } ~f : 'b t =
+    let path = f path in
+    let kind =
+      match kind with
+      | Regular -> Regular
+      | Link -> Link
+      | Unknown -> Unknown
+      | Dir contents -> Dir (List.map contents ~f:(map_paths ~f))
+    in
+    { path; kind }
+  ;;
 end
 
 module Dir = struct
@@ -151,4 +217,11 @@ module Dir = struct
     }
 
   let to_dyn = File.dir_to_dyn
+
+  let to_relative { path; contents } =
+    let contents =
+      List.map contents ~f:(File.map_paths ~f:(Path.chop_prefix ~prefix:path))
+    in
+    { path = Path.current_dir; contents }
+  ;;
 end

@@ -10,3 +10,7 @@ val mkdir_p : _ Path.t -> unit
     [dst] is replaced, though files will be replaced if they are at the same
     location as a correspondingly-named file under [src]. *)
 val recursive_move_between_dirs : src:_ Path.t -> dst:_ Path.t -> unit
+
+val cp : src:_ Path.t -> dst:_ Path.t -> unit
+val with_working_dir : _ Path.t -> f:(unit -> 'a) -> 'a
+val exists : _ Path.t -> bool

@@ -34,10 +34,8 @@ end
 
 let all_files_with_extension (dir : _ Dir.t) ~ext =
   List.filter_map dir.contents ~f:(fun (file : _ File.t) ->
-    if
-      File.is_regular_or_link file
-      && Filename.has_extension (Path.to_filename file.path) ~ext
-    then Some (Path.to_filename file.path)
+    if File.is_regular_or_link file && Path.has_extension file.path ~ext
+    then Some file.path
     else None)
 ;;
 
@@ -45,23 +43,32 @@ let all_header_files = all_files_with_extension ~ext:".h"
 let all_source_files = all_files_with_extension ~ext:".c"
 
 let all_object_files dir =
-  all_source_files dir |> List.map ~f:(Filename.replace_extension ~ext:".o")
+  all_source_files dir |> List.map ~f:(Path.replace_extension ~ext:".o")
 ;;
 
 let c_to_o_rule ctx dir =
   let all_header_files = all_header_files dir in
   Rule.create ~f:(fun target ->
-    match Filename.extension target with
+    match Path.extension target with
     | ".o" ->
-      let with_c_extension = Filename.replace_extension target ~ext:".c" in
+      let with_c_extension = Path.replace_extension target ~ext:".c" in
       let inputs =
         (* Each object file depends on all header files because it's possible
            that any .c file could #include any .h file. *)
         with_c_extension :: all_header_files
       in
       Some
-        { Build.inputs = Filename.Set.of_list inputs
-        ; commands = [ Ctx.cc_command ctx ~args:[ "-c"; with_c_extension; "-o"; target ] ]
+        { Build.inputs = Path.Relative.Set.of_list inputs
+        ; commands =
+            [ Ctx.cc_command
+                ctx
+                ~args:
+                  [ "-c"
+                  ; Path.to_filename with_c_extension
+                  ; "-o"
+                  ; Path.to_filename target
+                  ]
+            ]
         }
     | _ -> None)
 ;;
@@ -71,8 +78,14 @@ let link_exe_rule ~exe_name ctx dir =
   Rule.create_fixed_output
     ~output:exe_name
     ~build:
-      { Build.inputs = Filename.Set.of_list all_object_files
-      ; commands = [ Ctx.cc_command ctx ~args:(all_object_files @ [ "-o"; exe_name ]) ]
+      { Build.inputs = Path.Relative.Set.of_list all_object_files
+      ; commands =
+          [ Ctx.cc_command
+              ctx
+              ~args:
+                (List.map all_object_files ~f:Path.Relative.to_filename
+                 @ [ "-o"; Path.Relative.to_filename exe_name ])
+          ]
       }
 ;;
 

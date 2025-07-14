@@ -6,12 +6,28 @@ module Path : sig
   type 'kind t
   type 'a with_path = { f : 'kind. 'kind t -> 'a }
 
+  module type S := sig
+    type t
+
+    val to_dyn : t -> Dyn.t
+    val equal : t -> t -> bool
+    val to_filename : t -> Filename.t
+    val extension : t -> string
+    val has_extension : t -> ext:string -> bool
+    val replace_extension : t -> ext:string -> t
+
+    module Set : Set.S with type elt = t
+    module Map : Map.S with type key = t
+  end
+
+  val to_dyn : _ t -> Dyn.t
+
   module Absolute : sig
-    type nonrec t = absolute t
+    include S with type t = absolute t
   end
 
   module Relative : sig
-    type nonrec t = relative t
+    include S with type t = relative t
   end
 
   module Either : sig
@@ -23,14 +39,20 @@ module Path : sig
     val with_ : t -> f:'a with_path -> 'a
   end
 
+  val to_filename : _ t -> Filename.t
   val of_filename : Filename.t -> Either.t
   val with_filename : Filename.t -> f:'a with_path -> 'a
   val absolute : Filename.t -> absolute t
   val relative : Filename.t -> relative t
+  val current_dir : relative t
   val concat : 'a t -> relative t -> 'a t
   val chop_prefix_opt : prefix:'a t -> 'a t -> relative t option
   val chop_prefix : prefix:'a t -> 'a t -> relative t
-  val to_filename : _ t -> Filename.t
+  val equal : 'a t -> 'a t -> bool
+  val extension : _ t -> string
+  val has_extension : _ t -> ext:string -> bool
+  val replace_extension : 'a t -> ext:string -> 'a t
+  val match_ : 'a t -> absolute:(absolute t -> 'b) -> relative:(relative t -> 'b) -> 'b
 end
 
 module File : sig
@@ -55,6 +77,7 @@ module File : sig
   val is_dir : _ t -> bool
   val is_regular_or_link : _ t -> bool
   val traverse_bottom_up : 'path_kind t -> f:('path_kind t -> unit) -> unit
+  val map_paths : 'a t -> f:('a Path.t -> 'b Path.t) -> 'b t
 end
 
 module Dir : sig
@@ -64,4 +87,5 @@ module Dir : sig
     }
 
   val to_dyn : _ t -> Dyn.t
+  val to_relative : _ t -> Path.relative t
 end

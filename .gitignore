@@ -3,3 +3,4 @@ _build
 dev-tools.locks
 *.tar.gz
 build
+*.out

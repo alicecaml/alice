@@ -104,3 +104,15 @@ let recursive_move_between_dirs ~src ~dst =
         ];
     recursive_move_hier_between_dirs ~src_hier ~dst
 ;;
+
+let cp ~src ~dst = Fileutils.cp [ Path.to_filename src ] (Path.to_filename dst)
+
+let with_working_dir path ~f =
+  let original = Sys.getcwd () in
+  Sys.chdir (Path.to_filename path);
+  let ret = f () in
+  Sys.chdir original;
+  ret
+;;
+
+let exists path = Sys.file_exists (Path.to_filename path)

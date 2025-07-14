@@ -38,7 +38,7 @@ let chop_prefix_opt ~prefix t =
   then (
     let pos = String.length prefix in
     let len = String.length t - pos in
-    Some (String.sub t ~pos ~len))
+    if len == 0 then Some current_dir_name else Some (String.sub t ~pos ~len))
   else None
 ;;
 
