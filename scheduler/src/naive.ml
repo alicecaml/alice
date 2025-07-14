@@ -26,7 +26,6 @@ let run ~src_dir ~out_dir traverse =
         | Exited 0 -> ()
         | _ -> Alice_error.panic [ Pp.text "Command failed!" ])
   in
-  Alice_io.File_ops.with_working_dir out_dir ~f:(fun () ->
-    Alice_io.File_ops.mkdir_p Path.current_dir;
-    loop traverse)
+  Alice_io.File_ops.mkdir_p out_dir;
+  Alice_io.File_ops.with_working_dir out_dir ~f:(fun () -> loop traverse)
 ;;
