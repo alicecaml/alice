@@ -116,3 +116,10 @@ let with_working_dir path ~f =
 ;;
 
 let exists path = Sys.file_exists (Path.to_filename path)
+
+let write_text_file path text =
+  let channel = Out_channel.open_text (Path.to_filename path) in
+  Out_channel.output_string channel text;
+  Out_channel.close channel;
+  ()
+;;

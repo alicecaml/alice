@@ -40,6 +40,9 @@ val to_dyn : t -> Dyn.t
     [output] if the DAG [t] knows how to produce such a file, otherwise [None]. *)
 val traverse : t -> output:Path.t -> Traverse.t option
 
+(** Returns the graphviz source code for rendering the build graph *)
+val dot : t -> string
+
 module Staging : sig
   type build_plan := t
   type t

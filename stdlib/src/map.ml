@@ -7,6 +7,7 @@ module type S = sig
   val of_list : (key * 'a) list -> ('a t, key * 'a * 'a) Result.t
   val of_list_exn : (key * 'a) list -> 'a t
   val keys : 'a t -> key list
+  val values : 'a t -> 'a list
 end
 
 module type Key = sig
@@ -42,4 +43,5 @@ module Make (Key : Key) : S with type key = Key.t = struct
   ;;
 
   let keys t = to_seq t |> Seq.map ~f:fst |> List.of_seq
+  let values t = to_seq t |> Seq.map ~f:snd |> List.of_seq
 end

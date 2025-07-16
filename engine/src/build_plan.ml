@@ -142,3 +142,21 @@ let traverse t ~output =
   Path.Map.find_opt output t
   |> Option.map ~f:(fun origin -> { Traverse.output; origin; build_plan = t })
 ;;
+
+let dot t =
+  let lines =
+    Path.Map.mapi t ~f:(fun path (origin : Origin.t) ->
+      match origin with
+      | Source -> None
+      | Build { inputs; commands = _ } ->
+        let inputs_str =
+          Path.Set.to_list inputs
+          |> List.map ~f:(fun path -> sprintf "\"%s\"" (Path.to_filename path))
+          |> String.concat ~sep:", "
+        in
+        Some (sprintf "  \"%s\" -> {%s}" (Path.to_filename path) inputs_str))
+    |> Path.Map.values
+    |> List.filter_opt
+  in
+  String.concat ~sep:"\n" lines |> sprintf "digraph {\n%s\n}"
+;;

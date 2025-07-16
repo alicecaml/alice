@@ -10,6 +10,7 @@ module type S = sig
   val of_list_exn : (key * 'a) list -> 'a t
 
   val keys : 'a t -> key list
+  val values : 'a t -> 'a list
 end
 
 module type Key = sig
