@@ -4,16 +4,22 @@ module Path = Alice_hierarchy.Path.Relative
 module Build = struct
   type t =
     { inputs : Path.Set.t
+    ; outputs : Path.Set.t
     ; commands : Command.t list
     }
 
-  let to_dyn { inputs; commands } =
+  let to_dyn { inputs; outputs; commands } =
     Dyn.record
-      [ "inputs", Path.Set.to_dyn inputs; "commands", Dyn.list Command.to_dyn commands ]
+      [ "inputs", Path.Set.to_dyn inputs
+      ; "outputs", Path.Set.to_dyn outputs
+      ; "commands", Dyn.list Command.to_dyn commands
+      ]
   ;;
 
-  let equal t { inputs; commands } =
-    Path.Set.equal t.inputs inputs && List.equal ~eq:Command.equal t.commands commands
+  let equal t { inputs; outputs; commands } =
+    Path.Set.equal t.inputs inputs
+    && Path.Set.equal t.outputs outputs
+    && List.equal ~eq:Command.equal t.commands commands
   ;;
 end
 
@@ -148,7 +154,7 @@ let dot t =
     Path.Map.mapi t ~f:(fun path (origin : Origin.t) ->
       match origin with
       | Source -> None
-      | Build { inputs; commands = _ } ->
+      | Build { inputs; outputs = _; commands = _ } ->
         let inputs_str =
           Path.Set.to_list inputs
           |> List.map ~f:(fun path -> sprintf "\"%s\"" (Path.to_filename path))

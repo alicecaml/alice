@@ -7,6 +7,7 @@ module Status : sig
     | Stopped of int
 
   val to_dyn : t -> Dyn.t
+  val panic_unless_exit_0 : t -> unit
 end
 
 module Blocking : sig

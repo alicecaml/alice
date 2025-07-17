@@ -1,5 +1,6 @@
 open! Alice_stdlib
 open Alice_hierarchy
+open Common
 module Rule = Alice_engine.Rule
 module Build = Alice_engine.Build_plan.Build
 
@@ -32,13 +33,6 @@ module Ctx = struct
   ;;
 end
 
-let all_files_with_extension (dir : _ Dir.t) ~ext =
-  List.filter_map dir.contents ~f:(fun (file : _ File.t) ->
-    if File.is_regular_or_link file && Path.has_extension file.path ~ext
-    then Some file.path
-    else None)
-;;
-
 let all_header_files = all_files_with_extension ~ext:".h"
 let all_source_files = all_files_with_extension ~ext:".c"
 
@@ -59,6 +53,7 @@ let c_to_o_rule ctx dir =
       in
       Some
         { Build.inputs = Path.Relative.Set.of_list inputs
+        ; outputs = Path.Relative.Set.singleton target
         ; commands =
             [ Ctx.cc_command
                 ctx
@@ -79,6 +74,7 @@ let link_exe_rule ~exe_name ctx dir =
     ~output:exe_name
     ~build:
       { Build.inputs = Path.Relative.Set.of_list all_object_files
+      ; outputs = Path.Relative.Set.singleton exe_name
       ; commands =
           [ Ctx.cc_command
               ctx

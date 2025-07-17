@@ -20,6 +20,15 @@ module Status = struct
     | WSIGNALED x -> Signaled x
     | WSTOPPED x -> Stopped x
   ;;
+
+  let panic_unless_exit_0 = function
+    | Exited 0 -> ()
+    | Exited x ->
+      Alice_error.panic [ Pp.textf "Process exited with non-zero status: %d" x ]
+    | Signaled x ->
+      Alice_error.panic [ Pp.textf "Process exited due to an unhandled signal: %d" x ]
+    | Stopped x -> Alice_error.panic [ Pp.textf "Process was stopped by a signal: %d" x ]
+  ;;
 end
 
 module Blocking = struct

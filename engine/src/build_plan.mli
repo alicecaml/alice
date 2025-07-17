@@ -3,9 +3,11 @@ module Path = Alice_hierarchy.Path.Relative
 
 module Build : sig
   (** How to create a file by running a list of commands on a set of input
-      files. *)
+      files. Note that a command may generate multiple files, and all outputs
+      of a build are stored in the [outputs] field. *)
   type t =
     { inputs : Path.Set.t
+    ; outputs : Path.Set.t
     ; commands : Command.t list
     }
 end
