@@ -24,6 +24,7 @@ which dune
 
 git clone --depth 1 --single-branch --branch 0.27.0-build-with-ocaml.5.3.1+relocatable https://github.com/alicecaml/ocamlformat
 cd ocamlformat
+export DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled
 dune build
 cd ..
 mkdir ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable

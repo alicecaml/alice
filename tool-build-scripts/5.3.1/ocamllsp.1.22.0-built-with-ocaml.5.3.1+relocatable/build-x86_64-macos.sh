@@ -6,7 +6,7 @@
 
 set -ex
 
-COMPILER_URL="https://s3.g.s4.mega.io/ycsnsngpe2elgjdd2uzbdpyj6s54q5itlvy6g/alice/tools/5.3.1/ocaml-x86_64-macos.5.3.1%2Brelocatable.tar.gz"
+COMPILER_URL="https://s3.g.s4.mega.io/ycsnsngpe2elgjdd2uzbdpyj6s54q5itlvy6g/alice/tools/5.3.1/ocaml-5.3.1+relocatable-x86_64-macos.tar.gz"
 
 TMP=$(mktemp -d -t alice.XXXXXX)
 trap 'rm -rf $TMP' EXIT
@@ -15,18 +15,19 @@ ORIGINAL_DIR="$PWD"
 cd "$TMP"
 
 wget "$COMPILER_URL"
-echo 993bd258d2b26979888d8c52960115b64b060056b6d17cdf442e8f7d0ff47fbf  ocaml-x86_64-macos.5.3.1+relocatable.tar.gz | sha256sum -c
-tar xf ocaml-x86_64-macos.5.3.1+relocatable.tar.gz
-export PATH=$PWD/ocaml.5.3.1+relocatable/bin:$PATH
+echo 7d09047e53675cedddef604936d304807cfbe0052e4c4b56a2c7c05ac0c83304  ocaml-5.3.1+relocatable-x86_64-macos.tar.gz | sha256sum -c
+tar xf ocaml-5.3.1+relocatable-x86_64-macos.tar.gz
+export PATH=$PWD/ocaml-5.3.1+relocatable-x86_64-macos/bin:$PATH
 
 which ocamlc
 which dune
 
 git clone --depth 1 --single-branch --branch 1.22.0-build-with-ocaml.5.3.1+relocatable https://github.com/alicecaml/ocaml-lsp
 cd ocaml-lsp
+export DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled
 dune build
 cd ..
-mkdir ocamllsp.1.22.0-built-with-ocaml.5.3.1+relocatable
-cp -rvL ocaml-lsp/_build/install/default/bin ocaml-lsp/_build/install/default/doc ocamllsp.1.22.0-built-with-ocaml.5.3.1+relocatable
-tar czf ocamllsp.1.22.0-built-with-ocaml.5.3.1+relocatable.tar.gz ocamllsp.1.22.0-built-with-ocaml.5.3.1+relocatable
-cp ocamllsp.1.22.0-built-with-ocaml.5.3.1+relocatable.tar.gz "$ORIGINAL_DIR/ocamllsp-x86_64-macos.1.22.0-built-with-ocaml.5.3.1+relocatable.tar.gz"
+mkdir ocamllsp-1.22.0-built-with-ocaml.5.3.1+relocatable-x86_64-macos
+cp -rvL ocaml-lsp/_build/install/default/bin ocaml-lsp/_build/install/default/doc ocamllsp-1.22.0-built-with-ocaml.5.3.1+relocatable-x86_64-macos
+tar czf ocamllsp-1.22.0-built-with-ocaml.5.3.1+relocatable-x86_64-macos.tar.gz ocamllsp-1.22.0-built-with-ocaml.5.3.1+relocatable-x86_64-macos
+cp ocamllsp-1.22.0-built-with-ocaml.5.3.1+relocatable-x86_64-macos.tar.gz "$ORIGINAL_DIR/"
