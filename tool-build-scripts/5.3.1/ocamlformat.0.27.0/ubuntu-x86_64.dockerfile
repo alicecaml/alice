@@ -26,8 +26,8 @@ RUN git clone --depth 1 --single-branch --branch 0.27.0-build-with-ocaml.5.3.1+r
 WORKDIR ocamlformat
 ENV PATH=/home/user/.local/bin:$PATH
 RUN dune build
-RUN cp -rvL _build/install/default ocamlformat.0.27.0-built-with-ocaml-5.3.1+relocatable-x86_64-linux-gnu
-RUN tar czf ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-x86_64-linux-gnu.tar.gz ocamlformat.0.27.0-built-with-ocaml-5.3.1+relocatable-x86_64-linux-gnu
+RUN cp -rvL _build/install/default ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-x86_64-linux-gnu
+RUN tar czf ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-x86_64-linux-gnu.tar.gz ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-x86_64-linux-gnu
 
 FROM scratch
 COPY --from=builder /home/user/ocamlformat/ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-x86_64-linux-gnu.tar.gz .

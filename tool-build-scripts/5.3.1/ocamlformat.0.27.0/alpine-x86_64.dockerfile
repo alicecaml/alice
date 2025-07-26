@@ -29,8 +29,8 @@ ENV PATH=/home/user/.local/bin:$PATH
 COPY statically-link.diff statically-link.diff
 RUN patch -p1 < statically-link.diff
 RUN dune build
-RUN cp -rvL _build/install/default ocamlformat.0.27.0-built-with-ocaml-5.3.1+relocatable-x86_64-linux-musl-static
-RUN tar czf ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-x86_64-linux-musl-static.tar.gz ocamlformat.0.27.0-built-with-ocaml-5.3.1+relocatable-x86_64-linux-musl-static
+RUN cp -rvL _build/install/default ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-x86_64-linux-musl-static
+RUN tar czf ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-x86_64-linux-musl-static.tar.gz ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-x86_64-linux-musl-static
 
 FROM scratch
 COPY --from=builder /home/user/ocamlformat/ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-x86_64-linux-musl-static.tar.gz .
