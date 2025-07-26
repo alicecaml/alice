@@ -15,18 +15,18 @@ WORKDIR /home/user/ocaml-5.3.1+relocatable
 
 ENV CFLAGS=-static
 ENV LDFLAGS=-static
-RUN ./configure \
-    --prefix=/home/user/ocaml-5.3.1+relocatable \
+RUN sh -c "./configure \
+    --prefix=/home/user/ocaml-5.3.1+relocatable-$(uname -m)-linux-musl-static \
     --enable-shared=no \
     --with-relative-libdir=../lib/ocaml \
     --enable-runtime-search=always \
-    ;
+    ";
+
 RUN make -j
 RUN make install
 
 WORKDIR /home/user
-
-RUN tar czf ocaml-5.3.1+relocatable.tar.gz ocaml-5.3.1+relocatable
+RUN sh -c "tar czf ocaml-5.3.1+relocatable-$(uname -m)-linux-musl-static.tar.gz ocaml-5.3.1+relocatable-$(uname -m)-linux-musl-static"
 
 FROM scratch
-COPY --from=builder /home/user/ocaml-5.3.1+relocatable.tar.gz .
+COPY --from=builder /home/user/*.tar.gz .

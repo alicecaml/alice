@@ -13,17 +13,17 @@ RUN wget https://s3.g.s4.mega.io/ycsnsngpe2elgjdd2uzbdpyj6s54q5itlvy6g/alice/com
 RUN tar xf ocaml-5.3.1+relocatable.tar.gz
 WORKDIR /home/user/ocaml-5.3.1+relocatable
 
-RUN ./configure \
-    --prefix=/home/user/ocaml-5.3.1+relocatable \
+RUN sh -c "./configure \
+    --prefix=/home/user/ocaml-5.3.1+relocatable-$(uname -m)-linux-gnu \
     --with-relative-libdir=../lib/ocaml \
     --enable-runtime-search=always \
-    ;
+    ";
 
 RUN make -j
 RUN make install
 
 WORKDIR /home/user
-RUN tar czf ocaml-5.3.1+relocatable.tar.gz ocaml-5.3.1+relocatable
+RUN sh -c "tar czf ocaml-5.3.1+relocatable-$(uname -m)-linux-gnu.tar.gz ocaml-5.3.1+relocatable-$(uname -m)-linux-gnu"
 
 FROM scratch
-COPY --from=builder /home/user/ocaml-5.3.1+relocatable.tar.gz .
+COPY --from=builder /home/user/*.tar.gz .
