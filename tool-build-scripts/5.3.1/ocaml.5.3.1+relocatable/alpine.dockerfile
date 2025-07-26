@@ -9,14 +9,14 @@ RUN adduser -D -G users -G wheel user
 USER user
 WORKDIR /home/user
 
-RUN wget https://s3.g.s4.mega.io/ycsnsngpe2elgjdd2uzbdpyj6s54q5itlvy6g/alice/compiler-sources/ocaml-relocatable-5.3.1.tar.gz
-RUN tar xf ocaml-relocatable-5.3.1.tar.gz
-WORKDIR /home/user/ocaml-relocatable-5.3.1
+RUN wget https://s3.g.s4.mega.io/ycsnsngpe2elgjdd2uzbdpyj6s54q5itlvy6g/alice/compiler-sources/ocaml-5.3.1+relocatable.tar.gz
+RUN tar xf ocaml-5.3.1+relocatable.tar.gz
+WORKDIR /home/user/ocaml-5.3.1+relocatable
 
 ENV CFLAGS=-static
 ENV LDFLAGS=-static
 RUN ./configure \
-    --prefix=/home/user/ocaml.5.3.1+relocatable \
+    --prefix=/home/user/ocaml-5.3.1+relocatable \
     --enable-shared=no \
     --with-relative-libdir=../lib/ocaml \
     --enable-runtime-search=always \
@@ -26,7 +26,7 @@ RUN make install
 
 WORKDIR /home/user
 
-RUN tar czf ocaml.5.3.1+relocatable.tar.gz ocaml.5.3.1+relocatable
+RUN tar czf ocaml-5.3.1+relocatable.tar.gz ocaml-5.3.1+relocatable
 
 FROM scratch
-COPY --from=builder /home/user/ocaml.5.3.1+relocatable.tar.gz .
+COPY --from=builder /home/user/ocaml-5.3.1+relocatable.tar.gz .
