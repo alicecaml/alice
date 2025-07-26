@@ -27,7 +27,7 @@ cd ocaml-lsp
 export DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled
 dune build
 cd ..
-mkdir ocamllsp-1.22.0-built-with-ocaml.5.3.1+relocatable-x86_64-macos
-cp -rvL ocaml-lsp/_build/install/default/bin ocaml-lsp/_build/install/default/doc ocamllsp-1.22.0-built-with-ocaml.5.3.1+relocatable-x86_64-macos
-tar czf ocamllsp-1.22.0-built-with-ocaml.5.3.1+relocatable-x86_64-macos.tar.gz ocamllsp-1.22.0-built-with-ocaml.5.3.1+relocatable-x86_64-macos
-cp ocamllsp-1.22.0-built-with-ocaml.5.3.1+relocatable-x86_64-macos.tar.gz "$ORIGINAL_DIR/"
+mkdir ocamllsp-1.22.0-built-with-ocaml-5.3.1+relocatable-x86_64-macos
+cp -rvL ocaml-lsp/_build/install/default/bin ocaml-lsp/_build/install/default/doc ocamllsp-1.22.0-built-with-ocaml-5.3.1+relocatable-x86_64-macos
+tar czf ocamllsp-1.22.0-built-with-ocaml-5.3.1+relocatable-x86_64-macos.tar.gz ocamllsp-1.22.0-built-with-ocaml-5.3.1+relocatable-x86_64-macos
+cp ocamllsp-1.22.0-built-with-ocaml-5.3.1+relocatable-x86_64-macos.tar.gz "$ORIGINAL_DIR/"
