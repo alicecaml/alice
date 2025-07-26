@@ -32,7 +32,7 @@ for dir in bin man share; do
     cp -rvL ocamlformat/_build/install/default/$dir ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-x86_64-macos
 done
 mkdir -p ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-x86_64-macos/doc
-cp -rv ocamlformat/_build/install/default/doc/ocamlformat ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-x86_64-macos/doc
+cp -rvL ocamlformat/_build/install/default/doc/ocamlformat ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-x86_64-macos/doc
 
 tar czf ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-x86_64-macos.tar.gz ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-x86_64-macos
 cp ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-x86_64-macos.tar.gz "$ORIGINAL_DIR/"
