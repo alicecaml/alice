@@ -15,7 +15,7 @@ ORIGINAL_DIR="$PWD"
 cd "$TMP"
 
 wget "$COMPILER_URL"
-echo 2db77e69a3472c936a5607308f1133b1fe4fe7b0b5ecf19b1bcf961a85d2c90a  ocaml-5.3.1+relocatable-aarch64-macos.tar.gz | sha256sum -c
+echo 4e9b683dc39867dcd5452e25a154c2964cd02a992ca4d3da33a46a24b6cb2187  ocaml-5.3.1+relocatable-aarch64-macos.tar.gz | sha256sum -c
 tar xf ocaml-5.3.1+relocatable-aarch64-macos.tar.gz
 export PATH=$PWD/ocaml-5.3.1+relocatable-aarch64-macos/bin:$PATH
 
@@ -27,12 +27,12 @@ cd ocamlformat
 export DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled
 dune build
 cd ..
-mkdir ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable
+mkdir ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-aarch64-macos
 for dir in bin man share; do
-    cp -rv ocamlformat/_build/install/default/$dir ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable
+    cp -rvL ocamlformat/_build/install/default/$dir ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-aarch64-macos
 done
-mkdir -p ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable/doc
-cp -rv ocamlformat/_build/install/default/doc/ocamlformat ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable/doc
+mkdir -p ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-aarch64-macos/doc
+cp -rv ocamlformat/_build/install/default/doc/ocamlformat ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-aarch64-macos/doc
 
-tar czf ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable.tar.gz ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable
-cp ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable.tar.gz "$ORIGINAL_DIR/ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-aarch64-macos.tar.gz"
+tar czf ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-aarch64-macos.tar.gz ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-aarch64-macos
+cp ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-aarch64-macos.tar.gz "$ORIGINAL_DIR/"

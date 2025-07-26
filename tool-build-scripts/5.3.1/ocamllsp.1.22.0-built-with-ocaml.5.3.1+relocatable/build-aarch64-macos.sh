@@ -15,7 +15,7 @@ ORIGINAL_DIR="$PWD"
 cd "$TMP"
 
 wget "$COMPILER_URL"
-echo 2db77e69a3472c936a5607308f1133b1fe4fe7b0b5ecf19b1bcf961a85d2c90a  ocaml-5.3.1+relocatable-aarch64-macos.tar.gz | sha256sum -c
+echo 4e9b683dc39867dcd5452e25a154c2964cd02a992ca4d3da33a46a24b6cb2187  ocaml-5.3.1+relocatable-aarch64-macos.tar.gz | sha256sum -c
 tar xf ocaml-5.3.1+relocatable-aarch64-macos.tar.gz
 export PATH=$PWD/ocaml-5.3.1+relocatable-aarch64-macos/bin:$PATH
 
@@ -24,9 +24,10 @@ which dune
 
 git clone --depth 1 --single-branch --branch 1.22.0-build-with-ocaml.5.3.1+relocatable https://github.com/alicecaml/ocaml-lsp
 cd ocaml-lsp
+export DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled
 dune build
 cd ..
-mkdir ocamllsp-1.22.0-built-with-ocaml-5.3.1+relocatable
-cp -rv ocaml-lsp/_build/install/default/bin ocaml-lsp/_build/install/default/doc ocamllsp-1.22.0-built-with-ocaml-5.3.1+relocatable
-tar czf ocamllsp-1.22.0-built-with-ocaml-5.3.1+relocatable.tar.gz ocamllsp-1.22.0-built-with-ocaml-5.3.1+relocatable
-cp ocamllsp-1.22.0-built-with-ocaml-5.3.1+relocatable.tar.gz "$ORIGINAL_DIR/ocamllsp-1.22.0-built-with-ocaml-5.3.1+relocatable-aarch64-macos.tar.gz"
+mkdir ocamllsp-1.22.0-built-with-ocaml-5.3.1+relocatable-aarch64-macos
+cp -rvL ocaml-lsp/_build/install/default/bin ocaml-lsp/_build/install/default/doc ocamllsp-1.22.0-built-with-ocaml-5.3.1+relocatable-aarch64-macos
+tar czf ocamllsp-1.22.0-built-with-ocaml-5.3.1+relocatable-aarch64-macos.tar.gz ocamllsp-1.22.0-built-with-ocaml-5.3.1+relocatable-aarch64-macos
+cp ocamllsp-1.22.0-built-with-ocaml-5.3.1+relocatable-aarch64-macos.tar.gz "$ORIGINAL_DIR/"
