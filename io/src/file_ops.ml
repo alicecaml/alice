@@ -123,3 +123,8 @@ let write_text_file path text =
   Out_channel.close channel;
   ()
 ;;
+
+let mtime path =
+  let stats = Unix.stat (Path.to_filename path) in
+  stats.st_mtime
+;;

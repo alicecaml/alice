@@ -21,6 +21,7 @@ module Origin : sig
     | Build of Build.t
 
   val inputs : t -> Path.Set.t
+  val outputs : t -> Path.Set.t
   val to_dyn : t -> Dyn.t
 end
 

@@ -19,3 +19,4 @@ val with_working_dir : _ Path.t -> f:(unit -> 'a) -> 'a
 
 val exists : _ Path.t -> bool
 val write_text_file : _ Path.t -> string -> unit
+val mtime : _ Path.t -> float
