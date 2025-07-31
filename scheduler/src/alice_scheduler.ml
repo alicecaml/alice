@@ -1,1 +1,1 @@
-module Naive = Naive
+module Sequential = Sequential

@@ -23,7 +23,7 @@ let run src_dir =
     (Path.absolute "/tmp/a.dot")
     (Alice_engine.Build_plan.Traverse.dot traverse);
   let out_dir = Path.relative "build" in
-  let () = Alice_scheduler.Naive.run ~src_dir ~out_dir traverse in
+  let () = Alice_scheduler.Sequential.run ~src_dir ~out_dir traverse in
   let _ =
     Alice_io.Process.Blocking.run
       (Path.concat out_dir output |> Path.to_filename)
