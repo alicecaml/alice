@@ -3,15 +3,23 @@ module Path = Alice_hierarchy.Path.Relative
 module Build = Build_plan.Build
 module Origin = Build_plan.Origin
 
-type t = Path.t -> Build_plan.Build.t option
+type t =
+  | Dynamic of (Path.t -> Build_plan.Build.t option)
+  | Static of Build.t
 
-let create ~f = f
-
-let create_fixed_output ~output ~build =
-  create ~f:(fun path -> if Path.equal path output then Some build else None)
+let to_dyn = function
+  | Dynamic f -> Dyn.variant "Dynamic" [ Dyn.opaque f ]
+  | Static build -> Dyn.variant "Static" [ Build.to_dyn build ]
 ;;
 
-let match_ t ~output = t output
+let dynamic ~f = Dynamic f
+let static build = Static build
+
+let match_ t ~output =
+  match t with
+  | Dynamic f -> f output
+  | Static build -> if Path.Set.mem output build.outputs then Some build else None
+;;
 
 module Database = struct
   type nonrec t = t list
@@ -22,10 +30,10 @@ module Database = struct
     let rec loop output acc =
       let origin =
         match (build_for_output_file_opt t ~output : Build.t option) with
-        | None -> Origin.Source
+        | None -> Origin.Source output
         | Some build -> Origin.Build build
       in
-      let acc = Build_plan.Staging.add_origin acc ~output ~origin in
+      let acc = Build_plan.Staging.add_origin acc origin in
       Origin.inputs origin |> Path.Set.fold ~init:acc ~f:loop
     in
     let staged = loop output Build_plan.Staging.empty in

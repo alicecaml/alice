@@ -4,3 +4,6 @@ dev-tools.locks
 *.tar.gz
 build
 *.out
+*.cmx
+*.cmi
+*.o

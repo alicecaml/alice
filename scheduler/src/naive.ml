@@ -14,14 +14,12 @@ let run ~src_dir ~out_dir traverse =
       Path.concat (Path.absolute (Sys.getcwd ())) src_dir)
   in
   let rec loop traverse =
-    let output = Traverse.output traverse in
     match (Traverse.origin traverse : Build_plan.Origin.t) with
-    | Source ->
-      Alice_io.File_ops.cp ~src:(Path.concat src_dir output) ~dst:Path.current_dir
+    | Source path ->
+      Alice_io.File_ops.cp ~src:(Path.concat src_dir path) ~dst:Path.current_dir
     | Build (build : Build_plan.Build.t) ->
       List.iter (Traverse.deps traverse) ~f:loop;
       Path.Relative.Set.iter build.inputs ~f:(fun path ->
-        let path = Path.concat out_dir path in
         if not (Alice_io.File_ops.exists path)
         then
           Alice_error.panic

@@ -1,14 +1,11 @@
 open! Alice_stdlib
 open Alice_hierarchy
-module Rule = Alice_engine.Rule
 module Build_plan = Alice_engine.Build_plan
 
 module Ctx : sig
-  (** Settings that affect the way that files will be built *)
   type t =
-    { optimization_level : [ `O0 | `O1 | `O2 | `O3 ] option
+    { optimization_level : [ `O2 | `O3 ] option
     ; debug : bool
-    ; override_c_compiler : string option
     }
 
   val debug : t
@@ -18,5 +15,6 @@ end
 val build_exe
   :  Ctx.t
   -> exe_name:Path.Relative.t
+  -> root_ml:Path.Relative.t
   -> src_dir:_ Dir.t
   -> Build_plan.Traverse.t

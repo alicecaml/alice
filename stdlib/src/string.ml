@@ -8,6 +8,8 @@ include T
 module Set = Set.Make (T)
 module Map = Map.Make (T)
 
+let is_empty s = length s == 0
+
 let lsplit2 s ~on =
   match index_opt s on with
   | None -> None

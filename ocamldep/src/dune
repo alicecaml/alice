@@ -1,3 +1,3 @@
 (library
  (public_name alice_ocamldep)
- (libraries alice_stdlib alice_error alice_io))
+ (libraries alice_stdlib alice_error alice_hierarchy alice_io))

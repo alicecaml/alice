@@ -1,3 +1,6 @@
 { pkgs ? import <nixpkgs> { } }:
 let muslPkgs = pkgs.pkgsMusl;
-in muslPkgs.mkShell { buildIpnuts = with muslPkgs; [ musl ]; }
+in muslPkgs.mkShell {
+  nativeBuildInputs = [ pkgs.graphviz ];
+  buildIpnuts = [ muslPkgs.musl ];
+}

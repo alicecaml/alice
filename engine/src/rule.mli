@@ -3,8 +3,9 @@ module Path = Alice_hierarchy.Path.Relative
 
 type t
 
-val create : f:(Path.t -> Build_plan.Build.t option) -> t
-val create_fixed_output : output:Path.t -> build:Build_plan.Build.t -> t
+val to_dyn : t -> Dyn.t
+val dynamic : f:(Path.t -> Build_plan.Build.t option) -> t
+val static : Build_plan.Build.t -> t
 
 module Database : sig
   type nonrec t = t list

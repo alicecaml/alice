@@ -8,6 +8,15 @@ module Path = struct
     | Absolute : Filename.t -> absolute t
     | Relative : Filename.t -> relative t
 
+  module Kind = struct
+    type _ t =
+      | Absolute : absolute t
+      | Relative : relative t
+
+    let absolute = Absolute
+    let relative = Relative
+  end
+
   type 'a with_path = { f : 'kind. 'kind t -> 'a }
 
   let equal : type a. a t -> a t -> bool =
@@ -42,6 +51,18 @@ module Path = struct
     match of_filename filename with
     | `Absolute _ -> Alice_error.panic [ Pp.textf "Not a relative path: %s" filename ]
     | `Relative path -> path
+  ;;
+
+  let kind : type a. a t -> a Kind.t = function
+    | Absolute _ -> Kind.Absolute
+    | Relative _ -> Kind.Relative
+  ;;
+
+  let of_filename_checked : type a. a Kind.t -> Filename.t -> a t =
+    fun kind filename ->
+    match kind with
+    | Kind.Absolute -> absolute filename
+    | Kind.Relative -> relative filename
   ;;
 
   let current_dir = Relative Filename.current_dir_name
@@ -151,6 +172,9 @@ module File = struct
     ; kind : 'path_kind kind
     }
 
+  let path { path; _ } = path
+  let kind { kind; _ } = kind
+
   let rec to_dyn { path; kind } =
     Dyn.record [ "path", Path.to_dyn path; "kind", kind_to_dyn kind ]
 
@@ -224,4 +248,7 @@ module Dir = struct
     in
     { path = Path.current_dir; contents }
   ;;
+
+  let path { path; _ } = path
+  let contents { contents; _ } = contents
 end

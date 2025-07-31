@@ -2,6 +2,7 @@ open! Alice_stdlib
 open Alice_hierarchy
 open Common
 module Rule = Alice_engine.Rule
+module Build_plan = Alice_engine.Build_plan
 module Build = Alice_engine.Build_plan.Build
 
 module Ctx = struct
@@ -42,7 +43,7 @@ let all_object_files dir =
 
 let c_to_o_rule ctx dir =
   let all_header_files = all_header_files dir in
-  Rule.create ~f:(fun target ->
+  Rule.dynamic ~f:(fun target ->
     match Path.extension target with
     | ".o" ->
       let with_c_extension = Path.replace_extension target ~ext:".c" in
@@ -70,19 +71,28 @@ let c_to_o_rule ctx dir =
 
 let link_exe_rule ~exe_name ctx dir =
   let all_object_files = all_object_files dir in
-  Rule.create_fixed_output
-    ~output:exe_name
-    ~build:
-      { Build.inputs = Path.Relative.Set.of_list all_object_files
-      ; outputs = Path.Relative.Set.singleton exe_name
-      ; commands =
-          [ Ctx.cc_command
-              ctx
-              ~args:
-                (List.map all_object_files ~f:Path.Relative.to_filename
-                 @ [ "-o"; Path.Relative.to_filename exe_name ])
-          ]
-      }
+  Rule.static
+    { inputs = Path.Relative.Set.of_list all_object_files
+    ; outputs = Path.Relative.Set.singleton exe_name
+    ; commands =
+        [ Ctx.cc_command
+            ctx
+            ~args:
+              (List.map all_object_files ~f:Path.Relative.to_filename
+               @ [ "-o"; Path.Relative.to_filename exe_name ])
+        ]
+    }
 ;;
 
-let exe_rules ~exe_name ctx dir = [ c_to_o_rule ctx dir; link_exe_rule ~exe_name ctx dir ]
+let exe_rules ctx ~exe_name ~src_dir =
+  Alice_io.File_ops.with_working_dir (Dir.path src_dir) ~f:(fun () ->
+    let src_dir = Dir.to_relative src_dir in
+    [ c_to_o_rule ctx src_dir; link_exe_rule ~exe_name ctx src_dir ])
+;;
+
+let build_exe ctx ~exe_name ~src_dir =
+  exe_rules ctx ~exe_name ~src_dir
+  |> Rule.Database.create_build_plan ~output:exe_name
+  |> Build_plan.traverse ~output:exe_name
+  |> Option.get
+;;

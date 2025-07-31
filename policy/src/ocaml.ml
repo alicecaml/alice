@@ -1,7 +1,7 @@
 open! Alice_stdlib
-open Common
 open Alice_hierarchy
 module Rule = Alice_engine.Rule
+module Build_plan = Alice_engine.Build_plan
 module Build = Alice_engine.Build_plan.Build
 
 module Ctx = struct
@@ -9,6 +9,9 @@ module Ctx = struct
     { optimization_level : [ `O2 | `O3 ] option
     ; debug : bool
     }
+
+  let debug = { optimization_level = None; debug = true }
+  let release = { optimization_level = Some `O2; debug = false }
 
   let ocamlopt_command t ~args =
     let prog = "ocamlopt.opt" in
@@ -24,66 +27,99 @@ module Ctx = struct
   ;;
 end
 
-let all_ml_files = all_files_with_extension ~ext:".ml"
-let all_mli_files = all_files_with_extension ~ext:".mli"
-
-let compile_source_rule ctx dir =
-  let all_mli_files_set = Path.Relative.Set.of_list (all_mli_files dir) in
-  Rule.create ~f:(fun target ->
-    let commands source_file =
-      [ Ctx.ocamlopt_command ctx ~args:[ "-c"; Path.to_filename source_file ] ]
-    in
-    let has_interface =
-      Path.Relative.Set.mem (Path.replace_extension target ~ext:".mli") all_mli_files_set
-    in
-    let build_without_interface () =
-      (* When no interface file is present, generate all output files with a single command. *)
-      { Build.inputs =
-          Path.Relative.Set.singleton (Path.replace_extension target ~ext:".ml")
-      ; outputs =
+let compile_source_rules ctx dir =
+  Alice_io.File_ops.with_working_dir (Dir.path dir) ~f:(fun () ->
+    Dir.to_relative dir
+    |> Dir.contents
+    |> List.filter_map ~f:(fun file ->
+      if
+        File.is_regular_or_link file
+        && (Path.has_extension file.path ~ext:".ml"
+            || Path.has_extension file.path ~ext:".mli")
+      then (
+        let deps = Alice_ocamldep.native_deps file.path in
+        let inputs = Path.Relative.Set.of_list (file.path :: deps.inputs) in
+        let outputs =
           Path.Relative.Set.of_list
-            [ Path.replace_extension target ~ext:".cmi"
-            ; Path.replace_extension target ~ext:".cmx"
-            ; Path.replace_extension target ~ext:".o"
-            ]
-      ; commands = commands (Path.replace_extension target ~ext:".ml")
-      }
+            (deps.output
+             ::
+             (if Path.has_extension file.path ~ext:".ml"
+              then [ Path.replace_extension file.path ~ext:".o" ]
+              else []))
+        in
+        let rule =
+          Rule.static
+            { inputs
+            ; outputs
+            ; commands =
+                [ Ctx.ocamlopt_command ctx ~args:[ "-c"; Path.to_filename file.path ] ]
+            }
+        in
+        Some rule)
+      else None))
+;;
+
+(* Given the path to the source file which will be the module root [root_ml]
+   and a list of rules for compiling ocaml source files, computes an order of
+   cmx files from the output of given rules such that all dependencies of a
+   file preceed that file. *)
+let cmx_file_order ~root_ml source_rules_db =
+  let root_cmx = Path.replace_extension root_ml ~ext:".cmx" in
+  let plan = Rule.Database.create_build_plan source_rules_db ~output:root_cmx in
+  let rec loop acc traverse =
+    let module Traverse = Build_plan.Traverse in
+    let cmx_outputs =
+      Traverse.outputs traverse
+      |> Path.Relative.Set.filter ~f:(Path.has_extension ~ext:".cmx")
+      |> Path.Relative.Set.to_list
     in
-    match Path.extension target with
-    | ".cmi" ->
-      let build =
-        if has_interface
-        then
-          (* If the interface is present then generate the .cmi file from the .mli file. *)
-          { Build.inputs =
-              Path.Relative.Set.singleton (Path.replace_extension target ~ext:".mli")
-          ; outputs = Path.Relative.Set.singleton target
-          ; commands = commands (Path.replace_extension target ~ext:".mli")
-          }
-        else build_without_interface ()
-      in
-      Some build
-    | ".o" | ".cmx" ->
-      let build =
-        if has_interface
-        then
-          (* If the interface is present then the .cmi file must be generated
-             before the object files, and compiling the .ml file won't produce
-             an interface file. *)
-          { Build.inputs =
-              Path.Relative.Set.of_list
-                [ Path.replace_extension target ~ext:".ml"
-                ; Path.replace_extension target ~ext:".cmi"
-                ]
-          ; outputs =
-              Path.Relative.Set.of_list
-                [ Path.replace_extension target ~ext:".cmx"
-                ; Path.replace_extension target ~ext:".o"
-                ]
-          ; commands = commands (Path.replace_extension target ~ext:".ml")
-          }
-        else build_without_interface ()
-      in
-      Some build
-    | _ -> None)
+    let acc =
+      match cmx_outputs with
+      | [] -> acc
+      | [ cmx_output ] -> cmx_output :: acc
+      | _ ->
+        Alice_error.panic
+          [ Pp.text "Rule would produce multiple cmx files which is not expected" ]
+    in
+    List.fold_left (Traverse.deps traverse) ~init:acc ~f:loop
+  in
+  loop
+    []
+    (match Build_plan.traverse plan ~output:root_cmx with
+     | None ->
+       Alice_error.panic [ Pp.textf "No rule to produce %s" (Path.to_filename root_cmx) ]
+     | Some traverse -> traverse)
+;;
+
+(* In order to link an executable from a collection of .cmx files, the ocaml
+   compiler must be passed the cmx files in order such that for each file, all
+   of its dependencies preceed it. The [cmx_deps_in_order] argument must be a
+   list of paths to .cmx files in such an order. *)
+let link_exe_rule ctx ~exe_name ~cmx_deps_in_order =
+  let o_paths = List.map cmx_deps_in_order ~f:(Path.replace_extension ~ext:".o") in
+  let inputs = Path.Relative.Set.of_list (cmx_deps_in_order @ o_paths) in
+  Rule.static
+    { inputs
+    ; outputs = Path.Relative.Set.singleton exe_name
+    ; commands =
+        [ Ctx.ocamlopt_command
+            ctx
+            ~args:
+              ([ "-o"; Path.Relative.to_filename exe_name ]
+               @ List.map cmx_deps_in_order ~f:Path.Relative.to_filename)
+        ]
+    }
+;;
+
+let exe_rules ctx ~exe_name ~root_ml ~src_dir =
+  let source_rules_db = compile_source_rules ctx src_dir in
+  let cmx_deps_in_order = cmx_file_order ~root_ml source_rules_db in
+  link_exe_rule ctx ~exe_name ~cmx_deps_in_order :: source_rules_db
+;;
+
+let build_exe ctx ~exe_name ~root_ml ~src_dir =
+  exe_rules ctx ~exe_name ~root_ml ~src_dir
+  |> Rule.Database.create_build_plan ~output:exe_name
+  |> Build_plan.traverse ~output:exe_name
+  |> Option.get
 ;;

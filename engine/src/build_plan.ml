@@ -25,24 +25,29 @@ end
 
 module Origin = struct
   type t =
-    | Source
+    | Source of Path.t
     | Build of Build.t
 
   let to_dyn = function
-    | Source -> Dyn.variant "Source" []
+    | Source path -> Dyn.variant "Source" [ Path.to_dyn path ]
     | Build build -> Dyn.variant "Build" [ Build.to_dyn build ]
   ;;
 
   let equal a b =
     match a, b with
-    | Source, Source -> true
+    | Source a, Source b -> Path.equal a b
     | Build a, Build b -> Build.equal a b
     | _, _ -> false
   ;;
 
   let inputs = function
-    | Source -> Path.Set.empty
+    | Source _ -> Path.Set.empty
     | Build build -> build.inputs
+  ;;
+
+  let outputs = function
+    | Source path -> Path.Set.singleton path
+    | Build build -> build.outputs
   ;;
 end
 
@@ -57,15 +62,16 @@ module Staging = struct
   let to_dyn = to_dyn
   let empty = empty
 
-  let add_origin t ~output ~origin =
-    Path.Map.update t ~key:output ~f:(function
-      | None -> Some origin
-      | Some existing ->
-        if Origin.equal existing origin
-        then Some existing
-        else
-          Alice_error.panic
-            [ Pp.textf "Conflicting origins for file: %s" (Path.to_filename output) ])
+  let add_origin t origin =
+    Path.Set.fold (Origin.outputs origin) ~init:t ~f:(fun output t ->
+      Path.Map.update t ~key:output ~f:(function
+        | None -> Some origin
+        | Some existing ->
+          if Origin.equal existing origin
+          then Some existing
+          else
+            Alice_error.panic
+              [ Pp.textf "Conflicting origins for file: %s" (Path.to_filename output) ]))
   ;;
 
   (* Returns any filename which is an input for some file but which is not a
@@ -74,7 +80,7 @@ module Staging = struct
     Path.Map.to_list t
     |> List.find_map ~f:(fun (_node, origin) ->
       match (origin : Origin.t) with
-      | Source -> None
+      | Source _ -> None
       | Build { inputs; _ } ->
         Path.Set.to_list inputs
         |> List.find_opt ~f:(fun input -> not (Path.Map.mem input t)))
@@ -86,7 +92,7 @@ module Staging = struct
     let all_files = Path.Map.keys t |> Path.Set.of_list in
     Path.Map.fold t ~init:all_files ~f:(fun ~key:_ ~data acc ->
       match (data : Origin.t) with
-      | Source -> acc
+      | Source _ -> acc
       | Build build -> Path.Set.diff acc build.inputs)
   ;;
 
@@ -94,7 +100,7 @@ module Staging = struct
   let get_cycle t =
     let rec loop node seen path =
       match (Path.Map.find node t : Origin.t) with
-      | Source -> None
+      | Source _ -> None
       | Build { Build.inputs; _ } ->
         if Path.Set.mem node seen
         then Some path
@@ -125,42 +131,67 @@ end
 
 module Traverse = struct
   type nonrec t =
-    { output : Path.t
-    ; origin : Origin.t
+    { origin : Origin.t
     ; build_plan : t
     }
 
-  let output t = t.output
   let origin t = t.origin
+  let outputs t = Origin.outputs t.origin
 
   let deps t =
     match (t.origin : Origin.t) with
-    | Source -> []
+    | Source _ -> []
     | Build { Build.inputs; _ } ->
       Path.Set.to_list inputs
       |> List.map ~f:(fun output ->
         let origin = Path.Map.find output t.build_plan in
-        { output; origin; build_plan = t.build_plan })
+        { origin; build_plan = t.build_plan })
+  ;;
+
+  let rec all_origins t =
+    List.fold_left (deps t) ~init:[ t.origin ] ~f:(fun acc dep -> all_origins dep @ acc)
+  ;;
+
+  let dot t =
+    List.map (all_origins t) ~f:(fun (origin : Origin.t) ->
+      match origin with
+      | Source _ -> None
+      | Build { inputs; outputs; commands = _ } ->
+        let outputs_str =
+          Path.Set.to_list outputs
+          |> List.map ~f:(fun path -> sprintf "\"%s\"" (Path.to_filename path))
+          |> String.concat ~sep:", "
+        in
+        let inputs_str =
+          Path.Set.to_list inputs
+          |> List.map ~f:(fun path -> sprintf "\"%s\"" (Path.to_filename path))
+          |> String.concat ~sep:", "
+        in
+        Some (sprintf "  {%s} -> {%s}" outputs_str inputs_str))
+    |> List.filter_opt
+    |> List.sort_uniq ~cmp:String.compare
+    |> String.concat ~sep:"\n"
+    |> sprintf "digraph {\n%s\n}"
   ;;
 end
 
 let traverse t ~output =
   Path.Map.find_opt output t
-  |> Option.map ~f:(fun origin -> { Traverse.output; origin; build_plan = t })
+  |> Option.map ~f:(fun origin -> { Traverse.origin; build_plan = t })
 ;;
 
 let dot t =
   let lines =
-    Path.Map.mapi t ~f:(fun path (origin : Origin.t) ->
+    Path.Map.mapi t ~f:(fun output (origin : Origin.t) ->
       match origin with
-      | Source -> None
+      | Source _ -> None
       | Build { inputs; outputs = _; commands = _ } ->
         let inputs_str =
           Path.Set.to_list inputs
           |> List.map ~f:(fun path -> sprintf "\"%s\"" (Path.to_filename path))
           |> String.concat ~sep:", "
         in
-        Some (sprintf "  \"%s\" -> {%s}" (Path.to_filename path) inputs_str))
+        Some (sprintf "  \"%s\" -> {%s}" (Path.to_filename output) inputs_str))
     |> Path.Map.values
     |> List.filter_opt
   in

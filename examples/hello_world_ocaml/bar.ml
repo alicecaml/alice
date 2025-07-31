@@ -1,1 +1,1 @@
-let bar = "bar"
+let bar = Baz.baz

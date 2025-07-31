@@ -2,21 +2,22 @@ open! Alice_stdlib
 module Path = Alice_hierarchy.Path.Relative
 
 module Build : sig
-  (** How to create a file by running a list of commands on a set of input
-      files. Note that a command may generate multiple files, and all outputs
-      of a build are stored in the [outputs] field. *)
+  (** How to create a set of output files by running a list of commands on a
+      set of input files. *)
   type t =
     { inputs : Path.Set.t
     ; outputs : Path.Set.t
     ; commands : Command.t list
     }
+
+  val to_dyn : t -> Dyn.t
 end
 
 module Origin : sig
   (** The origin of a file, which can be either generated dynamically or
       already present in the project's source code. *)
   type t =
-    | Source
+    | Source of Path.t
     | Build of Build.t
 
   val inputs : t -> Path.Set.t
@@ -27,9 +28,10 @@ module Traverse : sig
   (** Helper for traversing a DAG *)
   type t
 
-  val output : t -> Path.t
   val origin : t -> Origin.t
+  val outputs : t -> Path.Set.t
   val deps : t -> t list
+  val dot : t -> string
 end
 
 (** A DAG that knows how to build a collection of interdependent files and the
@@ -50,7 +52,7 @@ module Staging : sig
   type t
 
   val to_dyn : t -> Dyn.t
-  val add_origin : t -> output:Path.t -> origin:Origin.t -> t
+  val add_origin : t -> Origin.t -> t
   val empty : t
 
   (** [finalize t] ensures that [t] contains no cycles and all input files have
