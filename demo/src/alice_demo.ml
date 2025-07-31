@@ -33,6 +33,7 @@ let run src_dir =
 ;;
 
 let () =
+  Alice_log.set_level `Debug;
   let dir = Sys.argv.(1) in
   Path.with_filename dir ~f:{ Path.f = run }
 ;;

@@ -21,6 +21,10 @@
  (depends ocaml))
 
 (package
+ (name alice_log)
+ (depends ocaml))
+
+(package
  (name alice_manifest)
  (depends
   ocaml

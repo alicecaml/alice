@@ -2,6 +2,7 @@ open! Alice_stdlib
 open Alice_hierarchy
 module Build_plan = Alice_engine.Build_plan
 module Traverse = Alice_engine.Build_plan.Traverse
+module Log = Alice_log
 
 let run ~src_dir ~out_dir traverse =
   let panic_context () =
@@ -16,6 +17,7 @@ let run ~src_dir ~out_dir traverse =
   let rec loop traverse =
     match (Traverse.origin traverse : Build_plan.Origin.t) with
     | Source path ->
+      Log.debug [ Pp.textf "copying source file: %s" (Path.to_filename path) ];
       Alice_io.File_ops.cp ~src:(Path.concat src_dir path) ~dst:Path.current_dir
     | Build (build : Build_plan.Build.t) ->
       List.iter (Traverse.deps traverse) ~f:loop;
@@ -26,6 +28,7 @@ let run ~src_dir ~out_dir traverse =
             (Pp.textf "Missing input file: %s\n" (Path.to_filename path)
              :: panic_context ()));
       List.iter build.commands ~f:(fun command ->
+        Log.debug [ Pp.textf "running build command: %s" (Command.to_string command) ];
         let status = Alice_io.Process.Blocking.run_command command |> Result.get_ok in
         match status with
         | Exited 0 -> ()

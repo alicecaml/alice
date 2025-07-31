@@ -34,11 +34,18 @@ let pps_println_gen fmt pps =
   Format.close_box ()
 ;;
 
-let pp_print = pp_print_gen Format.std_formatter
-let pp_println = pp_println_gen Format.std_formatter
-let pps_print = pps_print_gen Format.std_formatter
-let pps_println = pps_println_gen Format.std_formatter
-let pp_eprint = pp_print_gen Format.std_formatter
-let pp_eprintln = pp_println_gen Format.std_formatter
-let pps_eprint = pps_print_gen Format.std_formatter
-let pps_eprintln = pps_println_gen Format.std_formatter
+let formatter =
+  lazy
+    (let f = Format.std_formatter in
+     Format.pp_set_margin f 9999;
+     f)
+;;
+
+let pp_print = pp_print_gen (Lazy.force formatter)
+let pp_println = pp_println_gen (Lazy.force formatter)
+let pps_print = pps_print_gen (Lazy.force formatter)
+let pps_println = pps_println_gen (Lazy.force formatter)
+let pp_eprint = pp_print_gen (Lazy.force formatter)
+let pp_eprintln = pp_println_gen (Lazy.force formatter)
+let pps_eprint = pps_print_gen (Lazy.force formatter)
+let pps_eprintln = pps_println_gen (Lazy.force formatter)
