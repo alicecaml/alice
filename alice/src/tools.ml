@@ -357,6 +357,7 @@ let subcommand =
   subcommand
     "tools"
     (group
+       ~doc:"Manage tools for building and developing OCaml projects."
        [ subcommand "get" (singleton get)
        ; subcommand "env" (singleton env)
        ; subcommand "change" (singleton change)

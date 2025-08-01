@@ -23,6 +23,7 @@ module Path : sig
     val extension : t -> string
     val has_extension : t -> ext:string -> bool
     val replace_extension : t -> ext:string -> t
+    val dirname : t -> t
 
     module Set : Set.S with type elt = t
     module Map : Map.S with type key = t
@@ -69,6 +70,7 @@ module Path : sig
   (** [ext] must include the starting period *)
   val replace_extension : 'a t -> ext:string -> 'a t
 
+  val dirname : 'a t -> 'a t
   val match_ : 'a t -> absolute:(absolute t -> 'b) -> relative:(relative t -> 'b) -> 'b
 end
 

@@ -42,6 +42,10 @@
  (depends ocaml))
 
 (package
+ (name alice_project)
+ (depends ocaml))
+
+(package
  (name alice_policy)
  (depends ocaml))
 

@@ -93,6 +93,7 @@ module Path = struct
   let extension t = Filename.extension (to_filename t)
   let has_extension t ~ext = Filename.has_extension (to_filename t) ~ext
   let replace_extension t ~ext = map_filename t ~f:(Filename.replace_extension ~ext)
+  let dirname t = map_filename t ~f:Filename.dirname
 
   let match_
     : type a. a t -> absolute:(absolute t -> 'b) -> relative:(relative t -> 'b) -> 'b
@@ -124,6 +125,7 @@ module Path = struct
     ;;
 
     let extension t = Filename.extension (to_filename t)
+    let dirname t = map_filename t ~f:Filename.dirname
   end
 
   module Absolute = Make (struct
