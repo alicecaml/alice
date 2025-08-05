@@ -340,7 +340,8 @@ let env =
 
 let change =
   let open Arg_parser in
-  let+ root = pos_req 0 Root.conv in
+  let+ () = Common.set_log_level_from_verbose_flag
+  and+ root = pos_req 0 Root.conv in
   if Root.is_installed root
   then Root.make_current root
   else

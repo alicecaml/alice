@@ -4,7 +4,8 @@ open Climate
 
 let build =
   let open Arg_parser in
-  let+ project = Common.parse_project in
+  let+ () = Common.set_log_level_from_verbose_flag
+  and+ project = Common.parse_project in
   Project.clean project
 ;;
 

@@ -5,7 +5,8 @@ open Climate
 
 let new_ =
   let open Arg_parser in
-  let+ name = pos_req 0 string ~doc:"Name of the project"
+  let+ () = Common.set_log_level_from_verbose_flag
+  and+ name = pos_req 0 string ~doc:"Name of the project"
   and+ path =
     Common.parse_absolute_path
       ~doc:"Initialize the new project in this directory (must not already exist)"

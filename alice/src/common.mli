@@ -10,3 +10,7 @@ val parse_absolute_path
 
 val parse_project : Project.t Arg_parser.t
 val parse_ctx : Alice_policy.Ocaml.Ctx.t Arg_parser.t
+
+(** Parse the "--verbose" flag and have the side effect of setting the global
+    log level. *)
+val set_log_level_from_verbose_flag : unit Arg_parser.t

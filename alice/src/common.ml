@@ -74,3 +74,17 @@ let parse_ctx =
   | true -> Alice_policy.Ocaml.Ctx.release
   | false -> Alice_policy.Ocaml.Ctx.debug
 ;;
+
+let set_log_level_from_verbose_flag =
+  let open Arg_parser in
+  let+ verbosity =
+    flag_count [ "verbose"; "v" ] ~doc:"Enable verbose output (-vv for extra verbosity)"
+  in
+  let log_level =
+    match verbosity with
+    | 0 -> `Warn
+    | 1 -> `Info
+    | _ -> `Debug
+  in
+  Alice_log.set_level log_level
+;;
