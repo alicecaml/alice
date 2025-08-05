@@ -7,12 +7,12 @@ val manifest_name : string
 type t
 
 val create : root:Path.Absolute.t -> manifest:Alice_manifest.Project.t -> t
-val build_ocaml_exe : ctx:Build_ctx.t -> t -> unit
+val build_ocaml : ctx:Build_ctx.t -> t -> unit
 val run_ocaml_exe : ctx:Build_ctx.t -> t -> args:string list -> unit
 val clean : t -> unit
 
 (** Returns the dot (graphviz) source code describing the dependency hierarchy
     of build artifacts. *)
-val dot_ocaml_exe : ctx:Build_ctx.t -> t -> string
+val dot_ocaml : ctx:Build_ctx.t -> t -> string
 
 val new_ocaml_exe : Alice_manifest.Package_name.t -> _ Path.t -> unit

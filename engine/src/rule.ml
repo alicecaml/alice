@@ -26,7 +26,7 @@ module Database = struct
 
   let build_for_output_file_opt t ~output = List.find_map t ~f:(match_ ~output)
 
-  let create_build_plan t ~output =
+  let create_build_plan t ~outputs =
     let rec loop output acc =
       let origin =
         match (build_for_output_file_opt t ~output : Build.t option) with
@@ -36,7 +36,10 @@ module Database = struct
       let acc = Build_plan.Staging.add_origin acc origin in
       Origin.inputs origin |> Path.Set.fold ~init:acc ~f:loop
     in
-    let staged = loop output Build_plan.Staging.empty in
+    let staged =
+      List.fold_left outputs ~init:Build_plan.Staging.empty ~f:(fun acc output ->
+        loop output acc)
+    in
     Build_plan.Staging.finalize staged
   ;;
 end

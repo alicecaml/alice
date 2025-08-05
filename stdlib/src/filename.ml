@@ -20,6 +20,11 @@ let replace_extension t ~ext =
   String.cat without_extension ext
 ;;
 
+let add_extension t ~ext =
+  assert (Char.equal (String.get ext 0) '.');
+  String.cat t ext
+;;
+
 let to_components t =
   let rec loop t =
     if equal t (dirname t)

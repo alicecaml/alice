@@ -7,7 +7,7 @@ let dot =
   let+ () = Common.set_log_level_from_verbose_flag
   and+ project = Common.parse_project
   and+ ctx = Common.parse_ctx in
-  print_endline (Project.dot_ocaml_exe ~ctx project)
+  print_endline (Project.dot_ocaml ~ctx project)
 ;;
 
 let subcommand =

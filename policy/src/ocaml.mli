@@ -12,9 +12,20 @@ module Ctx : sig
   val release : t
 end
 
-val build_exe
-  :  Ctx.t
-  -> exe_name:Path.Relative.t
-  -> root_ml:Path.Relative.t
-  -> src_dir:_ Dir.t
-  -> Build_plan.Traverse.t
+module Plan : sig
+  (** A build plan for an OCaml project, possibly containing a library or
+      executable or both. *)
+  type t
+
+  val create
+    :  Ctx.t
+    -> name:Path.Relative.t
+    -> exe_root_ml:Path.Relative.t option
+    -> lib_root_ml:Path.Relative.t option
+    -> src_dir:_ File.dir
+    -> t
+
+  val traverse_exe : t -> Build_plan.Traverse.t
+  val traverse_lib : t -> Build_plan.Traverse.t
+  val build_plan : t -> Build_plan.t
+end

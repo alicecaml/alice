@@ -10,5 +10,5 @@ val static : Build_plan.Build.t -> t
 module Database : sig
   type nonrec t = t list
 
-  val create_build_plan : t -> output:Path.t -> Build_plan.t
+  val create_build_plan : t -> outputs:Path.t list -> Build_plan.t
 end

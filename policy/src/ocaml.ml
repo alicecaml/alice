@@ -61,16 +61,21 @@ let compile_source_rules ctx dir =
 
 (* Given the path to the source file which will be the module root [root_ml]
    and a list of rules for compiling ocaml source files, computes an order of
-   cmx files from the output of given rules such that all dependencies of a
+   cmx(a) files from the output of given rules such that all dependencies of a
    file preceed that file. *)
-let cmx_file_order ~root_ml source_rules_db =
-  let root_cmx = Path.replace_extension root_ml ~ext:".cmx" in
-  let plan = Rule.Database.create_build_plan source_rules_db ~output:root_cmx in
+let cmx_file_order ~root_ml source_rules_db kind =
+  let ext =
+    match kind with
+    | `Exe -> ".cmx"
+    | `Lib -> ".cmx"
+  in
+  let root_cmx = Path.replace_extension root_ml ~ext in
+  let plan = Rule.Database.create_build_plan source_rules_db ~outputs:[ root_cmx ] in
   let rec loop acc traverse =
     let module Traverse = Build_plan.Traverse in
     let cmx_outputs =
       Traverse.outputs traverse
-      |> Path.Relative.Set.filter ~f:(Path.has_extension ~ext:".cmx")
+      |> Path.Relative.Set.filter ~f:(Path.has_extension ~ext)
       |> Path.Relative.Set.to_list
     in
     let acc =
@@ -79,7 +84,7 @@ let cmx_file_order ~root_ml source_rules_db =
       | [ cmx_output ] -> cmx_output :: acc
       | _ ->
         Alice_error.panic
-          [ Pp.text "Rule would produce multiple cmx files which is not expected" ]
+          [ Pp.textf "Rule would produce multiple %s files which is not expected" ext ]
     in
     List.fold_left (Traverse.deps traverse) ~init:acc ~f:loop
   in
@@ -91,35 +96,103 @@ let cmx_file_order ~root_ml source_rules_db =
      | Some traverse -> traverse)
 ;;
 
-(* In order to link an executable from a collection of .cmx files, the ocaml
-   compiler must be passed the cmx files in order such that for each file, all
-   of its dependencies preceed it. The [cmx_deps_in_order] argument must be a
-   list of paths to .cmx files in such an order. *)
-let link_exe_rule ctx ~exe_name ~cmx_deps_in_order =
+(* In order to link an executable or library from a collection of .cmx files,
+   the ocaml compiler must be passed the cmx files in order such that for each
+   file, all of its dependencies preceed it. The [cmx_deps_in_order] argument
+   must be a list of paths to .cmx files in such an order. *)
+let link_rule ctx ~name ~cmx_deps_in_order kind =
   let o_paths = List.map cmx_deps_in_order ~f:(Path.replace_extension ~ext:".o") in
   let inputs = Path.Relative.Set.of_list (cmx_deps_in_order @ o_paths) in
+  let outputs =
+    match kind with
+    | `Exe -> Path.Relative.Set.singleton name
+    | `Lib ->
+      (match Path.Relative.extension name with
+       | ".cmxa" -> ()
+       | other ->
+         Alice_error.panic
+           [ Pp.textf
+               "Unexpected extension for library filename. Expected .cmxa, got %s."
+               other
+           ]);
+      Path.Relative.Set.of_list [ name; Path.Relative.replace_extension name ~ext:".a" ]
+  in
+  let extra_flags =
+    match kind with
+    | `Exe -> []
+    | `Lib -> [ "-a" ]
+  in
   Rule.static
     { inputs
-    ; outputs = Path.Relative.Set.singleton exe_name
+    ; outputs
     ; commands =
         [ Ctx.ocamlopt_command
             ctx
             ~args:
-              ([ "-o"; Path.Relative.to_filename exe_name ]
+              (extra_flags
+               @ [ "-o"; Path.Relative.to_filename name ]
                @ List.map cmx_deps_in_order ~f:Path.Relative.to_filename)
         ]
     }
 ;;
 
-let exe_rules ctx ~exe_name ~root_ml ~src_dir =
+let rules ctx ~name ~root_ml ~src_dir kind =
   let source_rules_db = compile_source_rules ctx src_dir in
-  let cmx_deps_in_order = cmx_file_order ~root_ml source_rules_db in
-  link_exe_rule ctx ~exe_name ~cmx_deps_in_order :: source_rules_db
+  let cmx_deps_in_order = cmx_file_order ~root_ml source_rules_db kind in
+  link_rule ctx ~name ~cmx_deps_in_order kind :: source_rules_db
 ;;
 
-let build_exe ctx ~exe_name ~root_ml ~src_dir =
-  exe_rules ctx ~exe_name ~root_ml ~src_dir
-  |> Rule.Database.create_build_plan ~output:exe_name
-  |> Build_plan.traverse ~output:exe_name
-  |> Option.get
-;;
+module Plan = struct
+  type t =
+    { build_plan : Build_plan.t
+    ; exe_name : Path.Relative.t option
+    ; lib_name_cmxa : Path.Relative.t option
+    }
+
+  let create ctx ~name ~exe_root_ml ~lib_root_ml ~src_dir =
+    let exe_name =
+      (* TODO: On windows the name must have the extension .exe *)
+      name
+    in
+    let lib_name_cmxa = Path.add_extension name ~ext:".cmxa" in
+    let lib_rules ~lib_root_ml =
+      rules ctx ~name:lib_name_cmxa ~root_ml:lib_root_ml ~src_dir `Lib
+    in
+    let exe_rules ~exe_root_ml =
+      rules ctx ~name:exe_name ~root_ml:exe_root_ml ~src_dir `Exe
+    in
+    let outputs, rules =
+      match exe_root_ml, lib_root_ml with
+      | Some exe_root_ml, Some lib_root_ml ->
+        [ exe_name; lib_name_cmxa ], lib_rules ~lib_root_ml @ exe_rules ~exe_root_ml
+      | Some exe_root_ml, None -> [ exe_name ], exe_rules ~exe_root_ml
+      | None, Some lib_root_ml -> [ lib_name_cmxa ], lib_rules ~lib_root_ml
+      | None, None ->
+        Alice_error.panic [ Pp.text "Specify one of ~exe_root_ml and ~lib_root_ml" ]
+    in
+    { build_plan = Rule.Database.create_build_plan rules ~outputs
+    ; exe_name = Option.map exe_root_ml ~f:(Fun.const exe_name)
+    ; lib_name_cmxa = Option.map lib_root_ml ~f:(Fun.const lib_name_cmxa)
+    }
+  ;;
+
+  let traverse_exe { build_plan; exe_name; _ } =
+    let output =
+      match exe_name with
+      | None -> Alice_error.panic [ Pp.text "Build plan cannot produce executable." ]
+      | Some exe_name -> exe_name
+    in
+    Build_plan.traverse build_plan ~output |> Option.get
+  ;;
+
+  let traverse_lib { build_plan; lib_name_cmxa; _ } =
+    let output =
+      match lib_name_cmxa with
+      | None -> Alice_error.panic [ Pp.text "Build plan cannot produce library." ]
+      | Some lib_name_cmxa -> lib_name_cmxa
+    in
+    Build_plan.traverse build_plan ~output |> Option.get
+  ;;
+
+  let build_plan { build_plan; _ } = build_plan
+end

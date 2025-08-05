@@ -92,7 +92,7 @@ let exe_rules ctx ~exe_name ~src_dir =
 
 let build_exe ctx ~exe_name ~src_dir =
   exe_rules ctx ~exe_name ~src_dir
-  |> Rule.Database.create_build_plan ~output:exe_name
+  |> Rule.Database.create_build_plan ~outputs:[ exe_name ]
   |> Build_plan.traverse ~output:exe_name
   |> Option.get
 ;;
