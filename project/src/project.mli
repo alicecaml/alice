@@ -15,4 +15,4 @@ val clean : t -> unit
     of build artifacts. *)
 val dot_ocaml : ctx:Build_ctx.t -> t -> string
 
-val new_ocaml_exe : Alice_manifest.Package_name.t -> _ Path.t -> unit
+val new_ocaml : Alice_manifest.Package_name.t -> _ Path.t -> [ `Exe | `Lib ] -> unit

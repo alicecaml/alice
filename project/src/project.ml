@@ -104,7 +104,7 @@ let dot_ocaml ~ctx t =
   Alice_engine.Build_plan.dot build_plan
 ;;
 
-let new_ocaml_exe name path =
+let new_ocaml name path kind =
   if File_ops.exists path
   then
     user_error
@@ -112,7 +112,11 @@ let new_ocaml_exe name path =
           "Refusing to create project because destination directory already exists.\n"
       ; Pp.textf "Destination directory is: %s" (Path.to_filename path)
       ];
-  let manifest = { Alice_manifest.Project.package = { name } } in
+  let manifest =
+    { Alice_manifest.Project.package =
+        { name; version = Alice_manifest.Semantic_version.of_string "0.1.0" }
+    }
+  in
   File_ops.mkdir_p (Path.concat path Paths.src);
   File_ops.write_text_file
     (Path.concat path (Path.relative ".gitignore"))
@@ -120,7 +124,13 @@ let new_ocaml_exe name path =
   File_ops.write_text_file
     (Path.concat path (Path.relative manifest_name))
     (Alice_manifest.Project.to_toml_string manifest);
-  File_ops.write_text_file
-    (Path.concat (Path.concat path Paths.src) Paths.exe_root_ml)
-    "let () = print_endline \"Hello, World!\""
+  match kind with
+  | `Exe ->
+    File_ops.write_text_file
+      (Path.concat (Path.concat path Paths.src) Paths.exe_root_ml)
+      "let () = print_endline \"Hello, World!\""
+  | `Lib ->
+    File_ops.write_text_file
+      (Path.concat (Path.concat path Paths.src) Paths.lib_root_ml)
+      "let add lhs rhs = lhs + rhs"
 ;;

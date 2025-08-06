@@ -11,14 +11,23 @@ let new_ =
     Common.parse_absolute_path
       ~doc:"Initialize the new project in this directory (must not already exist)"
       [ "path"; "p" ]
-  in
-  let package_name = Alice_manifest.Package_name.of_string_exn name in
+  and+ exe =
+    flag [ "exe" ] ~doc:"Create a project containing an executable package (default)"
+  and+ lib = flag [ "lib" ] ~doc:"Create a project containing a library package" in
+  let package_name = Alice_manifest.Package_name.of_string name in
   let path =
     match path with
     | Some path -> path
     | None -> Path.concat (Path.absolute (Sys.getcwd ())) (Path.relative name)
   in
-  Project.new_ocaml_exe package_name path
+  let kind =
+    match exe, lib with
+    | false, false | true, false -> `Exe
+    | false, true -> `Lib
+    | true, true ->
+      Alice_error.user_error [ Pp.text "Can't specify both --exe and --lib" ]
+  in
+  Project.new_ocaml package_name path kind
 ;;
 
 let subcommand =

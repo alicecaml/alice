@@ -41,9 +41,9 @@ let validate s =
        | None -> Ok ()))
 ;;
 
-let of_string s = validate s |> Result.map ~f:(fun () -> s)
+let of_string_res s = validate s |> Result.map ~f:(fun () -> s)
 
-let of_string_exn s =
+let of_string s =
   match validate s with
   | Error pps -> user_error pps
   | Ok () -> s

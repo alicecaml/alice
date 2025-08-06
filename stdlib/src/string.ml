@@ -15,3 +15,11 @@ let lsplit2 s ~on =
   | None -> None
   | Some i -> Some (sub s ~pos:0 ~len:i, sub s ~pos:(i + 1) ~len:(length s - i - 1))
 ;;
+
+let split_on_char_nonempty s ~sep =
+  match Nonempty_list.of_list_opt (split_on_char s ~sep) with
+  | None ->
+    (* [split_on_char] never returns empty lists *)
+    failwith "unreachable"
+  | Some l -> l
+;;
