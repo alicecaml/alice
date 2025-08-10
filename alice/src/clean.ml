@@ -11,5 +11,8 @@ let clean =
 
 let subcommand =
   let open Command in
-  subcommand "clean" (singleton ~doc:"Delete all generated build artifacts." clean)
+  subcommand
+    "clean"
+    ~aliases:[ "c" ]
+    (singleton ~doc:"Delete all generated build artifacts." clean)
 ;;

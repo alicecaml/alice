@@ -1,0 +1,14 @@
+(version dev)
+
+(build
+ (all_platforms ((dune))))
+
+(depends
+ (all_platforms (ocaml)))
+
+(source
+ (fetch
+  (url
+   git+https://github.com/gridbugs/climate#2ab398071e39516a66b84071e80c8243bdf199c0)))
+
+(dev)

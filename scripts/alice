@@ -1,0 +1,4 @@
+#!/bin/sh
+# Shell script to run alice via `dune exec`
+DUNE_CONFIG__PKG_BUILD_PROGRESS=disabled
+dune exec --display=quiet alice -- $@

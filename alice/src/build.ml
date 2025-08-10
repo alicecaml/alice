@@ -12,5 +12,5 @@ let build =
 
 let subcommand =
   let open Command in
-  subcommand "build" (singleton ~doc:"Build a project." build)
+  subcommand "build" ~aliases:[ "b" ] (singleton ~doc:"Build a project." build)
 ;;

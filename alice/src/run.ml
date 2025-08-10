@@ -13,5 +13,8 @@ let run_ =
 
 let subcommand =
   let open Command in
-  subcommand "run" (singleton ~doc:"Build a project and run its executable." run_)
+  subcommand
+    "run"
+    ~aliases:[ "r" ]
+    (singleton ~doc:"Build a project and run its executable." run_)
 ;;

@@ -8,7 +8,7 @@
  (complete true)
  (used
   ((source
-    https://github.com/ocaml/opam-repository.git#eb1c31096c67d2f03b97ad71332ed5f2fc15f762))
+    https://github.com/ocaml/opam-repository.git#854fc71d55ce63c2ce04935106fe0551861f9a39))
   ((source
     https://github.com/ocaml-dune/opam-overlays.git#2a9543286ff0e0656058fee5c0da7abc16b8717d))
   ((source

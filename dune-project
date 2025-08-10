@@ -1,5 +1,11 @@
 (lang dune 3.20)
 
+(pin
+ (url
+  "git+https://github.com/gridbugs/climate#2ab398071e39516a66b84071e80c8243bdf199c0")
+ (package
+  (name climate)))
+
 (package
  (name alice)
  (depends ocaml climate sha))
