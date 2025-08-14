@@ -7,3 +7,4 @@ val to_dyn : 'a Dyn.builder -> 'a t Dyn.builder
 val cons : 'a -> 'a t -> 'a t
 val rev : 'a t -> 'a t
 val map : 'a t -> f:('a -> 'b) -> 'b t
+val equal : eq:('a -> 'a -> bool) -> 'a t -> 'a t -> bool

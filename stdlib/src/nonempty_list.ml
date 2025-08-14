@@ -23,3 +23,5 @@ let map t ~f =
   | [] -> failwith "unreachable"
   | x :: xs -> x :: xs
 ;;
+
+let equal ~eq a b = List.equal ~eq (to_list a) (to_list b)

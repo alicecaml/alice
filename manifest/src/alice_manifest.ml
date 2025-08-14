@@ -3,3 +3,4 @@ module Package = Package
 module Project = Project
 module Io = Io
 module Semantic_version = Semantic_version
+module Dependencies = Dependencies

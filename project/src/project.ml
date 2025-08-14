@@ -115,6 +115,7 @@ let new_ocaml name path kind =
   let manifest =
     { Alice_manifest.Project.package =
         { name; version = Alice_manifest.Semantic_version.of_string "0.1.0" }
+    ; dependencies = None
     }
   in
   File_ops.mkdir_p (Path.concat path Paths.src);

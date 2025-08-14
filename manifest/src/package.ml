@@ -56,8 +56,10 @@ let of_toml ~manifest_path_for_messages toml_table =
 ;;
 
 let to_toml { name; version } =
-  Toml.Types.Table.of_list
+  let fields =
     [ Keys.name, Toml.Types.TString (Package_name.to_string name)
     ; Keys.version, Toml.Types.TString (Semantic_version.to_string version)
     ]
+  in
+  Toml.Types.Table.of_list fields
 ;;

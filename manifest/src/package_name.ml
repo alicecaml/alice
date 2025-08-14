@@ -1,9 +1,15 @@
 open! Alice_stdlib
 open Alice_error
 
-type t = string
+module T = struct
+  include StdLabels.String
 
-let to_dyn = Dyn.string
+  let to_dyn = Dyn.string
+end
+
+include T
+module Set = Set.Make (T)
+module Map = Map.Make (T)
 
 let validate s =
   let is_valid_first_char = function

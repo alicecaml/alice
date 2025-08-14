@@ -3,22 +3,27 @@ open Alice_error
 open Alice_hierarchy
 module Table = Toml.Types.Table
 
+let parse_field_opt ~manifest_path_for_messages key toml_table ~f =
+  Table.find_opt key toml_table
+  |> Option.map ~f:(fun value ->
+    match f value with
+    | `Ok x -> x
+    | `Expected expected ->
+      user_error
+        [ Pp.textf
+            "Error while parsing toml file %S:\n"
+            (Path.to_filename manifest_path_for_messages)
+        ; Pp.textf
+            "Expected field %S to contain a %s, but instead found:\n"
+            (Table.Key.to_string key)
+            expected
+        ; Pp.text (Toml.Printer.string_of_value value)
+        ])
+;;
+
 let parse_field ~manifest_path_for_messages key toml_table ~f =
-  match Table.find_opt key toml_table with
-  | Some value ->
-    (match f value with
-     | `Ok x -> x
-     | `Expected expected ->
-       user_error
-         [ Pp.textf
-             "Error while parsing toml file %S:\n"
-             (Path.to_filename manifest_path_for_messages)
-         ; Pp.textf
-             "Expected field %S to contain a %s, but instead found:\n"
-             (Table.Key.to_string key)
-             expected
-         ; Pp.text (Toml.Printer.string_of_value value)
-         ])
+  match parse_field_opt ~manifest_path_for_messages key toml_table ~f with
+  | Some value -> value
   | None ->
     user_error
       [ Pp.textf

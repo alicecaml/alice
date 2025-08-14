@@ -25,6 +25,14 @@ module Pre_release = struct
       | String string -> string
     ;;
 
+    let equal a b =
+      match a, b with
+      | Int a, Int b -> Int.equal a b
+      | Int _, _ -> false
+      | String a, String b -> String.equal a b
+      | String _, _ -> false
+    ;;
+
     let of_string s =
       match int_of_string_round_trip_check s with
       | `Not_int | `Int_no_round_trip _ ->
@@ -43,6 +51,8 @@ module Pre_release = struct
   let to_string t =
     Nonempty_list.to_list t |> List.map ~f:Part.to_string |> String.concat ~sep:"."
   ;;
+
+  let equal = Nonempty_list.equal ~eq:Part.equal
 end
 
 module Metadata = struct
@@ -50,6 +60,7 @@ module Metadata = struct
 
   let to_dyn = Nonempty_list.to_dyn Dyn.string
   let to_string t = Nonempty_list.to_list t |> String.concat ~sep:"."
+  let equal = Nonempty_list.equal ~eq:String.equal
 end
 
 type t =
@@ -80,6 +91,14 @@ let to_string { major; minor; patch; pre_release; metadata } =
   match metadata with
   | None -> with_pre_release
   | Some metadata -> sprintf "%s+%s" with_pre_release (Metadata.to_string metadata)
+;;
+
+let equal { major; minor; patch; pre_release; metadata } t =
+  Int.equal major t.major
+  && Int.equal minor t.minor
+  && Int.equal patch t.patch
+  && Option.equal ~eq:Pre_release.equal pre_release t.pre_release
+  && Option.equal ~eq:Metadata.equal metadata t.metadata
 ;;
 
 let of_string_res s =
@@ -116,21 +135,24 @@ let of_string_res s =
       | 'a' .. 'z' | 'A' .. 'Z' | '0' .. '9' | '-' -> true
       | _ -> false
     in
-    String.fold_left s ~init:(Ok ()) ~f:(fun acc ch ->
-      match acc with
-      | Error _ -> acc
-      | Ok () ->
-        if is_valid_char ch
-        then acc
-        else
-          Error
-            [ Pp.textf
-                "Identifier %S contains invalid character '%c'. Identifiers in the \
-                 pre-release and metadata section of a version number must consist \
-                 entirely of alphanumeric characters and hyphens."
-                s
-                ch
-            ])
+    if String.is_empty s
+    then Error [ Pp.textf "Identifier %S is empty, which is not allowed." s ]
+    else
+      String.fold_left s ~init:(Ok ()) ~f:(fun acc ch ->
+        match acc with
+        | Error _ -> acc
+        | Ok () ->
+          if is_valid_char ch
+          then acc
+          else
+            Error
+              [ Pp.textf
+                  "Identifier %S contains invalid character '%c'. Identifiers in the \
+                   pre-release and metadata section of a version number must consist \
+                   entirely of alphanumeric characters and hyphens."
+                  s
+                  ch
+              ])
   in
   let validate_identifiers parts =
     let+ _ : unit list =
