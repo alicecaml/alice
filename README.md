@@ -28,6 +28,14 @@ Concrete differences from Opam/Dune:
  - The build/install commands of a package cannot be configured.
  - Packages have the same dependencies regardless of environment.
 
+I'm one of the core Dune developers for my day job. Dune is a mature and widely
+used OCaml build system which it difficult to make large structural changes to
+its UI and packaging philosophy. Alice is an experiment exploring the design
+space of OCaml build systems when these constraints are lifted.
+
+Its name comes from an [Australian Children's
+Song](https://www.youtube.com/watch?v=XM7Jnetdf0I).
+
 ## Dev Environment Notes
 
 It's recommended to use direnv with the following .envrc while working on this:
