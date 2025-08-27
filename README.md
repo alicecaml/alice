@@ -1,4 +1,4 @@
-# Alice the Caml - An OCaml package management experiment
+# Alice the Caml - An OCaml build system experiment
 
 The goal of this project is to explore a radically different approach to OCaml
 build systems and package management, breaking from the Opam/Dune-based ecosystem
@@ -33,8 +33,8 @@ used OCaml build system which makes it difficult to make large structural
 changes to its UI and packaging philosophy. Alice is an experiment exploring
 the design space of OCaml build systems when these constraints are lifted.
 
-Its name comes from an [Australian Children's
-Song](https://www.youtube.com/watch?v=XM7Jnetdf0I).
+Its name comes from an [Australian children's
+song](https://www.youtube.com/watch?v=XM7Jnetdf0I).
 
 ## Dev Environment Notes
 
