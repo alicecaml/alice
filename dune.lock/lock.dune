@@ -12,7 +12,7 @@
   ((source
     https://github.com/ocaml-dune/opam-overlays.git#2a9543286ff0e0656058fee5c0da7abc16b8717d))
   ((source
-    https://github.com/alicecaml/alice-opam-repo#9957c6334ca7ea18a973ea2fa9e3e56ab9c85eeb))))
+    https://github.com/alicecaml/alice-opam-repo#781db10863f3b7a3507842e88d0d3beeebd264ad))))
 
 (solved_for_platforms
  ((arch x86_64)
@@ -26,4 +26,10 @@
   (sys-ocaml-version 5.3.1+relocatable))
  ((arch arm64)
   (os macos)
+  (sys-ocaml-version 5.3.1+relocatable))
+ ((arch x86_64)
+  (os win32)
+  (sys-ocaml-version 5.3.1+relocatable))
+ ((arch arm64)
+  (os win32)
   (sys-ocaml-version 5.3.1+relocatable)))

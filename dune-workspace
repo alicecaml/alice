@@ -7,7 +7,7 @@
 (repository
  (name alice_frozen)
  (url
-  git+https://github.com/alicecaml/alice-opam-repo#9957c6334ca7ea18a973ea2fa9e3e56ab9c85eeb))
+  git+https://github.com/alicecaml/alice-opam-repo#781db10863f3b7a3507842e88d0d3beeebd264ad))
 
 (repository
  (name upstream_frozen)
