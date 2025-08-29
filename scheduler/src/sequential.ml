@@ -1,5 +1,6 @@
 open! Alice_stdlib
 open Alice_hierarchy
+open Alice_error
 module File_ops = Alice_io.File_ops
 module Build_plan = Alice_engine.Build_plan
 module Traverse = Alice_engine.Build_plan.Traverse
@@ -81,9 +82,16 @@ let run ~src_dir ~out_dir traverse =
     | true ->
       (match Traverse.origin traverse with
        | Source path ->
-         Log.debug [ Pp.textf "copying source file: %s" (Path.to_filename path) ];
+         Log.info [ Pp.textf "Copying source file: %s" (Path.to_filename path) ];
          File_ops.cp_f ~src:(Path.concat src_dir path) ~dst:Path.current_dir
        | Build (build : Build_plan.Build.t) ->
+         Log.info
+           [ Pp.textf
+               "Building targets %s"
+               (Path.Relative.Set.to_list build.outputs
+                |> List.map ~f:Path.to_filename
+                |> String.concat ~sep:", ")
+           ];
          Path.Relative.Set.iter build.inputs ~f:(fun path ->
            if not (File_ops.exists path)
            then
@@ -91,13 +99,11 @@ let run ~src_dir ~out_dir traverse =
                (Pp.textf "Missing input file: %s\n" (Path.to_filename path)
                 :: panic_context ()));
          List.iter build.commands ~f:(fun command ->
-           Log.debug [ Pp.textf "running build command: %s" (Command.to_string command) ];
            let status =
              match Alice_io.Process.Blocking.run_command command with
              | Ok status -> status
              | Error `Prog_not_available ->
-               Alice_print.pp_eprintln (Pp.textf "Can't find program: %s" command.prog);
-               exit 1
+               panic [ Pp.textf "Can't find program: %s" command.prog ]
            in
            match status with
            | Exited 0 -> ()

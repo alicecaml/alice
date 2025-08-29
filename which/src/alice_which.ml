@@ -70,7 +70,10 @@ let which exe_name =
 let try_which exe_name =
   match which exe_name with
   | Some path -> Path.Either.to_filename path
-  | None -> exe_name
+  | None ->
+    (* Couldn't find the executable in PATH, so just return its name just in
+       case the OS has some tricks up its sleeve for finding executables. *)
+    exe_name
 ;;
 
 let current_sys_exe_name exe_name_without_extension =

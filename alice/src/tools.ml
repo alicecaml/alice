@@ -37,20 +37,20 @@ module Remote_tarball = struct
   ;;
 
   let get { name; version; url; top_level_dir; sha256 } ~dst =
-    let open Alice_print in
+    let open Alice_print.Ui in
     Temp_dir.with_ ~prefix:"alice." ~suffix:".tools" ~f:(fun dir ->
       let tarball_file = Path.concat dir (Path.relative (sprintf "%s.tar.gz" name)) in
-      pp_print (Pp.textf "Fetching %s.%s..." name version);
+      println (verb_message `Fetching (sprintf "%s.%s..." name version));
       Fetch.fetch ~url ~output_file:tarball_file;
       panic_if_hashes_don't_match tarball_file sha256;
-      pp_println (Pp.text "Done!" |> Pp.tag (Ansi_style.default_with_color `Green));
-      pp_print (Pp.textf "Unpacking %s.%s..." name version);
+      println (verb_message `Unpacking (sprintf "%s.%s..." name version));
       Extract.extract ~tarball_file ~output_dir:dir;
       File_ops.recursive_move_between_dirs ~src:(Path.concat dir top_level_dir) ~dst;
-      pp_println (Pp.text "Done!" |> Pp.tag (Ansi_style.default_with_color `Green));
-      pp_println
-        (Pp.textf "Successfully installed %s.%s!\n" name version
-         |> Pp.tag (Ansi_style.default_with_color `Green)))
+      print_newline ();
+      println
+        (raw_message
+           ~style:Styles.success
+           (sprintf "Successfully installed %s.%s!\n" name version)))
   ;;
 end
 
@@ -339,18 +339,22 @@ end
 
 let get =
   let open Arg_parser in
-  let+ root = named_with_default [ "r"; "root" ] Root.conv ~default:Root.latest in
+  let+ () = Common.set_globals_from_flags
+  and+ root = named_with_default [ "r"; "root" ] Root.conv ~default:Root.latest in
   Root.get root;
   if not (Alice_io.File_ops.exists (Alice_root.current ()))
   then (
-    Alice_print.pp_println
-      (Pp.textf "No current root was found so making %s the current root." root.name);
+    let open Alice_print.Ui in
+    println
+      (raw_message
+         (sprintf "No current root was found so making %s the current root." root.name));
     Root.make_current root)
 ;;
 
 let env =
   let open Arg_parser in
-  let+ shell =
+  let+ () = Common.set_globals_from_flags
+  and+ shell =
     named_opt
       [ "s"; "shell" ]
       Shell.conv
@@ -368,7 +372,7 @@ let env =
 
 let change =
   let open Arg_parser in
-  let+ () = Common.set_log_level_from_verbose_flag
+  let+ () = Common.set_globals_from_flags
   and+ root = pos_req 0 Root.conv in
   if Root.is_installed root
   then Root.make_current root

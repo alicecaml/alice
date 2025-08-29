@@ -4,7 +4,7 @@ open Climate
 
 let build =
   let open Arg_parser in
-  let+ () = Common.set_log_level_from_verbose_flag
+  let+ () = Common.set_globals_from_flags
   and+ project = Common.parse_project
   and+ ctx = Common.parse_ctx in
   Project.build_ocaml ~ctx project

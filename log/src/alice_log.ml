@@ -32,8 +32,8 @@ let log ?pos ~level message =
     let prefix =
       match level with
       | `Debug -> Pp.tag tag_debug (Pp.text "[DEBUG] ")
-      | `Info -> Pp.tag tag_info (Pp.text "[INFO] ")
-      | `Warn -> Pp.tag tag_warn (Pp.text "[WARN] ")
+      | `Info -> Pp.tag tag_info (Pp.text " [INFO] ")
+      | `Warn -> Pp.tag tag_warn (Pp.text " [WARN] ")
       | `Error -> Pp.tag tag_error (Pp.text "[ERROR] ")
     in
     let message =
@@ -41,7 +41,7 @@ let log ?pos ~level message =
       | None -> message
       | Some pos -> pp_pos pos :: message
     in
-    Alice_print.pps_println (prefix :: message))
+    Alice_print.Raw.pps_eprintln (prefix :: message))
 ;;
 
 let debug ?pos message = log ?pos ~level:`Debug message

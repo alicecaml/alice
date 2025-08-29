@@ -78,7 +78,7 @@ let parse_ctx =
 let set_log_level_from_verbose_flag =
   let open Arg_parser in
   let+ verbosity =
-    flag_count [ "verbose"; "v" ] ~doc:"Enable verbose output (-vv for extra verbosity)"
+    flag_count [ "verbose"; "v" ] ~doc:"Enable verbose output (-vv for extra verbosity)."
   in
   let log_level =
     match verbosity with
@@ -87,4 +87,17 @@ let set_log_level_from_verbose_flag =
     | _ -> `Debug
   in
   Alice_log.set_level log_level
+;;
+
+let set_print_mode_from_quiet_flag =
+  let open Arg_parser in
+  let+ quiet = flag [ "quiet"; "q" ] ~doc:"Supress printing of progress messages." in
+  if quiet then Alice_print.Ui.set_mode `Quiet
+;;
+
+let set_globals_from_flags =
+  let open Arg_parser in
+  let+ () = set_log_level_from_verbose_flag
+  and+ () = set_print_mode_from_quiet_flag in
+  ()
 ;;

@@ -1,5 +1,6 @@
 open! Alice_stdlib
 open Alice_hierarchy
+module Log = Alice_log
 
 let curl ~url ~output_file =
   let args =
@@ -20,6 +21,7 @@ let wget ~url ~output_file =
 ;;
 
 let fetch ~url ~output_file =
+  Log.info [ Pp.textf "Downloading %s to %s" url (Path.to_filename output_file) ];
   match curl ~url ~output_file |> Process.Blocking.run_command with
   | Ok (Process.Status.Exited 0) ->
     assert (Sys.file_exists (Path.to_filename output_file));

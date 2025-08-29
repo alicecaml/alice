@@ -5,7 +5,7 @@ open Climate
 
 let new_ =
   let open Arg_parser in
-  let+ () = Common.set_log_level_from_verbose_flag
+  let+ () = Common.set_globals_from_flags
   and+ name = pos_req 0 string ~doc:"Name of the project" ~value_name:"NAME"
   and+ path =
     Common.parse_absolute_path
@@ -32,9 +32,13 @@ let new_ =
     | `Exe -> "executable"
     | `Lib -> "library"
   in
-  let () = Project.new_ocaml package_name path kind in
-  Alice_print.pp_println
-    (Pp.textf "Created new %s project in %s" kind_string (Path.to_filename path))
+  let open Alice_print.Ui in
+  println
+    (verb_message
+       `Creating
+       (sprintf "new %s package %S in %s" kind_string name (Path.to_filename path)));
+  Project.new_ocaml package_name path kind;
+  print_newline ()
 ;;
 
 let subcommand =

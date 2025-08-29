@@ -45,10 +45,25 @@ module Arch = struct
   ;;
 
   let poll () =
-    match Alice_io.Uname.uname_m () with
-    | "arm64" -> Aarch64
-    | "x86_64" -> X86_64
-    | other -> Alice_error.panic [ Pp.textf "Unknown architecture: %s" other ]
+    if Sys.win32
+    then (
+      let var = "PROCESSOR_ARCHITECTURE" in
+      match Sys.getenv_opt var with
+      | Some "AMD64" -> X86_64
+      | Some other -> Alice_error.panic [ Pp.textf "Unknown architecture: %s" other ]
+      | None ->
+        Alice_log.warn
+          [ Pp.textf
+              "Can't determine CPU architecture becasue environment variable %S is \
+               unset. Assuming x68_64."
+              var
+          ];
+        X86_64)
+    else (
+      match Alice_io.Uname.uname_m () with
+      | "arm64" -> Aarch64
+      | "x86_64" -> X86_64
+      | other -> Alice_error.panic [ Pp.textf "Unknown architecture: %s" other ])
   ;;
 end
 

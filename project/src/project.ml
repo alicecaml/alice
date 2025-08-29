@@ -74,14 +74,16 @@ let run_traverse t ~traverse =
 ;;
 
 let compiling_message t =
+  let open Alice_print.Ui in
   let package = t.manifest.package in
   let name_string = Alice_manifest.Package_name.to_string package.name in
   let version_string = Alice_manifest.Semantic_version.to_string package.version in
-  Pp.textf "Compiling %s v%s" name_string version_string
+  verb_message `Compiling (sprintf "%s v%s" name_string version_string)
 ;;
 
 let build_ocaml ~ctx t =
-  Alice_print.pp_println (compiling_message t);
+  let open Alice_print.Ui in
+  println (compiling_message t);
   let ocaml_plan = ocaml_plan ~ctx ~exe_only:false t in
   if contains_lib t
   then run_traverse t ~traverse:(Alice_policy.Ocaml.Plan.traverse_lib ocaml_plan);
@@ -90,11 +92,12 @@ let build_ocaml ~ctx t =
 ;;
 
 let run_ocaml_exe ~ctx t ~args =
+  let open Alice_print.Ui in
   (match contains_exe t with
    | true -> ()
    | false -> panic [ Pp.text "Cannot run project as it lacks an executable." ]);
   let ocaml_plan = ocaml_plan ~ctx ~exe_only:true t in
-  Alice_print.pp_println (compiling_message t);
+  println (compiling_message t);
   let traverse = Alice_policy.Ocaml.Plan.traverse_exe ocaml_plan in
   run_traverse t ~traverse;
   let exe_name =
@@ -110,19 +113,21 @@ let run_ocaml_exe ~ctx t ~args =
   let exe_path = Path.concat (out_dir t) exe_name in
   let args = Path.to_filename exe_name :: args in
   let exe_filename = Path.to_filename exe_path in
-  Alice_print.pps_println [ Pp.textf "Running %s" exe_filename; Pp.newline ];
+  println (verb_message `Running (Path.to_filename exe_path));
+  print_newline ();
   match Alice_io.Process.Blocking.run exe_filename ~args with
   | Error `Prog_not_available ->
-    Alice_print.pp_eprintln
-      (Pp.textf
-         "The executable %s does not exist. Alice was supposed to create that file. This \
-          is a bug in Alice."
-         exe_filename);
-    exit 1
+    panic
+      [ Pp.textf
+          "The executable %s does not exist. Alice was supposed to create that file. \
+           This is a bug in Alice."
+          exe_filename
+      ]
   | Ok (Exited code) -> exit code
   | Ok (Signaled signal | Stopped signal) ->
-    Alice_print.pp_println
-      (Pp.textf "The executable %s was stopped by a signal (%d)." exe_filename signal);
+    println
+      (raw_message
+         (sprintf "The executable %s was stopped by a signal (%d)." exe_filename signal));
     exit 0
 ;;
 

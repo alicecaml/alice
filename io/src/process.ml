@@ -1,5 +1,6 @@
 open! Alice_stdlib
 open Alice_hierarchy
+module Log = Alice_log
 
 module Status = struct
   type t =
@@ -36,6 +37,8 @@ module Blocking = struct
     =
     let args = Array.of_list (prog :: args) in
     try
+      Log.debug
+        [ Pp.textf "Running command: %s" (String.concat ~sep:" " (Array.to_list args)) ];
       let pid = Unix.create_process prog args stdin stdout stderr in
       let _, status = Unix.waitpid [] pid in
       Ok (Status.of_unix status)

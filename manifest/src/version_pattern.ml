@@ -1,4 +1,5 @@
 open! Alice_stdlib
+open Alice_error
 
 type t = Exact of Semantic_version.t
 
@@ -21,7 +22,5 @@ let of_string_res s =
 let of_string s =
   match of_string_res s with
   | Ok t -> t
-  | Error e ->
-    Alice_print.pps_eprintln e;
-    exit 1
+  | Error e -> panic e
 ;;
