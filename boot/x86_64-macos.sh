@@ -27,7 +27,7 @@ tar xf "$OCAML.tar.gz"
 tar xf "$OCAMLLSP.tar.gz"
 tar xf "$OCAMLFORMAT.tar.gz"
 
-DIR="$HOME/.alice/roots/5.3.1"
+DIR="$HOME/.alice/roots/5.3.1+relocatable"
 mkdir -p "$DIR"
 cp -rvf $OCAML/* "$DIR"
 cp -rvf $OCAMLLSP/* "$DIR"

@@ -4,22 +4,28 @@ module Os = struct
   type t =
     | Macos
     | Linux
+    | Windows
 
   let to_dyn = function
     | Macos -> Dyn.variant "Macos" []
     | Linux -> Dyn.variant "Linux" []
+    | Windows -> Dyn.variant "Windows" []
   ;;
 
   let to_string = function
     | Macos -> "macos"
     | Linux -> "linux"
+    | Windows -> "windows"
   ;;
 
   let poll () =
-    match Alice_io.Uname.uname_s () with
-    | "Darwin" -> Macos
-    | "Linux" -> Linux
-    | other -> Alice_error.panic [ Pp.textf "Unknown system: %s" other ]
+    if Sys.win32
+    then Windows
+    else (
+      match Alice_io.Uname.uname_s () with
+      | "Darwin" -> Macos
+      | "Linux" -> Linux
+      | other -> Alice_error.panic [ Pp.textf "Unknown system: %s" other ])
   ;;
 end
 

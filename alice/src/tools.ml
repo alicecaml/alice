@@ -194,22 +194,59 @@ module Remote_tarballs = struct
     }
   ;;
 
+  let x86_64_windows_5_3_1 =
+    { compiler =
+        rt
+          ~name:"ocaml"
+          ~version:"5.3.1+relocatable"
+          ~url:(mk_url "5.3.1/ocaml-5.3.1+relocatable-x86_64-windows.tar.gz")
+          ~top_level_dir:"ocaml-5.3.1+relocatable-x86_64-windows"
+          ~sha256:"ed4256fa9aeb8ecaa846a58ee70d97d0519ec2878b5c5e2e0895e52a1796198e"
+    ; ocamllsp =
+        rt
+          ~name:"ocamllsp"
+          ~version:"1.22.0"
+          ~url:
+            (mk_url
+               "5.3.1/ocamllsp-1.22.0-built-with-ocaml-5.3.1+relocatable-x86_64-windows.tar.gz")
+          ~top_level_dir:
+            "ocamllsp-1.22.0-built-with-ocaml-5.3.1+relocatable-x86_64-windows"
+          ~sha256:"fcce194c359656b0e507f252877f5874e5d0c598711b3079e2b8938991b714fe"
+    ; ocamlformat =
+        rt
+          ~name:"ocamlformat"
+          ~version:"0.27.0"
+          ~url:
+            (mk_url
+               "5.3.1/ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-x86_64-windows.tar.gz")
+          ~top_level_dir:
+            "ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-x86_64-windows"
+          ~sha256:"26b385b694cc1c03595ad91baac663a37f1e86faf57848d06e1d2dbc63bfefaf"
+    }
+  ;;
+
   let get_all t ~dst = List.iter (all t) ~f:(fun rt -> Remote_tarball.get rt ~dst)
 end
 
 let xdg () = Alice_io.Xdg.create ()
-let base_dir () = Filename.concat (Xdg.home_dir (xdg ())) ".alice"
-let roots_dir () = Filename.concat (base_dir ()) "roots"
-let current_path () = Filename.concat (base_dir ()) "current"
+
+let base_dir () =
+  Path.concat (Xdg.home_dir (xdg ()) |> Path.absolute) (Path.relative ".alice")
+;;
+
+let roots_dir () = Path.concat (base_dir ()) (Path.relative "roots")
+let current_path () = Path.concat (base_dir ()) (Path.relative "current")
 
 module Root = struct
+  open Alice_io
+
   type t =
     { name : string
     ; remote_tarballs_by_target : Remote_tarballs.t Target.Map.t
     }
 
   let root_5_3_1 =
-    { name = "5.3.1"
+    { name = "5.3.1+relocatable"
     ; remote_tarballs_by_target =
         Target.Map.of_list_exn
           [ ( Target.create ~os:Macos ~arch:Aarch64 ~linked:Dynamic
@@ -220,6 +257,8 @@ module Root = struct
             , Remote_tarballs.x86_64_linux_gnu_5_3_1 )
           ; ( Target.create ~os:Macos ~arch:X86_64 ~linked:Dynamic
             , Remote_tarballs.x86_64_macos_5_3_1 )
+          ; ( Target.create ~os:Windows ~arch:X86_64 ~linked:Dynamic
+            , Remote_tarballs.x86_64_windows_5_3_1 )
           ]
     }
   ;;
@@ -228,28 +267,27 @@ module Root = struct
     Target.Map.find target t.remote_tarballs_by_target
   ;;
 
-  let dir { name; _ } = Filename.concat (roots_dir ()) name
+  let dir { name; _ } = Path.concat (roots_dir ()) (Path.relative name)
 
   let get t =
     let target = Target.poll () in
     let remote_tarballs = choose_remote_tarballs t ~target in
-    Path.with_filename
-      (dir t)
-      ~f:
-        { Path.f =
-            (fun dst ->
-              Alice_io.File_ops.mkdir_p dst;
-              Remote_tarballs.get_all remote_tarballs ~dst)
-        }
+    let dst = dir t in
+    Alice_io.File_ops.mkdir_p dst;
+    Remote_tarballs.get_all remote_tarballs ~dst
   ;;
 
   let make_current t =
     let current_path = current_path () in
-    if Sys.file_exists current_path then Unix.unlink current_path;
-    Unix.symlink (dir t) current_path
+    if File_ops.exists current_path then File_ops.rm_rf current_path;
+    let src = dir t in
+    let dst = current_path in
+    match Sys.win32 with
+    | true -> File_ops.cp_rf ~src ~dst
+    | false -> File_ops.symlink ~src ~dst
   ;;
 
-  let is_installed t = Sys.file_exists (dir t)
+  let is_installed t = File_ops.exists (dir t)
   let latest = root_5_3_1
 
   let conv =
@@ -302,10 +340,10 @@ module Shell = struct
       | None -> current_path ()
       | Some root -> Root.dir root
     in
-    let bin_dir = Filename.concat base_dir "bin" in
+    let bin_dir = Path.concat base_dir (Path.relative "bin") in
     match t with
-    | Bash | Zsh -> sprintf "export PATH=\"%s:$PATH\"" bin_dir
-    | Fish -> sprintf "fish_add_path --prepend --path \"%s\"" bin_dir
+    | Bash | Zsh -> sprintf "export PATH=\"%s:$PATH\"" (Path.to_filename bin_dir)
+    | Fish -> sprintf "fish_add_path --prepend --path \"%s\"" (Path.to_filename bin_dir)
   ;;
 end
 
@@ -313,7 +351,7 @@ let get =
   let open Arg_parser in
   let+ root = named_with_default [ "r"; "root" ] Root.conv ~default:Root.latest in
   Root.get root;
-  if not (Sys.file_exists (current_path ()))
+  if not (Alice_io.File_ops.exists (current_path ()))
   then (
     Alice_print.pp_println
       (Pp.textf "No current root was found so making %s the current root." root.name);

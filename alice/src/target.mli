@@ -4,6 +4,7 @@ module Os : sig
   type t =
     | Macos
     | Linux
+    | Windows
 
   val to_dyn : t -> Dyn.t
 end

@@ -82,7 +82,7 @@ let run ~src_dir ~out_dir traverse =
       (match Traverse.origin traverse with
        | Source path ->
          Log.debug [ Pp.textf "copying source file: %s" (Path.to_filename path) ];
-         File_ops.cp ~src:(Path.concat src_dir path) ~dst:Path.current_dir
+         File_ops.cp_f ~src:(Path.concat src_dir path) ~dst:Path.current_dir
        | Build (build : Build_plan.Build.t) ->
          Path.Relative.Set.iter build.inputs ~f:(fun path ->
            if not (File_ops.exists path)

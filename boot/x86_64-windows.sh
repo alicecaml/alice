@@ -5,7 +5,7 @@
 
 set -eux
 
-ROOT="$1"
+ROOT="$HOMEPATH/.alice"
 
 BASE_URL="https://s3.g.s4.mega.io/ycsnsngpe2elgjdd2uzbdpyj6s54q5itlvy6g/alice/tools/5.3.1"
 OCAML="ocaml-5.3.1+relocatable-x86_64-windows"
@@ -29,10 +29,11 @@ tar xf "$OCAML.tar.gz"
 tar xf "$OCAMLLSP.tar.gz"
 tar xf "$OCAMLFORMAT.tar.gz"
 
-DIR="$ROOT/roots/5.3.1"
+DIR="$ROOT/roots/5.3.1+relocatable"
 mkdir -p "$DIR"
 cp -rvf $OCAML/* "$DIR"
 cp -rvf $OCAMLLSP/* "$DIR"
 cp -rvf $OCAMLFORMAT/* "$DIR"
 
+rm -rf "$ROOT/current"
 ln -sf "$DIR" "$ROOT/current"

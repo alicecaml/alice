@@ -105,7 +105,13 @@ let recursive_move_between_dirs ~src ~dst =
     recursive_move_hier_between_dirs ~src_hier ~dst
 ;;
 
-let cp ~src ~dst = Fileutils.cp [ Path.to_filename src ] (Path.to_filename dst)
+let cp_rf ~src ~dst =
+  Fileutils.cp ~recurse:true ~force:Force [ Path.to_filename src ] (Path.to_filename dst)
+;;
+
+let cp_f ~src ~dst =
+  Fileutils.cp ~recurse:false ~force:Force [ Path.to_filename src ] (Path.to_filename dst)
+;;
 
 let with_working_dir path ~f =
   let original = Sys.getcwd () in
@@ -128,3 +134,5 @@ let mtime path =
   let stats = Unix.stat (Path.to_filename path) in
   stats.st_mtime
 ;;
+
+let symlink ~src ~dst = Unix.symlink (Path.to_filename src) (Path.to_filename dst)
