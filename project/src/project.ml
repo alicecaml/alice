@@ -93,7 +93,20 @@ let run_ocaml_exe ~ctx t ~args =
   let exe_name = package_name t in
   let exe_path = Path.concat (out_dir t) exe_name in
   let args = Path.to_filename exe_name :: args in
-  Unix.execv (Path.to_filename exe_path) (Array.of_list args)
+  let exe_filename = Path.to_filename exe_path in
+  match Alice_io.Process.Blocking.run exe_filename ~args with
+  | Error `Prog_not_available ->
+    Alice_print.pp_eprintln
+      (Pp.textf
+         "The executable %s does not exist. Alice was supposed to create that file. This \
+          is a bug in Alice."
+         exe_filename);
+    exit 1
+  | Ok (Exited code) -> exit code
+  | Ok (Signaled signal | Stopped signal) ->
+    Alice_print.pp_println
+      (Pp.textf "The executable %s was stopped by a signal (%d)." exe_filename signal);
+    exit 0
 ;;
 
 let clean t = File_ops.rm_rf (out_dir t)

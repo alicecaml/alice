@@ -92,7 +92,13 @@ let run ~src_dir ~out_dir traverse =
                 :: panic_context ()));
          List.iter build.commands ~f:(fun command ->
            Log.debug [ Pp.textf "running build command: %s" (Command.to_string command) ];
-           let status = Alice_io.Process.Blocking.run_command command |> Result.get_ok in
+           let status =
+             match Alice_io.Process.Blocking.run_command command with
+             | Ok status -> status
+             | Error `Prog_not_available ->
+               Alice_print.pp_eprintln (Pp.textf "Can't find program: %s" command.prog);
+               exit 1
+           in
            match status with
            | Exited 0 -> ()
            | _ ->

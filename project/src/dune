@@ -1,4 +1,11 @@
 (library
  (public_name alice_project)
- (libraries alice_stdlib alice_error alice_hierarchy alice_policy
-  alice_manifest alice_scheduler alice_io))
+ (libraries
+  alice_stdlib
+  alice_error
+  alice_hierarchy
+  alice_policy
+  alice_manifest
+  alice_scheduler
+  alice_io))
+

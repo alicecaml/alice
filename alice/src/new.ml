@@ -6,7 +6,7 @@ open Climate
 let new_ =
   let open Arg_parser in
   let+ () = Common.set_log_level_from_verbose_flag
-  and+ name = pos_req 0 string ~doc:"Name of the project"
+  and+ name = pos_req 0 string ~doc:"Name of the project" ~value_name:"NAME"
   and+ path =
     Common.parse_absolute_path
       ~doc:"Initialize the new project in this directory (must not already exist)"
@@ -27,7 +27,14 @@ let new_ =
     | true, true ->
       Alice_error.user_error [ Pp.text "Can't specify both --exe and --lib" ]
   in
-  Project.new_ocaml package_name path kind
+  let kind_string =
+    match kind with
+    | `Exe -> "executable"
+    | `Lib -> "library"
+  in
+  let () = Project.new_ocaml package_name path kind in
+  Alice_print.pp_println
+    (Pp.textf "Created new %s project in %s" kind_string (Path.to_filename path))
 ;;
 
 let subcommand =

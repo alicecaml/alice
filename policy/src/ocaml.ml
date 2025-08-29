@@ -14,7 +14,7 @@ module Ctx = struct
   let release = { optimization_level = Some `O2; debug = false }
 
   let ocamlopt_command t ~args =
-    let prog = "ocamlopt.opt" in
+    let prog = if Sys.win32 then "ocamlopt.opt.exe" else "ocamlopt.opt" in
     let args =
       (if t.debug then [ "-g" ] else [])
       @ (match t.optimization_level with
@@ -150,10 +150,7 @@ module Plan = struct
     }
 
   let create ctx ~name ~exe_root_ml ~lib_root_ml ~src_dir =
-    let exe_name =
-      (* TODO: On windows the name must have the extension .exe *)
-      name
-    in
+    let exe_name = if Sys.win32 then Path.add_extension name ~ext:".exe" else name in
     let lib_name_cmxa = Path.add_extension name ~ext:".cmxa" in
     let lib_rules ~lib_root_ml =
       rules ctx ~name:lib_name_cmxa ~root_ml:lib_root_ml ~src_dir `Lib

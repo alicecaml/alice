@@ -18,4 +18,10 @@ let of_string_res s =
   Semantic_version.of_string_res s |> Result.map ~f:(fun version -> Exact version)
 ;;
 
-let of_string s = of_string_res s |> Result.get_ok
+let of_string s =
+  match of_string_res s with
+  | Ok t -> t
+  | Error e ->
+    Alice_print.pps_eprintln e;
+    exit 1
+;;
