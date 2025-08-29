@@ -36,10 +36,7 @@ let src_dir t = Path.concat t.root Paths.src
 let out_dir t = Path.concat t.root Paths.out
 let contains_exe t = File_ops.exists (Path.concat (src_dir t) Paths.exe_root_ml)
 let contains_lib t = File_ops.exists (Path.concat (src_dir t) Paths.lib_root_ml)
-
-let package_name t =
-  Alice_manifest.Package_name.to_string t.manifest.package.name |> Path.relative
-;;
+let package_name t = Alice_manifest.Package_name.to_string t.manifest.package.name
 
 let read_src_dir t =
   let src_dir = src_dir t in
@@ -66,7 +63,7 @@ let ocaml_plan ~ctx ~exe_only t =
   let src_dir = read_src_dir t in
   Alice_policy.Ocaml.Plan.create
     ctx
-    ~name:(package_name t)
+    ~name:(package_name t |> Path.relative)
     ~exe_root_ml
     ~lib_root_ml
     ~src_dir
@@ -76,7 +73,15 @@ let run_traverse t ~traverse =
   Alice_scheduler.Sequential.run ~src_dir:(src_dir t) ~out_dir:(out_dir t) traverse
 ;;
 
+let compiling_message t =
+  let package = t.manifest.package in
+  let name_string = Alice_manifest.Package_name.to_string package.name in
+  let version_string = Alice_manifest.Semantic_version.to_string package.version in
+  Pp.textf "Compiling %s v%s" name_string version_string
+;;
+
 let build_ocaml ~ctx t =
+  Alice_print.pp_println (compiling_message t);
   let ocaml_plan = ocaml_plan ~ctx ~exe_only:false t in
   if contains_lib t
   then run_traverse t ~traverse:(Alice_policy.Ocaml.Plan.traverse_lib ocaml_plan);
@@ -89,11 +94,23 @@ let run_ocaml_exe ~ctx t ~args =
    | true -> ()
    | false -> panic [ Pp.text "Cannot run project as it lacks an executable." ]);
   let ocaml_plan = ocaml_plan ~ctx ~exe_only:true t in
-  run_traverse t ~traverse:(Alice_policy.Ocaml.Plan.traverse_exe ocaml_plan);
-  let exe_name = package_name t in
+  Alice_print.pp_println (compiling_message t);
+  let traverse = Alice_policy.Ocaml.Plan.traverse_exe ocaml_plan in
+  run_traverse t ~traverse;
+  let exe_name =
+    match
+      Path.Relative.Set.to_list (Alice_engine.Build_plan.Traverse.outputs traverse)
+    with
+    | [ exe_name ] -> exe_name
+    | _ ->
+      (* This should never happen but let's try to handle it anyway. *)
+      let exe_name = package_name t |> Path.relative in
+      if Sys.win32 then Path.add_extension exe_name ~ext:".exe" else exe_name
+  in
   let exe_path = Path.concat (out_dir t) exe_name in
   let args = Path.to_filename exe_name :: args in
   let exe_filename = Path.to_filename exe_path in
+  Alice_print.pps_println [ Pp.textf "Running %s" exe_filename; Pp.newline ];
   match Alice_io.Process.Blocking.run exe_filename ~args with
   | Error `Prog_not_available ->
     Alice_print.pp_eprintln
