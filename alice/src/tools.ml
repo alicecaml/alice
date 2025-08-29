@@ -228,15 +228,6 @@ module Remote_tarballs = struct
   let get_all t ~dst = List.iter (all t) ~f:(fun rt -> Remote_tarball.get rt ~dst)
 end
 
-let xdg () = Alice_io.Xdg.create ()
-
-let base_dir () =
-  Path.concat (Xdg.home_dir (xdg ()) |> Path.absolute) (Path.relative ".alice")
-;;
-
-let roots_dir () = Path.concat (base_dir ()) (Path.relative "roots")
-let current_path () = Path.concat (base_dir ()) (Path.relative "current")
-
 module Root = struct
   open Alice_io
 
@@ -267,7 +258,7 @@ module Root = struct
     Target.Map.find target t.remote_tarballs_by_target
   ;;
 
-  let dir { name; _ } = Path.concat (roots_dir ()) (Path.relative name)
+  let dir { name; _ } = Path.concat (Alice_root.roots_dir ()) (Path.relative name)
 
   let get t =
     let target = Target.poll () in
@@ -278,7 +269,7 @@ module Root = struct
   ;;
 
   let make_current t =
-    let current_path = current_path () in
+    let current_path = Alice_root.current () in
     if File_ops.exists current_path then File_ops.rm_rf current_path;
     let src = dir t in
     let dst = current_path in
@@ -295,7 +286,7 @@ module Root = struct
     enum
       ~eq:(fun a b -> String.equal a.name b.name)
       ~default_value_name:"ROOT"
-      [ "5.3.1", root_5_3_1 ]
+      [ root_5_3_1.name, root_5_3_1 ]
   ;;
 end
 
@@ -335,12 +326,11 @@ module Shell = struct
   ;;
 
   let update_path t ~root =
-    let base_dir =
+    let bin_dir =
       match root with
-      | None -> current_path ()
-      | Some root -> Root.dir root
+      | None -> Alice_root.current_bin ()
+      | Some root -> Path.concat (Root.dir root) (Path.relative "bin")
     in
-    let bin_dir = Path.concat base_dir (Path.relative "bin") in
     match t with
     | Bash | Zsh -> sprintf "export PATH=\"%s:$PATH\"" (Path.to_filename bin_dir)
     | Fish -> sprintf "fish_add_path --prepend --path \"%s\"" (Path.to_filename bin_dir)
@@ -351,7 +341,7 @@ let get =
   let open Arg_parser in
   let+ root = named_with_default [ "r"; "root" ] Root.conv ~default:Root.latest in
   Root.get root;
-  if not (Alice_io.File_ops.exists (current_path ()))
+  if not (Alice_io.File_ops.exists (Alice_root.current ()))
   then (
     Alice_print.pp_println
       (Pp.textf "No current root was found so making %s the current root." root.name);

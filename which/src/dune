@@ -1,0 +1,3 @@
+(library
+ (public_name alice_which)
+ (libraries alice_stdlib alice_hierarchy alice_io alice_log alice_root))

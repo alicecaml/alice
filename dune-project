@@ -58,6 +58,19 @@
  (depends ocaml))
 
 (package
+ (name alice_root)
+ (depends
+  ocaml
+  (xdg
+   (and
+    (>= 3)
+    (< 4)))))
+
+(package
+ (name alice_which)
+ (depends ocaml))
+
+(package
  (name alice_stdlib)
  (depends
   ocaml

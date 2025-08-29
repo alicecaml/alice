@@ -1,4 +1,9 @@
 (library
  (public_name alice_policy)
- (libraries alice_engine alice_stdlib alice_hierarchy alice_io
+ (libraries
+  alice_engine
+  alice_stdlib
+  alice_hierarchy
+  alice_io
+  alice_which
   alice_ocamldep))

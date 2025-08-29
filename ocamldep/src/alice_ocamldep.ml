@@ -2,7 +2,7 @@ open! Alice_stdlib
 open Alice_hierarchy
 open Alice_error
 
-let exe_name () = if Sys.win32 then "ocamldep.opt.exe" else "ocamldep.opt"
+let exe_name () = Alice_which.ocamldep ()
 let command args = Command.create (exe_name ()) ~args
 
 let run_lines args =

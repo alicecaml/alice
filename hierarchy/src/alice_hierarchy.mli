@@ -41,10 +41,12 @@ module Path : sig
   end
 
   module Either : sig
-    type t =
-      [ `Absolute of Absolute.t
-      | `Relative of Relative.t
-      ]
+    include
+      S
+      with type t =
+        [ `Absolute of Absolute.t
+        | `Relative of Relative.t
+        ]
 
     val with_ : t -> f:'a with_path -> 'a
   end
@@ -76,6 +78,7 @@ module Path : sig
 
   val dirname : 'a t -> 'a t
   val match_ : 'a t -> absolute:(absolute t -> 'b) -> relative:(relative t -> 'b) -> 'b
+  val to_either : 'a t -> Either.t
 end
 
 module File : sig

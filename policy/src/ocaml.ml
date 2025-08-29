@@ -14,7 +14,7 @@ module Ctx = struct
   let release = { optimization_level = Some `O2; debug = false }
 
   let ocamlopt_command t ~args =
-    let prog = if Sys.win32 then "ocamlopt.opt.exe" else "ocamlopt.opt" in
+    let prog = Alice_which.ocamlopt () in
     let args =
       (if t.debug then [ "-g" ] else [])
       @ (match t.optimization_level with

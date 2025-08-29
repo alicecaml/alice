@@ -112,6 +112,7 @@ module Path = struct
       val to_dyn : t -> Dyn.t
       val to_filename : t -> Filename.t
       val of_filename_internal : Filename.t -> t
+      val map_filename : t -> f:(Filename.t -> Filename.t) -> t
     end) =
   struct
     include T
@@ -133,29 +134,63 @@ module Path = struct
     let dirname t = map_filename t ~f:Filename.dirname
   end
 
-  module Absolute = Make (struct
-      type nonrec t = absolute t
+  module Absolute = struct
+    include Make (struct
+        type nonrec t = absolute t
 
-      let compare (Absolute a) (Absolute b) = Filename.compare a b
-      let to_dyn (Absolute t) = Filename.to_dyn t
-      let to_filename (Absolute t) = t
-      let of_filename_internal t = Absolute t
-    end)
+        let compare (Absolute a) (Absolute b) = Filename.compare a b
+        let to_dyn (Absolute t) = Filename.to_dyn t
+        let to_filename (Absolute t) = t
+        let of_filename_internal t = Absolute t
+        let map_filename = map_filename
+      end)
+  end
 
-  module Relative = Make (struct
-      type nonrec t = relative t
+  module Relative = struct
+    include Make (struct
+        type nonrec t = relative t
 
-      let compare (Relative a) (Relative b) = Filename.compare a b
-      let to_dyn (Relative t) = Filename.to_dyn t
-      let to_filename (Relative t) = t
-      let of_filename_internal t = Relative t
-    end)
+        let compare (Relative a) (Relative b) = Filename.compare a b
+        let to_dyn (Relative t) = Filename.to_dyn t
+        let to_filename (Relative t) = t
+        let of_filename_internal t = Relative t
+        let map_filename = map_filename
+      end)
+  end
 
   module Either = struct
-    type t =
-      [ `Absolute of Absolute.t
-      | `Relative of Relative.t
-      ]
+    include Make (struct
+        type t =
+          [ `Absolute of Absolute.t
+          | `Relative of Relative.t
+          ]
+
+        let compare a b =
+          match a, b with
+          | `Absolute a, `Absolute b -> Absolute.compare a b
+          | `Relative a, `Relative b -> Relative.compare a b
+          | `Absolute _, `Relative _ -> -1
+          | `Relative _, `Absolute _ -> 1
+        ;;
+
+        let to_dyn = function
+          | `Absolute absolute -> Dyn.variant "Absolute" [ Absolute.to_dyn absolute ]
+          | `Relative relative -> Dyn.variant "Relative" [ Relative.to_dyn relative ]
+        ;;
+
+        let to_filename = function
+          | `Absolute absolute -> Absolute.to_filename absolute
+          | `Relative relative -> Relative.to_filename relative
+        ;;
+
+        let of_filename_internal = of_filename
+
+        let map_filename t ~f =
+          match t with
+          | `Absolute absolute -> `Absolute (Absolute.map_filename absolute ~f)
+          | `Relative relative -> `Relative (Relative.map_filename relative ~f)
+        ;;
+      end)
 
     let with_ t ~f =
       match t with
@@ -165,6 +200,11 @@ module Path = struct
   end
 
   let with_filename filename ~f = of_filename filename |> Either.with_ ~f
+
+  let to_either : type a. a t -> Either.t = function
+    | Absolute absolute -> `Absolute (Absolute absolute)
+    | Relative relative -> `Relative (Relative relative)
+  ;;
 end
 
 module File = struct
