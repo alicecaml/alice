@@ -1,5 +1,7 @@
 # Alice the Caml - An OCaml build system experiment
 
+[![test](https://github.com/alicecaml/alice/actions/workflows/test.yml/badge.svg)](https://github.com/alicecaml/alice/actions/workflows/test.yml)
+
 The goal of this project is to explore a radically different approach to OCaml
 build systems and package management, breaking from the Opam/Dune-based ecosystem
 completely. No attempt will be made to keep compatibility with Opam packages,
