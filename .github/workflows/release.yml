@@ -66,3 +66,57 @@ jobs:
         with:
           allowUpdates: true
           artifacts: "*.tar.gz"
+
+  test-unix:
+    name: Build for ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: macos-13
+            name: x86_64-macos
+          - os: macos-14
+            name: aarch64-macos
+          - os: ubuntu-latest
+            name: x86_64-linux-gnu
+    steps:
+      # Checkout the project
+      - uses: actions/checkout@v4
+
+      - if: matrix.os == 'macos-13'
+        uses: tecolicom/actions-use-homebrew-tools@v1
+        with:
+          tools: coreutils
+
+      - if: matrix.os == 'macos-14'
+        uses: tecolicom/actions-use-homebrew-tools@v1
+        with:
+          tools: coreutils
+
+      # Set up local root directory for installing tools into
+      - run: echo $HOME/.local/bin >> $GITHUB_PATH
+
+      # Install Dune
+      - run: curl -fsSL https://github.com/ocaml-dune/dune-bin-install/releases/download/v2/install.sh | sh -s 3.20.1 --install-root $HOME/.local --no-update-shell-config
+      - run: which dune
+      - run: dune --version
+
+      # Install OCaml
+      - run: echo $HOME/.alice/current/bin >> $GITHUB_PATH
+      - run: boot/${{ matrix.name }}.sh
+      - run: which ocamlopt.opt
+
+      # Build the project
+      - run: echo DUNE_CONFIG__PKG_BUILD_PROGRESS=enabled >> $GITHUB_ENV
+      - run: dune build
+
+      # Release a tarball
+      - run: echo ALICE_OUT_NAME=alice-${{ github.ref_name }}-${{ matrix.name }} >> $GITHUB_ENV
+      - run: mkdir "$ALICE_OUT_NAME"
+      - run: cp -rlf _build/install/default/* "$ALICE_OUT_NAME"
+      - run: tar czf "$ALICE_OUT_NAME.tar.gz" "$ALICE_OUT_NAME"
+      - uses: ncipollo/release-action@v1
+        with:
+          allowUpdates: true
+          artifacts: "*.tar.gz"
+
