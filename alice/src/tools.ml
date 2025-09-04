@@ -226,6 +226,7 @@ module Remote_tarballs = struct
   ;;
 
   let get_all t ~dst = List.iter (all t) ~f:(fun rt -> Remote_tarball.get rt ~dst)
+  let get_compiler { compiler; _ } ~dst = Remote_tarball.get compiler ~dst
 end
 
 module Root = struct
@@ -260,12 +261,14 @@ module Root = struct
 
   let dir { name; _ } = Path.concat (Alice_root.roots_dir ()) (Path.relative name)
 
-  let get t =
+  let get t ~compiler_only =
     let target = Target.poll () in
     let remote_tarballs = choose_remote_tarballs t ~target in
     let dst = dir t in
     Alice_io.File_ops.mkdir_p dst;
-    Remote_tarballs.get_all remote_tarballs ~dst
+    if compiler_only
+    then Remote_tarballs.get_compiler remote_tarballs ~dst
+    else Remote_tarballs.get_all remote_tarballs ~dst
   ;;
 
   let make_current t =
@@ -340,8 +343,17 @@ end
 let get =
   let open Arg_parser in
   let+ () = Common.set_globals_from_flags
-  and+ root = named_with_default [ "r"; "root" ] Root.conv ~default:Root.latest in
-  Root.get root;
+  and+ root =
+    let default = Root.latest in
+    named_with_default
+      [ "r"; "root" ]
+      Root.conv
+      ~default
+      ~doc:(sprintf "Version to install. [default = %s]" default.name)
+  and+ compiler_only =
+    flag [ "c"; "compiler-only" ] ~doc:"Only install the OCaml compiler."
+  in
+  Root.get root ~compiler_only;
   if not (Alice_io.File_ops.exists (Alice_root.current ()))
   then (
     let open Alice_print.Ui in
