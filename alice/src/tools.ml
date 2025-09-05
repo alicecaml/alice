@@ -397,6 +397,30 @@ let change =
       ]
 ;;
 
+let exec =
+  let open Arg_parser in
+  let+ () = Common.set_globals_from_flags
+  and+ prog = pos_req 0 string ~value_name:"PROG" ~doc:"Program to run."
+  and+ args =
+    pos_right 0 string ~value_name:"ARGS" ~doc:"Arguments to pass to program."
+  in
+  let open Alice_print.Ui in
+  let open Alice_env in
+  let env = Env.current () in
+  let path_variable = Path_variable.get_or_empty env in
+  let augmented_path_variable = `Absolute (Alice_root.current_bin ()) :: path_variable in
+  let augmented_env = Path_variable.set augmented_path_variable env in
+  match Alice_io.Process.Blocking.run ~env:(`Env augmented_env) prog ~args with
+  | Error `Prog_not_available ->
+    Alice_error.panic [ Pp.textf "The executable %s does not exist." prog ]
+  | Ok (Exited code) -> exit code
+  | Ok (Signaled signal | Stopped signal) ->
+    println
+      (raw_message
+         (sprintf "The executable %s was stopped by a signal (%d)." prog signal));
+    exit 0
+;;
+
 let subcommand =
   let open Command in
   subcommand
@@ -406,5 +430,6 @@ let subcommand =
        [ subcommand "get" (singleton get)
        ; subcommand "env" (singleton env)
        ; subcommand "change" (singleton change)
+       ; subcommand "exec" (singleton exec)
        ])
 ;;

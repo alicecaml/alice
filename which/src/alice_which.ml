@@ -1,21 +1,6 @@
 open! Alice_stdlib
 open Alice_hierarchy
-
-module Path_variable = struct
-  let name = "PATH"
-  let delimiter = if Sys.win32 then ';' else ':'
-  let get_raw ?(name = name) () = Sys.getenv_opt name
-
-  let parse raw =
-    String.split_on_char ~sep:delimiter raw |> List.filter ~f:(Fun.negate String.is_empty)
-  ;;
-
-  let get ?(name = name) () =
-    match get_raw ~name () with
-    | None -> Error (`Variable_not_defined name)
-    | Some raw -> Ok (List.map (parse raw) ~f:Path.of_filename)
-  ;;
-end
+open Alice_env
 
 let find_in_search_path exe_name search_paths =
   List.find_map
@@ -48,7 +33,7 @@ let which exe_name =
     else exe_name
   in
   let search_paths =
-    match Path_variable.get () with
+    match Path_variable.get_result (Env.current ()) with
     | Ok search_paths -> search_paths
     | Error (`Variable_not_defined name) ->
       Alice_log.warn

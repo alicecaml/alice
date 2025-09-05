@@ -12,5 +12,6 @@
   alice_project
   alice_log
   alice_root
+  alice_env
   climate
   sha))
