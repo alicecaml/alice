@@ -1,0 +1,18 @@
+(version 0.8.3)
+
+(build
+ (all_platforms
+  ((action
+    (progn
+     (when %{pkg-self:dev} (run dune subst))
+     (run dune build -p %{pkg-self:name} -j %{jobs} @install))))))
+
+(depends
+ (all_platforms
+  (dune ocaml)))
+
+(source
+ (fetch
+  (url https://github.com/gridbugs/climate/archive/refs/tags/0.8.3.tar.gz)
+  (checksum
+   sha256=1137970c8a508c145c41166887737d28aecefe6264c51af7c2dfc4aaf5b651e7)))
