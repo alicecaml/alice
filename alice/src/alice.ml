@@ -1,7 +1,7 @@
 open Climate
 module Tools = Tools
 
-let () =
+let command =
   let open Command in
   group
     ~doc:"Alice is a build system for OCaml projects."
@@ -12,16 +12,10 @@ let () =
     ; Tools.subcommand
     ; Run.subcommand
     ; subcommand "help" help
-    ; subcommand
-        "internal"
-        (group
-           ~doc:"Internal commands."
-           [ subcommand
-               "completions"
-               (group
-                  ~doc:"Generate a completion script for Alice."
-                  [ subcommand "bash" print_completion_script_bash ])
-           ])
+    ; Internal.subcommand
     ]
-  |> run ~program_name:(Literal "alice")
 ;;
+
+Internal.command_for_completion_script := Some command
+
+let () = Command.run command ~program_name:(Literal "alice")
