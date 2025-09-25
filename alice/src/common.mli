@@ -3,6 +3,8 @@ open Alice_project
 open Alice_hierarchy
 open Climate
 
+(** [parse_absolute_path ?dac names] returns a named argument parser of
+    absolute path *)
 val parse_absolute_path
   :  ?doc:string
   -> string list

@@ -50,7 +50,11 @@ module Remote_tarball = struct
       println
         (raw_message
            ~style:Styles.success
-           (sprintf "Successfully installed %s.%s!\n" name version)))
+           (sprintf
+              "Successfully installed %s.%s to '%s'.n"
+              name
+              version
+              (Path.to_filename dst))))
   ;;
 end
 
@@ -261,10 +265,14 @@ module Root = struct
 
   let dir { name; _ } = Path.concat (Alice_root.roots_dir ()) (Path.relative name)
 
-  let get t ~compiler_only =
+  let install t ~compiler_only ~global =
     let target = Target.poll () in
     let remote_tarballs = choose_remote_tarballs t ~target in
-    let dst = dir t in
+    let dst =
+      match global with
+      | Some global -> global
+      | None -> dir t
+    in
     Alice_io.File_ops.mkdir_p dst;
     if compiler_only
     then Remote_tarballs.get_compiler remote_tarballs ~dst
@@ -340,7 +348,7 @@ module Shell = struct
   ;;
 end
 
-let get =
+let install =
   let open Arg_parser in
   let+ () = Common.set_globals_from_flags
   and+ root =
@@ -352,8 +360,12 @@ let get =
       ~doc:(sprintf "Version to install. [default = %s]" default.name)
   and+ compiler_only =
     flag [ "c"; "compiler-only" ] ~doc:"Only install the OCaml compiler."
+  and+ global =
+    Common.parse_absolute_path
+      [ "g"; "global" ]
+      ~doc:"Install tools to this directory rather than '~/.alice'."
   in
-  Root.get root ~compiler_only;
+  Root.install root ~compiler_only ~global;
   if not (Alice_io.File_ops.exists (Alice_root.current ()))
   then (
     let open Alice_print.Ui in
@@ -427,7 +439,7 @@ let subcommand =
     "tools"
     (group
        ~doc:"Manage tools for building and developing OCaml projects."
-       [ subcommand "get" (singleton get)
+       [ subcommand "install" (singleton install)
        ; subcommand "env" (singleton env)
        ; subcommand "change" (singleton change)
        ; subcommand "exec" (singleton exec)

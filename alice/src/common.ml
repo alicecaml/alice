@@ -20,7 +20,7 @@ let parse_manifest_path_opt =
 
 let parse_absolute_path ?doc names =
   let open Arg_parser in
-  let+ path = named_opt names file ?doc in
+  let+ path = named_opt names file ?doc ~value_name:"PATH" in
   Option.map path ~f:(fun path_str ->
     match Path.of_filename path_str with
     | `Absolute p -> p
