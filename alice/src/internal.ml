@@ -1,6 +1,7 @@
 open! Alice_stdlib
 open Climate
 open Alice_hierarchy
+open Alice_print.Ui
 
 module Env_script = struct
   let posix_src =
@@ -75,7 +76,12 @@ end|}
     make_env_file "env.bash" bash_src;
     make_env_file "env.fish" fish_src;
     make_env_file "env.sh" posix_src;
-    make_env_file "env.zsh" zsh_src
+    make_env_file "env.zsh" zsh_src;
+    println
+      (raw_message
+         (sprintf
+            "Installed env scripts to '%s'."
+            (Path.to_filename (Alice_root.env_dir ()))))
   ;;
 end
 
@@ -107,13 +113,18 @@ module Completion_script = struct
         (Path.concat (Alice_root.completions_dir ()) (Path.relative filename))
         text
     in
-    make_completion_file "bash.sh" (bash_src ())
+    make_completion_file "bash.sh" (bash_src ());
+    println
+      (raw_message
+         (sprintf
+            "Installed completion scripts to '%s'."
+            (Path.to_filename (Alice_root.completions_dir ()))))
   ;;
 end
 
 let setup =
   let open Arg_parser in
-  let+ () = unit in
+  let+ () = Common.set_globals_from_flags in
   Env_script.make_all ();
   Completion_script.make_all ()
 ;;
