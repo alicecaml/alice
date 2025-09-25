@@ -29,7 +29,7 @@ WORKDIR alice
 
 RUN awk '{ print } /\(executable/ { print " (link_flags (:standard -cclib -static))" }' alice/src/dune > /tmp/alice_static_dune && cp /tmp/alice_static_dune alice/src/dune
 RUN dune build
-RUN git describe --exact-match --tags || git rev-parse HEAD | cat > version.txt
+RUN (git describe --exact-match --tags || git rev-parse HEAD) | cat > version.txt
 RUN uname -m > arch.txt
 RUN echo alice-$(cat version.txt)-$(cat arch.txt)-linux-musl-static > name.txt
 RUN cp -rvL _build/install/default $(cat name.txt)

@@ -115,7 +115,10 @@ jobs:
       - run: mkdir "$ALICE_OUT_NAME"
       - run: cp -rlf _build/install/default/* "$ALICE_OUT_NAME"
       - if: matrix.os == 'ubuntu-latest'
-        run: strip "$ALICE_OUT_NAME"/bin/alice
+        run: |
+          chmod a+w "$ALICE_OUT_NAME"/bin/alice
+          strip "$ALICE_OUT_NAME"/bin/alice
+          chmod a-w "$ALICE_OUT_NAME"/bin/alice
       - run: tar czf "$ALICE_OUT_NAME.tar.gz" "$ALICE_OUT_NAME"
       - uses: ncipollo/release-action@v1
         with:
@@ -131,3 +134,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - run: docker buildx build --output type=local,dest=./out -f scripts/build-alice-linux-musl.dockerfile .
+      - uses: ncipollo/release-action@v1
+        with:
+          allowUpdates: true
+          artifacts: "out/*.tar.gz"
