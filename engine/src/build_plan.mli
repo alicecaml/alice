@@ -32,6 +32,9 @@ module Traverse : sig
   val origin : t -> Origin.t
   val outputs : t -> Path.Set.t
   val deps : t -> t list
+
+  (** Returns the graphviz source code for rendering this traversal of the
+      build graph. *)
   val dot : t -> string
 end
 

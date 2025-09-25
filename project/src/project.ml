@@ -21,7 +21,7 @@ module Paths = struct
 
   (* The directory that will be created at the top level of the project
      directory to contain all intermediate and final build artifacts. *)
-  let out = Path.relative "build"
+  let build = Path.relative "build"
 
   (* The file inside the source directory containing the entry point for the
      executable, if the project contains an executable. *)
@@ -33,7 +33,16 @@ module Paths = struct
 end
 
 let src_dir t = Path.concat t.root Paths.src
-let out_dir t = Path.concat t.root Paths.out
+let build_dir t = Path.concat t.root Paths.build
+
+let out_dir t =
+  Path.concat_multi
+    (build_dir t)
+    [ Path.relative "packages"
+    ; Path.relative (Alice_manifest.Package.name_version_string t.manifest.package)
+    ]
+;;
+
 let contains_exe t = File_ops.exists (Path.concat (src_dir t) Paths.exe_root_ml)
 let contains_lib t = File_ops.exists (Path.concat (src_dir t) Paths.lib_root_ml)
 let package_name t = Alice_manifest.Package_name.to_string t.manifest.package.name
@@ -131,7 +140,7 @@ let run_ocaml_exe ~ctx t ~args =
     exit 0
 ;;
 
-let clean t = File_ops.rm_rf (out_dir t)
+let clean t = File_ops.rm_rf (build_dir t)
 
 let dot_ocaml ~ctx t =
   let ocaml_plan = ocaml_plan ~ctx ~exe_only:false t in
@@ -156,7 +165,7 @@ let new_ocaml name path kind =
   File_ops.mkdir_p (Path.concat path Paths.src);
   File_ops.write_text_file
     (Path.concat path (Path.relative ".gitignore"))
-    (Path.to_filename Paths.out);
+    (Path.to_filename Paths.build);
   File_ops.write_text_file
     (Path.concat path (Path.relative manifest_name))
     (Alice_manifest.Project.to_toml_string manifest);

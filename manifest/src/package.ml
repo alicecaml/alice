@@ -12,6 +12,12 @@ let to_dyn { name; version } =
     [ "name", Package_name.to_dyn name; "version", Semantic_version.to_dyn version ]
 ;;
 
+let name_version_string { name; version } =
+  String.concat
+    ~sep:"-"
+    [ Package_name.to_string name; Semantic_version.to_string version ]
+;;
+
 module Keys = struct
   module Key = Toml.Types.Table.Key
 

@@ -80,6 +80,13 @@ module Path = struct
       Filename.concat filename (to_filename rel))
   ;;
 
+  let concat_multi : type a. a t -> relative t list -> a t =
+    fun abs_or_rel rels ->
+    map_filename abs_or_rel ~f:(fun filename ->
+      List.fold_left rels ~init:filename ~f:(fun acc rel ->
+        Filename.concat acc (to_filename rel)))
+  ;;
+
   let chop_prefix_opt ~prefix t =
     Option.map
       (Filename.chop_prefix_opt ~prefix:(to_filename prefix) (to_filename t))

@@ -43,5 +43,5 @@ let new_ =
 
 let subcommand =
   let open Command in
-  subcommand "new" (singleton ~doc:"Create a new alice project." new_)
+  subcommand "new" ~aliases:[ "n" ] (singleton ~doc:"Create a new alice project." new_)
 ;;

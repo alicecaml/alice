@@ -60,6 +60,7 @@ module Path : sig
   val of_filename_checked : 'a Kind.t -> Filename.t -> 'a t
   val current_dir : relative t
   val concat : 'a t -> relative t -> 'a t
+  val concat_multi : 'a t -> relative t list -> 'a t
   val chop_prefix_opt : prefix:'a t -> 'a t -> relative t option
   val chop_prefix : prefix:'a t -> 'a t -> relative t
   val equal : 'a t -> 'a t -> bool
