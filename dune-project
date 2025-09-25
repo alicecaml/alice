@@ -5,10 +5,6 @@
  (depends ocaml climate sha))
 
 (package
- (name alice_demo)
- (depends ocaml))
-
-(package
  (name alice_engine)
  (depends ocaml))
 

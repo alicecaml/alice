@@ -1,5 +1,0 @@
-(executable
- (package alice_demo)
- (public_name alice_demo)
- (libraries alice_policy alice_io alice_engine alice_log alice_scheduler
-  alice_ocamldep))
