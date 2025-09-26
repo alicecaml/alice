@@ -51,7 +51,7 @@ module Remote_tarball = struct
         (raw_message
            ~style:Styles.success
            (sprintf
-              "Successfully installed %s.%s to '%s'.n"
+              "Successfully installed %s.%s to '%s'!\n"
               name
               version
               (Path.to_filename dst))))
