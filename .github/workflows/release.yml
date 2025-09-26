@@ -61,6 +61,9 @@ jobs:
       - run: echo ALICE_OUT_NAME=alice-${{ github.ref_name }}-x86_64-windows >> $env:GITHUB_ENV
       - run: mkdir "$env:ALICE_OUT_NAME"
       - run: Copy-Item -Recurse -Force _build/install/default/* "$env:ALICE_OUT_NAME"
+      - run: |
+        mkdir -p "$env:ALICE_OUT_NAME/share/bash-completion/completions"
+        scripts/generate_minified_bash_completion_script.sh > "$env:ALICE_OUT_NAME/share/bash-completion/completions/alice"
       - run: tar czf "$env:ALICE_OUT_NAME.tar.gz" "$env:ALICE_OUT_NAME"
       - uses: ncipollo/release-action@v1
         with:
@@ -119,6 +122,9 @@ jobs:
           chmod a+w "$ALICE_OUT_NAME"/bin/alice
           strip "$ALICE_OUT_NAME"/bin/alice
           chmod a-w "$ALICE_OUT_NAME"/bin/alice
+      - run: |
+        mkdir -p $ALICE_OUT_NAME/share/bash-completion/completions
+        scripts/generate_minified_bash_completion_script.sh > $ALICE_OUT_NAME/share/bash-completion/completions/alice
       - run: tar czf "$ALICE_OUT_NAME.tar.gz" "$ALICE_OUT_NAME"
       - uses: ncipollo/release-action@v1
         with:
