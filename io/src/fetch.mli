@@ -1,6 +1,6 @@
 open! Alice_stdlib
 open Alice_hierarchy
 
-val curl : url:Url.t -> output_file:_ Path.t -> Command.t
-val wget : url:Url.t -> output_file:_ Path.t -> Command.t
-val fetch : url:Url.t -> output_file:_ Path.t -> unit
+val curl : url:string -> output_file:_ Path.t -> Command.t
+val wget : url:string -> output_file:_ Path.t -> Command.t
+val fetch : url:string -> output_file:_ Path.t -> unit

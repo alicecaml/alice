@@ -22,25 +22,28 @@ module Remote_tarball = struct
   type t =
     { name : string
     ; version : string
-    ; url : Url.t
+    ; url_base : string
+    ; url_file : string
     ; top_level_dir : Path.Relative.t
     ; sha256 : Sha256.t
     }
 
-  let create ~name ~version ~url ~top_level_dir ~sha256 =
+  let create ~name ~version ~url_base ~url_file ~top_level_dir ~sha256 =
     { name
     ; version
-    ; url
+    ; url_base
+    ; url_file
     ; top_level_dir = Path.relative top_level_dir
     ; sha256 = Sha256.of_hex sha256
     }
   ;;
 
-  let get { name; version; url; top_level_dir; sha256 } ~dst =
+  let get { name; version; url_base; url_file; top_level_dir; sha256 } ~dst =
+    let url = String.cat url_base url_file in
     let open Alice_print.Ui in
     Temp_dir.with_ ~prefix:"alice." ~suffix:".tools" ~f:(fun dir ->
       let tarball_file = Path.concat dir (Path.relative (sprintf "%s.tar.gz" name)) in
-      println (verb_message `Fetching (sprintf "%s.%s..." name version));
+      println (verb_message `Fetching (sprintf "%s.%s (%s)..." name version url_file));
       Fetch.fetch ~url ~output_file:tarball_file;
       panic_if_hashes_don't_match tarball_file sha256;
       println (verb_message `Unpacking (sprintf "%s.%s..." name version));
@@ -68,11 +71,9 @@ module Remote_tarballs = struct
   let rt = Remote_tarball.create
   let all { compiler; ocamllsp; ocamlformat } = [ compiler; ocamllsp; ocamlformat ]
 
-  let url_base =
-    "https://s3.g.s4.mega.io/ycsnsngpe2elgjdd2uzbdpyj6s54q5itlvy6g/alice/tools/"
+  let url_base_5_3_1 =
+    "https://s3.g.s4.mega.io/ycsnsngpe2elgjdd2uzbdpyj6s54q5itlvy6g/alice/tools/5.3.1/"
   ;;
-
-  let mk_url rel = String.cat url_base rel
 
   (* Just hard-code these for now to keep things simple! *)
   let aarch64_macos_5_3_1 =
@@ -80,16 +81,17 @@ module Remote_tarballs = struct
         rt
           ~name:"ocaml"
           ~version:"5.3.1+relocatable"
-          ~url:(mk_url "5.3.1/ocaml-5.3.1+relocatable-aarch64-macos.tar.gz")
+          ~url_base:url_base_5_3_1
+          ~url_file:"ocaml-5.3.1+relocatable-aarch64-macos.tar.gz"
           ~top_level_dir:"ocaml-5.3.1+relocatable-aarch64-macos"
           ~sha256:"4e9b683dc39867dcd5452e25a154c2964cd02a992ca4d3da33a46a24b6cb2187"
     ; ocamllsp =
         rt
           ~name:"ocamllsp"
           ~version:"1.22.0"
-          ~url:
-            (mk_url
-               "5.3.1/ocamllsp-1.22.0-built-with-ocaml-5.3.1+relocatable-aarch64-macos.tar.gz")
+          ~url_base:url_base_5_3_1
+          ~url_file:
+            "ocamllsp-1.22.0-built-with-ocaml-5.3.1+relocatable-aarch64-macos.tar.gz"
           ~top_level_dir:
             "ocamllsp-1.22.0-built-with-ocaml-5.3.1+relocatable-aarch64-macos"
           ~sha256:"bbfcd59f655dd96eebfa3864f37fea3d751d557b7773a5445e6f75891bc03cd3"
@@ -97,9 +99,9 @@ module Remote_tarballs = struct
         rt
           ~name:"ocamlformat"
           ~version:"0.27.0"
-          ~url:
-            (mk_url
-               "5.3.1/ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-aarch64-macos.tar.gz")
+          ~url_base:url_base_5_3_1
+          ~url_file:
+            "ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-aarch64-macos.tar.gz"
           ~top_level_dir:
             "ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-aarch64-macos"
           ~sha256:"555d460f1b9577fd74a361eb5675f840ad2a73a4237fb310b8d6bc169c0df90c"
@@ -111,16 +113,17 @@ module Remote_tarballs = struct
         rt
           ~name:"ocaml"
           ~version:"5.3.1+relocatable"
-          ~url:(mk_url "5.3.1/ocaml-5.3.1+relocatable-x86_64-linux-musl-static.tar.gz")
+          ~url_base:url_base_5_3_1
+          ~url_file:"ocaml-5.3.1+relocatable-x86_64-linux-musl-static.tar.gz"
           ~top_level_dir:"ocaml-5.3.1+relocatable-x86_64-linux-musl-static"
           ~sha256:"bc00d5cccc68cc1b4e7058ec53ad0f00846ecd1b1fb4a7b62e45b1b2b0dc9cb5"
     ; ocamllsp =
         rt
           ~name:"ocamllsp"
           ~version:"1.22.0"
-          ~url:
-            (mk_url
-               "5.3.1/ocamllsp-1.22.0-built-with-ocaml-5.3.1+relocatable-x86_64-linux-musl-static.tar.gz")
+          ~url_base:url_base_5_3_1
+          ~url_file:
+            "ocamllsp-1.22.0-built-with-ocaml-5.3.1+relocatable-x86_64-linux-musl-static.tar.gz"
           ~top_level_dir:
             "ocamllsp-1.22.0-built-with-ocaml-5.3.1+relocatable-x86_64-linux-musl-static"
           ~sha256:"a630fe7ce411fae60683ca30066c9d6bc28add4c0053191381745b36e3ccd2db"
@@ -128,9 +131,9 @@ module Remote_tarballs = struct
         rt
           ~name:"ocamlformat"
           ~version:"0.27.0"
-          ~url:
-            (mk_url
-               "5.3.1/ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-x86_64-linux-musl-static.tar.gz")
+          ~url_base:url_base_5_3_1
+          ~url_file:
+            "ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-x86_64-linux-musl-static.tar.gz"
           ~top_level_dir:
             "ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-x86_64-linux-musl-static"
           ~sha256:"440718b9272f17a08f1b7d5a620400acb76d37e82cfc609880ce4d7253fc8d9e"
@@ -142,16 +145,17 @@ module Remote_tarballs = struct
         rt
           ~name:"ocaml"
           ~version:"5.3.1+relocatable"
-          ~url:(mk_url "5.3.1/ocaml-5.3.1+relocatable-x86_64-linux-gnu.tar.gz")
+          ~url_base:url_base_5_3_1
+          ~url_file:"ocaml-5.3.1+relocatable-x86_64-linux-gnu.tar.gz"
           ~top_level_dir:"ocaml-5.3.1+relocatable-x86_64-linux-gnu"
           ~sha256:"3a7d69e8a8650f4527382081f0cfece9edf7ae7e12f3eb38fbb3880549b2ca90"
     ; ocamllsp =
         rt
           ~name:"ocamllsp"
           ~version:"1.22.0"
-          ~url:
-            (mk_url
-               "5.3.1/ocamllsp-1.22.0-built-with-ocaml-5.3.1+relocatable-x86_64-linux-gnu.tar.gz")
+          ~url_base:url_base_5_3_1
+          ~url_file:
+            "ocamllsp-1.22.0-built-with-ocaml-5.3.1+relocatable-x86_64-linux-gnu.tar.gz"
           ~top_level_dir:
             "ocamllsp-1.22.0-built-with-ocaml-5.3.1+relocatable-x86_64-linux-gnu"
           ~sha256:"0a7afeec4d7abf0e4c701ab75076a5ede2d25164260157e70970db4c4592ffab"
@@ -159,9 +163,9 @@ module Remote_tarballs = struct
         rt
           ~name:"ocamlformat"
           ~version:"0.27.0"
-          ~url:
-            (mk_url
-               "5.3.1/ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-x86_64-linux-gnu.tar.gz")
+          ~url_base:url_base_5_3_1
+          ~url_file:
+            "ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-x86_64-linux-gnu.tar.gz"
           ~top_level_dir:
             "ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-x86_64-linux-gnu"
           ~sha256:"05ff3630ff2bed609ba062e85ecfdce0cf905124887cfb8b2544e489d0cbaf53"
@@ -173,25 +177,26 @@ module Remote_tarballs = struct
         rt
           ~name:"ocaml"
           ~version:"5.3.1+relocatable"
-          ~url:(mk_url "5.3.1/ocaml-5.3.1+relocatable-x86_64-macos.tar.gz")
+          ~url_base:url_base_5_3_1
+          ~url_file:"ocaml-5.3.1+relocatable-x86_64-macos.tar.gz"
           ~top_level_dir:"ocaml-5.3.1+relocatable-x86_64-macos"
           ~sha256:"7d09047e53675cedddef604936d304807cfbe0052e4c4b56a2c7c05ac0c83304"
     ; ocamllsp =
         rt
           ~name:"ocamllsp"
           ~version:"1.22.0"
-          ~url:
-            (mk_url
-               "5.3.1/ocamllsp-1.22.0-built-with-ocaml-5.3.1+relocatable-x86_64-macos.tar.gz")
+          ~url_base:url_base_5_3_1
+          ~url_file:
+            "ocamllsp-1.22.0-built-with-ocaml-5.3.1+relocatable-x86_64-macos.tar.gz"
           ~top_level_dir:"ocamllsp-1.22.0-built-with-ocaml-5.3.1+relocatable-x86_64-macos"
           ~sha256:"f5483730fcf29acfdf98a99c561306fd95f8aebaac76a474c418365766365fc4"
     ; ocamlformat =
         rt
           ~name:"ocamlformat"
           ~version:"0.27.0"
-          ~url:
-            (mk_url
-               "5.3.1/ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-x86_64-macos.tar.gz")
+          ~url_base:url_base_5_3_1
+          ~url_file:
+            "ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-x86_64-macos.tar.gz"
           ~top_level_dir:
             "ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-x86_64-macos"
           ~sha256:"c3cdc14d1666e37197c5ff2e8a0a416b765b96b10aabe6b80b5aa3cf6b780339"
@@ -203,16 +208,17 @@ module Remote_tarballs = struct
         rt
           ~name:"ocaml"
           ~version:"5.3.1+relocatable"
-          ~url:(mk_url "5.3.1/ocaml-5.3.1+relocatable-x86_64-windows.tar.gz")
+          ~url_base:url_base_5_3_1
+          ~url_file:"ocaml-5.3.1+relocatable-x86_64-windows.tar.gz"
           ~top_level_dir:"ocaml-5.3.1+relocatable-x86_64-windows"
           ~sha256:"ed4256fa9aeb8ecaa846a58ee70d97d0519ec2878b5c5e2e0895e52a1796198e"
     ; ocamllsp =
         rt
           ~name:"ocamllsp"
           ~version:"1.22.0"
-          ~url:
-            (mk_url
-               "5.3.1/ocamllsp-1.22.0-built-with-ocaml-5.3.1+relocatable-x86_64-windows.tar.gz")
+          ~url_base:url_base_5_3_1
+          ~url_file:
+            "ocamllsp-1.22.0-built-with-ocaml-5.3.1+relocatable-x86_64-windows.tar.gz"
           ~top_level_dir:
             "ocamllsp-1.22.0-built-with-ocaml-5.3.1+relocatable-x86_64-windows"
           ~sha256:"fcce194c359656b0e507f252877f5874e5d0c598711b3079e2b8938991b714fe"
@@ -220,9 +226,9 @@ module Remote_tarballs = struct
         rt
           ~name:"ocamlformat"
           ~version:"0.27.0"
-          ~url:
-            (mk_url
-               "5.3.1/ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-x86_64-windows.tar.gz")
+          ~url_base:url_base_5_3_1
+          ~url_file:
+            "ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-x86_64-windows.tar.gz"
           ~top_level_dir:
             "ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-x86_64-windows"
           ~sha256:"26b385b694cc1c03595ad91baac663a37f1e86faf57848d06e1d2dbc63bfefaf"
