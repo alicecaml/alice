@@ -260,13 +260,22 @@ module Root = struct
   ;;
 
   let choose_remote_tarballs t ~target =
-    Target.Map.find target t.remote_tarballs_by_target
+    match Target.Map.find_opt target t.remote_tarballs_by_target with
+    | Some x -> x
+    | None ->
+      Alice_error.user_error
+        [ Pp.textf
+            "Root %s is not available for platform %s-%s (%sally linked)"
+            t.name
+            (Target.Os.to_string target.os)
+            (Target.Arch.to_string target.arch)
+            (Target.Linked.to_string target.linked)
+        ]
   ;;
 
   let dir { name; _ } = Path.concat (Alice_root.roots_dir ()) (Path.relative name)
 
-  let install t ~compiler_only ~global =
-    let target = Target.poll () in
+  let install t ~target ~compiler_only ~global =
     let remote_tarballs = choose_remote_tarballs t ~target in
     let dst =
       match global with
@@ -364,8 +373,8 @@ let install =
     Common.parse_absolute_path
       [ "g"; "global" ]
       ~doc:"Install tools to this directory rather than '~/.alice'."
-  in
-  Root.install root ~compiler_only ~global;
+  and+ target = Target.arg_parser in
+  Root.install root ~target ~compiler_only ~global;
   if not (Alice_io.File_ops.exists (Alice_root.current ()))
   then (
     let open Alice_print.Ui in

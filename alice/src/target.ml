@@ -1,4 +1,5 @@
 open! Alice_stdlib
+open Climate
 
 module Os = struct
   type t =
@@ -26,6 +27,23 @@ module Os = struct
       | "Darwin" -> Macos
       | "Linux" -> Linux
       | other -> Alice_error.panic [ Pp.textf "Unknown system: %s" other ])
+  ;;
+
+  let all = [ Macos; Linux; Windows ]
+
+  let equal a b =
+    match a, b with
+    | Macos, Macos -> true
+    | Macos, _ -> false
+    | Linux, Linux -> true
+    | Linux, _ -> false
+    | Windows, Windows -> true
+    | Windows, _ -> false
+  ;;
+
+  let conv =
+    let open Arg_parser in
+    enum ~eq:equal ~default_value_name:"OS" (List.map all ~f:(fun x -> to_string x, x))
   ;;
 end
 
@@ -65,6 +83,21 @@ module Arch = struct
       | "x86_64" -> X86_64
       | other -> Alice_error.panic [ Pp.textf "Unknown architecture: %s" other ])
   ;;
+
+  let equal a b =
+    match a, b with
+    | Aarch64, Aarch64 -> true
+    | Aarch64, _ -> false
+    | X86_64, X86_64 -> true
+    | X86_64, _ -> false
+  ;;
+
+  let all = [ Aarch64; X86_64 ]
+
+  let conv =
+    let open Arg_parser in
+    enum ~eq:equal ~default_value_name:"ARCH" (List.map all ~f:(fun x -> to_string x, x))
+  ;;
 end
 
 module Linked = struct
@@ -80,6 +113,24 @@ module Linked = struct
   let to_string = function
     | Dynamic -> "dynamic"
     | Static -> "static"
+  ;;
+
+  let equal a b =
+    match a, b with
+    | Dynamic, Dynamic -> true
+    | Dynamic, _ -> false
+    | Static, Static -> true
+    | Static, _ -> false
+  ;;
+
+  let all = [ Dynamic; Static ]
+
+  let conv =
+    let open Arg_parser in
+    enum
+      ~eq:equal
+      ~default_value_name:"LINKED"
+      (List.map all ~f:(fun x -> to_string x, x))
   ;;
 end
 
@@ -120,4 +171,18 @@ let poll () =
     | _ -> Dynamic
   in
   create ~os ~arch ~linked
+;;
+
+let arg_parser =
+  let open Arg_parser in
+  let+ os = named_opt [ "os" ] Os.conv ~doc:"Choose the operating system name."
+  and+ arch = named_opt [ "arch" ] Arch.conv ~doc:"Choose the CPU architecture."
+  and+ linked =
+    named_opt [ "linked" ] Linked.conv ~doc:"Choose between static and dynamic linking."
+  in
+  let polled = poll () in
+  { os = Option.value os ~default:polled.os
+  ; arch = Option.value arch ~default:polled.arch
+  ; linked = Option.value linked ~default:polled.linked
+  }
 ;;

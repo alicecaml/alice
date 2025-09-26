@@ -1,4 +1,5 @@
 open! Alice_stdlib
+open Climate
 
 module Os : sig
   type t =
@@ -7,6 +8,7 @@ module Os : sig
     | Windows
 
   val to_dyn : t -> Dyn.t
+  val to_string : t -> string
 end
 
 module Arch : sig
@@ -15,6 +17,7 @@ module Arch : sig
     | X86_64
 
   val to_dyn : t -> Dyn.t
+  val to_string : t -> string
 end
 
 module Linked : sig
@@ -23,9 +26,14 @@ module Linked : sig
     | Static
 
   val to_dyn : t -> Dyn.t
+  val to_string : t -> string
 end
 
-type t
+type t =
+  { os : Os.t
+  ; arch : Arch.t
+  ; linked : Linked.t
+  }
 
 val to_dyn : t -> Dyn.t
 val create : os:Os.t -> arch:Arch.t -> linked:Linked.t -> t
@@ -35,3 +43,4 @@ module Set : Set.S with type elt = t
 module Map : Map.S with type key = t
 
 val poll : unit -> t
+val arg_parser : t Arg_parser.t
