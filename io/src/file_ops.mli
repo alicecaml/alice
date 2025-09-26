@@ -20,5 +20,6 @@ val with_working_dir : _ Path.t -> f:(unit -> 'a) -> 'a
 
 val exists : _ Path.t -> bool
 val write_text_file : _ Path.t -> string -> unit
+val read_text_file : _ Path.t -> string
 val mtime : _ Path.t -> float
 val symlink : src:_ Path.t -> dst:_ Path.t -> unit

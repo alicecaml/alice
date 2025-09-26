@@ -130,6 +130,13 @@ let write_text_file path text =
   ()
 ;;
 
+let read_text_file path =
+  let in_channel = In_channel.open_text (Path.to_filename path) in
+  let text = In_channel.input_all in_channel in
+  In_channel.close in_channel;
+  text
+;;
+
 let mtime path =
   let stats = Unix.stat (Path.to_filename path) in
   stats.st_mtime
