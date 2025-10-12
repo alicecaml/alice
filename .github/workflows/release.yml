@@ -50,7 +50,7 @@ jobs:
       - run: alice --help
 
       # Use Alice to bootstrap OCaml environment
-      - run: alice tools get
+      - run: alice tools install
       - run: Get-Command ocamlopt.opt
 
       # Build the project
@@ -96,17 +96,13 @@ jobs:
         with:
           tools: coreutils
 
-      # Set up local root directory for installing tools into
-      - run: echo $HOME/.local/bin >> $GITHUB_PATH
-
       # Install Dune
-      - run: curl -fsSL https://github.com/ocaml-dune/dune-bin-install/releases/download/v2/install.sh | sh -s 3.20.1 --install-root $HOME/.local --no-update-shell-config
+      - run: curl -fsSL https://github.com/ocaml-dune/dune-bin-install/releases/download/v2/install.sh | sh -s -- 3.20.1 --install-root /usr --no-update-shell-config
       - run: which dune
       - run: dune --version
 
-      # Install OCaml
-      - run: echo $HOME/.alice/current/bin >> $GITHUB_PATH
-      - run: boot/${{ matrix.name }}.sh
+      # Install OCaml (via alice)
+      - run: curl -fsSL https://alicecaml.org/install.sh | sh -s -- --global /usr --no-prompt --install-tools --no-update-shell-config
       - run: which ocamlopt.opt
 
       # Build the project

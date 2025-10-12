@@ -9,12 +9,8 @@ RUN apk update && apk add \
     bash \
     ;
 
-# Install the OCaml compiler
-ENV COMPILER_URL="https://s3.g.s4.mega.io/ycsnsngpe2elgjdd2uzbdpyj6s54q5itlvy6g/alice/tools/5.3.1/ocaml-5.3.1+relocatable-x86_64-linux-musl-static.tar.gz"
-RUN wget $COMPILER_URL
-RUN echo bc00d5cccc68cc1b4e7058ec53ad0f00846ecd1b1fb4a7b62e45b1b2b0dc9cb5  ocaml-5.3.1+relocatable-x86_64-linux-musl-static.tar.gz | sha256sum -c
-RUN tar xf ocaml-5.3.1+relocatable-x86_64-linux-musl-static.tar.gz
-RUN cp -r ocaml-5.3.1+relocatable-x86_64-linux-musl-static/* /usr
+# Install the OCaml compiler (via alice)
+RUN curl -fsSL https://alicecaml.org/install.sh | sh -s -- --global /usr --no-prompt --install-tools --no-update-shell-config
 
 # Install Dune
 RUN curl -4fsSL https://github.com/ocaml-dune/dune-bin-install/releases/download/v3/install.sh | sh -s 3.20.2 --install-root /usr --no-update-shell-config
