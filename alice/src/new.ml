@@ -32,11 +32,11 @@ let new_ =
     | `Exe -> "executable"
     | `Lib -> "library"
   in
-  let open Alice_print.Ui in
+  let open Alice_ui in
   println
     (verb_message
        `Creating
-       (sprintf "new %s package %S in %s" kind_string name (Path.to_filename path)));
+       (sprintf "new %s package %S in %s" kind_string name (Alice_ui.path_to_string path)));
   Project.new_ocaml package_name path kind;
   print_newline ()
 ;;

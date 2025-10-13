@@ -12,10 +12,7 @@ let parse_manifest_path_opt =
   named_opt
     [ "manifest-path" ]
     file
-    ~doc:
-      (sprintf
-         "Read project metadata from this file instead of %s."
-         Project.manifest_name)
+    ~doc:(sprintf "Read project metadata from FILE instead of %s." Project.manifest_name)
 ;;
 
 let parse_absolute_path ?doc names =
@@ -92,12 +89,21 @@ let set_log_level_from_verbose_flag =
 let set_print_mode_from_quiet_flag =
   let open Arg_parser in
   let+ quiet = flag [ "quiet"; "q" ] ~doc:"Supress printing of progress messages." in
-  if quiet then Alice_print.Ui.set_mode `Quiet
+  if quiet then Alice_ui.set_mode `Quiet
+;;
+
+let set_normalized_paths_from_flag =
+  let open Arg_parser in
+  let+ normalized_paths =
+    flag [ "normalize-paths" ] ~doc:"Always use '/' as path separator in messages."
+  in
+  if normalized_paths then Alice_ui.set_normalized_paths ()
 ;;
 
 let set_globals_from_flags =
   let open Arg_parser in
   let+ () = set_log_level_from_verbose_flag
-  and+ () = set_print_mode_from_quiet_flag in
+  and+ () = set_print_mode_from_quiet_flag
+  and+ () = set_normalized_paths_from_flag in
   ()
 ;;

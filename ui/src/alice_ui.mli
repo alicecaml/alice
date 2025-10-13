@@ -1,6 +1,12 @@
 open! Alice_stdlib
+open Alice_hierarchy
 
 val set_mode : [ `Standard | `Quiet ] -> unit
+
+(** Indicate that when converting paths to strings with this module's
+    [path_to_string] function, separate path components with "/" rather than
+    the current system's path separator. *)
+val set_normalized_paths : unit -> unit
 
 type message
 
@@ -12,6 +18,7 @@ module Styles : sig
   val success : Ansi_style.t
 end
 
+val path_to_string : _ Path.t -> string
 val raw_message : ?style:Ansi_style.t -> string -> message
 
 type verb =

@@ -40,7 +40,7 @@ module Remote_tarball = struct
 
   let get { name; version; url_base; url_file; top_level_dir; sha256 } ~dst =
     let url = String.cat url_base url_file in
-    let open Alice_print.Ui in
+    let open Alice_ui in
     Temp_dir.with_ ~prefix:"alice." ~suffix:".tools" ~f:(fun dir ->
       let tarball_file = Path.concat dir (Path.relative (sprintf "%s.tar.gz" name)) in
       println (verb_message `Fetching (sprintf "%s.%s (%s)..." name version url_file));
@@ -383,7 +383,7 @@ let install =
   Root.install root ~target ~compiler_only ~global;
   if not (Alice_io.File_ops.exists (Alice_root.current ()))
   then (
-    let open Alice_print.Ui in
+    let open Alice_ui in
     println
       (raw_message
          (sprintf "No current root was found so making %s the current root." root.name));
@@ -431,7 +431,7 @@ let exec =
   and+ args =
     pos_right 0 string ~value_name:"ARGS" ~doc:"Arguments to pass to program."
   in
-  let open Alice_print.Ui in
+  let open Alice_ui in
   let open Alice_env in
   let env = Env.current () in
   let path_variable = Path_variable.get_or_empty env in

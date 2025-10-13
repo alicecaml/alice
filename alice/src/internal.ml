@@ -1,7 +1,7 @@
 open! Alice_stdlib
 open Climate
 open Alice_hierarchy
-open Alice_print.Ui
+open Alice_ui
 
 module Env_script = struct
   let posix_src =

@@ -7,5 +7,5 @@
   alice_policy
   alice_manifest
   alice_scheduler
-  alice_io))
-
+  alice_io
+  alice_ui))

@@ -71,6 +71,10 @@
  (depends ocaml))
 
 (package
+ (name alice_ui)
+ (depends ocaml))
+
+(package
  (name alice_stdlib)
  (depends
   ocaml

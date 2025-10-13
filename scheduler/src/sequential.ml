@@ -57,8 +57,8 @@ let files_to_build ~src_dir ~out_dir traverse =
 
 let run ~src_dir ~out_dir traverse =
   let panic_context () =
-    [ Pp.textf "src_dir: %s\n" (Path.to_filename src_dir)
-    ; Pp.textf "out_dir: %s\n" (Path.to_filename out_dir)
+    [ Pp.textf "src_dir: %s\n" (Alice_ui.path_to_string src_dir)
+    ; Pp.textf "out_dir: %s\n" (Alice_ui.path_to_string out_dir)
     ]
   in
   let src_dir =
@@ -82,21 +82,21 @@ let run ~src_dir ~out_dir traverse =
     | true ->
       (match Traverse.origin traverse with
        | Source path ->
-         Log.info [ Pp.textf "Copying source file: %s" (Path.to_filename path) ];
+         Log.info [ Pp.textf "Copying source file: %s" (Alice_ui.path_to_string path) ];
          File_ops.cp_f ~src:(Path.concat src_dir path) ~dst:Path.current_dir
        | Build (build : Build_plan.Build.t) ->
          Log.info
            [ Pp.textf
                "Building targets %s"
                (Path.Relative.Set.to_list build.outputs
-                |> List.map ~f:Path.to_filename
+                |> List.map ~f:Alice_ui.path_to_string
                 |> String.concat ~sep:", ")
            ];
          Path.Relative.Set.iter build.inputs ~f:(fun path ->
            if not (File_ops.exists path)
            then
              Alice_error.panic
-               (Pp.textf "Missing input file: %s\n" (Path.to_filename path)
+               (Pp.textf "Missing input file: %s\n" (Alice_ui.path_to_string path)
                 :: panic_context ()));
          List.iter build.commands ~f:(fun command ->
            let status =

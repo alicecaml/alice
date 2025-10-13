@@ -51,11 +51,12 @@ let read_src_dir t =
   let src_dir = src_dir t in
   match Alice_io.Read_hierarchy.read src_dir with
   | Error `Not_found ->
-    user_error [ Pp.textf "Directory not found: %s" (Path.to_filename src_dir) ]
+    user_error [ Pp.textf "Directory not found: %s" (Alice_ui.path_to_string src_dir) ]
   | Ok file ->
     (match File.as_dir file with
      | Some dir -> dir
-     | None -> user_error [ Pp.textf "%S is not a directory" (Path.to_filename src_dir) ])
+     | None ->
+       user_error [ Pp.textf "%S is not a directory" (Alice_ui.path_to_string src_dir) ])
 ;;
 
 let ocaml_plan ~ctx ~exe_only t =
@@ -83,7 +84,7 @@ let run_traverse t ~traverse =
 ;;
 
 let compiling_message t =
-  let open Alice_print.Ui in
+  let open Alice_ui in
   let package = t.manifest.package in
   let name_string = Alice_manifest.Package_name.to_string package.name in
   let version_string = Alice_manifest.Semantic_version.to_string package.version in
@@ -91,7 +92,7 @@ let compiling_message t =
 ;;
 
 let build_ocaml ~ctx t =
-  let open Alice_print.Ui in
+  let open Alice_ui in
   println (compiling_message t);
   let ocaml_plan = ocaml_plan ~ctx ~exe_only:false t in
   if contains_lib t
@@ -101,7 +102,7 @@ let build_ocaml ~ctx t =
 ;;
 
 let run_ocaml_exe ~ctx t ~args =
-  let open Alice_print.Ui in
+  let open Alice_ui in
   (match contains_exe t with
    | true -> ()
    | false -> panic [ Pp.text "Cannot run project as it lacks an executable." ]);
@@ -122,7 +123,7 @@ let run_ocaml_exe ~ctx t ~args =
   let exe_path = Path.concat (out_dir t) exe_name in
   let args = Path.to_filename exe_name :: args in
   let exe_filename = Path.to_filename exe_path in
-  println (verb_message `Running (Path.to_filename exe_path));
+  println (verb_message `Running (path_to_string exe_path));
   print_newline ();
   match Alice_io.Process.Blocking.run exe_filename ~args with
   | Error `Prog_not_available ->
@@ -154,7 +155,7 @@ let new_ocaml name path kind =
     user_error
       [ Pp.text
           "Refusing to create project because destination directory already exists.\n"
-      ; Pp.textf "Destination directory is: %s" (Path.to_filename path)
+      ; Pp.textf "Destination directory is: %s" (Alice_ui.path_to_string path)
       ];
   let manifest =
     { Alice_manifest.Project.package =
