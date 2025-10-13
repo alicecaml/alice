@@ -85,7 +85,7 @@ jobs:
       - run: echo $HOME/.local/bin >> $GITHUB_PATH
 
       # Install Dune
-      - run: curl -fsSL https://github.com/ocaml-dune/dune-bin-install/releases/download/v2/install.sh | sh -s 3.20.1 --install-root /usr --no-update-shell-config
+      - run: curl -fsSL https://github.com/ocaml-dune/dune-bin-install/releases/download/v2/install.sh | sh -s 3.20.1 --install-root $HOME/.local --no-update-shell-config
       - run: which dune
       - run: dune --version
 
