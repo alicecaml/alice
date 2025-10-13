@@ -28,17 +28,23 @@ module Styles = struct
 end
 
 let path_to_string path =
-  let filename = Path.to_filename path in
   match !path_style with
-  | `Native -> filename
+  | `Native -> Path.to_filename path
   | `Normalized ->
+    let path =
+      if Path.has_extension path ~ext:".exe" then Path.remove_extension path else path
+    in
+    let filename = Path.to_filename path in
     let concat = String.concat ~sep:"/" in
-    let components = Filename.to_components filename in
     (match Path.to_either path with
-     | `Relative _ -> concat (Nonempty_list.to_list components)
-     | `Absolute _ ->
-       let (_root :: rest) = components in
-       String.cat "/" (concat rest))
+     | `Relative _ ->
+       let components = Filename.to_components filename in
+       concat (Nonempty_list.to_list components)
+     | `Absolute path ->
+       let path = Path.chop_prefix path ~prefix:(Path.absolute (Sys.getcwd ())) in
+       let filename = Path.to_filename path in
+       let components = Filename.to_components filename in
+       concat (Nonempty_list.to_list components))
 ;;
 
 let raw_message ?(style = Ansi_style.default) raw = [ Pp.text raw |> Pp.tag style ]

@@ -24,6 +24,7 @@ module Path : sig
     val has_extension : t -> ext:string -> bool
     val replace_extension : t -> ext:string -> t
     val add_extension : t -> ext:string -> t
+    val remove_extension : t -> t
     val dirname : t -> t
 
     module Set : Set.S with type elt = t
@@ -76,6 +77,9 @@ module Path : sig
 
   (** [ext] must include the starting period *)
   val add_extension : 'a t -> ext:string -> 'a t
+
+  (** Remove the extension or do nothing if there is no extension. *)
+  val remove_extension : 'a t -> 'a t
 
   val dirname : 'a t -> 'a t
   val match_ : 'a t -> absolute:(absolute t -> 'b) -> relative:(relative t -> 'b) -> 'b
