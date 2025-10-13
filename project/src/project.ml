@@ -123,7 +123,8 @@ let run_ocaml_exe ~ctx t ~args =
   let exe_path = Path.concat (out_dir t) exe_name in
   let args = Path.to_filename exe_name :: args in
   let exe_filename = Path.to_filename exe_path in
-  println (verb_message `Running (path_to_string exe_path));
+  println
+    (verb_message `Running (Path.chop_prefix exe_path ~prefix:t.root |> path_to_string));
   print_newline ();
   match Alice_io.Process.Blocking.run exe_filename ~args with
   | Error `Prog_not_available ->
