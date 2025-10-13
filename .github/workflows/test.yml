@@ -31,8 +31,9 @@ jobs:
 
       # Install Alice (used to bootstrap environment)
       - run: echo "$HOME\.alice\current\bin" >> $env:GITHUB_PATH
-      - run: echo ALICE_IN_NAME=alice-0.0.0-x86_64-windows >> $env:GITHUB_ENV
-      - run: curl --output "$env:ALICE_IN_NAME.tar.gz" "https://s3.g.s4.mega.io/ycsnsngpe2elgjdd2uzbdpyj6s54q5itlvy6g/alice/alice/$env:ALICE_IN_NAME.tar.gz"
+      - run: echo ALICE_IN_VERSION=0.0.0 >> $env:GITHUB_ENV
+      - run: echo ALICE_IN_NAME="alice-$ALICE_IN_VERSION-x86_64-windows" >> $env:GITHUB_ENV
+      - run: curl --output "$env:ALICE_IN_NAME.tar.gz" "https://github.com/alicecaml/alice/releases/download/$ALICE_IN_VERSION/$ALICE_IN_NAME.tar.gz"
       - run: tar xf "$env:ALICE_IN_NAME.tar.gz"
       - run: Copy-Item -Recurse -Force "$env:ALICE_IN_NAME/*" .local
       - run: Remove-Item -Recurse -Force "$env:ALICE_IN_NAME"
