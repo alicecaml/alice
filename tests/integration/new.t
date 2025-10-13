@@ -1,12 +1,7 @@
 Exercise initializing a new executable project.
 
-  $ alice new hello
-    Creating new executable package "hello" in $TESTCASE_ROOT/hello
-  
+  $ alice new hello --quiet
   $ cd hello
 
-  $ alice run
-   Compiling hello v0.1.0
-     Running $TESTCASE_ROOT/hello/build/packages/hello-0.1.0/hello
-  
+  $ alice run --quiet
   Hello, World!

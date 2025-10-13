@@ -1,7 +1,4 @@
 Exercise building a multi-file project.
 
-  $ alice run
-   Compiling foo v0.1.0
-     Running $TESTCASE_ROOT/build/packages/foo-0.1.0/foo
-  
+  $ alice run --quiet
   Hello, World!
