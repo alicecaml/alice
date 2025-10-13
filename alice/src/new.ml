@@ -15,11 +15,10 @@ let new_ =
     flag [ "exe" ] ~doc:"Create a project containing an executable package (default)"
   and+ lib = flag [ "lib" ] ~doc:"Create a project containing a library package" in
   let package_name = Alice_manifest.Package_name.of_string name in
-  let relative_path = Path.relative name in
   let path =
     match path with
     | Some path -> path
-    | None -> Path.concat (Path.absolute (Sys.getcwd ())) relative_path
+    | None -> Path.concat (Path.absolute (Sys.getcwd ())) (Path.relative name)
   in
   let kind =
     match exe, lib with
@@ -37,11 +36,7 @@ let new_ =
   println
     (verb_message
        `Creating
-       (sprintf
-          "new %s package %S in %s"
-          kind_string
-          name
-          (Alice_ui.path_to_string relative_path)));
+       (sprintf "new %s package %S in %s" kind_string name (Alice_ui.path_to_string path)));
   Project.new_ocaml package_name path kind;
   print_newline ()
 ;;
