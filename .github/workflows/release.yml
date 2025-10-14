@@ -6,8 +6,8 @@ on:
     - '*'
 
 jobs:
-  release-window-x86_64:
-    name: Build for Windows x86_64
+  release-x86_64-windows:
+    name: Build for x86_64-windows
     runs-on: windows-latest
     steps:
 

@@ -1,8 +1,8 @@
 name: test
 on: [push, pull_request]
 jobs:
-  test-window-x86_64:
-    name: Test for Windows x86_64
+  test-x86_64-windows:
+    name: Test for x86_64-windows
     runs-on: windows-latest
     steps:
 
