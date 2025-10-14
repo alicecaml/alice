@@ -157,7 +157,7 @@ module Traverse = struct
   ;;
 
   let dot t =
-    List.map (all_origins t) ~f:(fun (origin : Origin.t) ->
+    List.filter_map (all_origins t) ~f:(fun (origin : Origin.t) ->
       match origin with
       | Source _ -> None
       | Build { inputs; outputs; commands = _ } ->
@@ -172,7 +172,6 @@ module Traverse = struct
           |> String.concat ~sep:", "
         in
         Some (sprintf "  {%s} -> {%s}" outputs_str inputs_str))
-    |> List.filter_opt
     |> List.sort_uniq ~cmp:String.compare
     |> String.concat ~sep:"\n"
     |> sprintf "digraph {\n%s\n}"
@@ -186,7 +185,8 @@ let traverse t ~output =
 
 let dot t =
   let lines =
-    Path.Map.mapi t ~f:(fun output (origin : Origin.t) ->
+    Path.Map.to_list t
+    |> List.filter_map ~f:(fun (output, (origin : Origin.t)) ->
       match origin with
       | Source _ -> None
       | Build { inputs; outputs = _; commands = _ } ->
@@ -196,8 +196,7 @@ let dot t =
           |> String.concat ~sep:", "
         in
         Some (sprintf "  \"%s\" -> {%s}" (Alice_ui.path_to_string output) inputs_str))
-    |> Path.Map.values
-    |> List.filter_opt
+    |> List.sort_uniq ~cmp:String.compare
   in
   String.concat ~sep:"\n" lines |> sprintf "digraph {\n%s\n}"
 ;;

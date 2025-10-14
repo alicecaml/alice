@@ -56,8 +56,8 @@ Test that the project can be built an run:
   
   Hello, World!
 
-  $ alice clean
-    Removing $TESTCASE_ROOT/build
+  $ alice clean --normalize-paths
+    Removing build
 
 Now test Alice's incremental recomputation by repeatedly changing files and
 rebuilding the project.
