@@ -87,7 +87,7 @@ let run ~src_dir ~out_dir traverse =
        | Build (build : Build_plan.Build.t) ->
          Log.info
            [ Pp.textf
-               "Building targets %s"
+               "Building targets: %s"
                (Path.Relative.Set.to_list build.outputs
                 |> List.map ~f:Alice_ui.path_to_string
                 |> String.concat ~sep:", ")

@@ -1,7 +1,7 @@
 Exercise initializing a new library project.
 
   $ alice new --lib hello --normalize-paths
-    Creating new library package "hello" in ./hello
+    Creating new library package "hello" in hello
   
   $ cd hello
 

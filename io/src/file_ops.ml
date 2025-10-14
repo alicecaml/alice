@@ -122,6 +122,7 @@ let with_working_dir path ~f =
 ;;
 
 let exists path = Sys.file_exists (Path.to_filename path)
+let is_directory path = Sys.is_directory (Path.to_filename path)
 
 let write_text_file path text =
   let channel = Out_channel.open_text (Path.to_filename path) in

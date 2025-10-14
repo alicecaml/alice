@@ -71,7 +71,10 @@ module Staging = struct
           then Some existing
           else
             Alice_error.panic
-              [ Pp.textf "Conflicting origins for file: %s" (Path.to_filename output) ]))
+              [ Pp.textf
+                  "Conflicting origins for file: %s"
+                  (Alice_ui.path_to_string output)
+              ]))
   ;;
 
   (* Returns any filename which is an input for some file but which is not a
@@ -117,14 +120,15 @@ module Staging = struct
     (match find_dangling_node t with
      | None -> ()
      | Some dangling ->
-       Alice_error.panic [ Pp.textf "No rule to build: %s" (Path.to_filename dangling) ]);
+       Alice_error.panic
+         [ Pp.textf "No rule to build: %s" (Alice_ui.path_to_string dangling) ]);
     (match get_cycle t with
      | None -> ()
      | Some cycle ->
        Alice_error.panic
          ([ Pp.text "Dependency cycle:"; Pp.newline ]
           @ List.concat_map cycle ~f:(fun file ->
-            [ Pp.textf " - %s" (Path.to_filename file); Pp.newline ])));
+            [ Pp.textf " - %s" (Alice_ui.path_to_string file); Pp.newline ])));
     t
   ;;
 end
@@ -159,12 +163,12 @@ module Traverse = struct
       | Build { inputs; outputs; commands = _ } ->
         let outputs_str =
           Path.Set.to_list outputs
-          |> List.map ~f:(fun path -> sprintf "\"%s\"" (Path.to_filename path))
+          |> List.map ~f:(fun path -> sprintf "\"%s\"" (Alice_ui.path_to_string path))
           |> String.concat ~sep:", "
         in
         let inputs_str =
           Path.Set.to_list inputs
-          |> List.map ~f:(fun path -> sprintf "\"%s\"" (Path.to_filename path))
+          |> List.map ~f:(fun path -> sprintf "\"%s\"" (Alice_ui.path_to_string path))
           |> String.concat ~sep:", "
         in
         Some (sprintf "  {%s} -> {%s}" outputs_str inputs_str))
@@ -188,10 +192,10 @@ let dot t =
       | Build { inputs; outputs = _; commands = _ } ->
         let inputs_str =
           Path.Set.to_list inputs
-          |> List.map ~f:(fun path -> sprintf "\"%s\"" (Path.to_filename path))
+          |> List.map ~f:(fun path -> sprintf "\"%s\"" (Alice_ui.path_to_string path))
           |> String.concat ~sep:", "
         in
-        Some (sprintf "  \"%s\" -> {%s}" (Path.to_filename output) inputs_str))
+        Some (sprintf "  \"%s\" -> {%s}" (Alice_ui.path_to_string output) inputs_str))
     |> Path.Map.values
     |> List.filter_opt
   in

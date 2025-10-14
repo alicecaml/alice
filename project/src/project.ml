@@ -30,10 +30,11 @@ module Paths = struct
   (* The file inside the source directory containing the entry point for the
      library, if the project contains a library. *)
   let lib_root_ml = Path.relative "lib.ml"
+  let manifest = Path.relative manifest_name
 end
 
-let src_dir t = Path.concat t.root Paths.src
-let build_dir t = Path.concat t.root Paths.build
+let src_dir t = t.root / Paths.src
+let build_dir t = t.root / Paths.build
 
 let out_dir t =
   Path.concat_multi
@@ -43,8 +44,8 @@ let out_dir t =
     ]
 ;;
 
-let contains_exe t = File_ops.exists (Path.concat (src_dir t) Paths.exe_root_ml)
-let contains_lib t = File_ops.exists (Path.concat (src_dir t) Paths.lib_root_ml)
+let contains_exe t = File_ops.exists (src_dir t / Paths.exe_root_ml)
+let contains_lib t = File_ops.exists (src_dir t / Paths.lib_root_ml)
 let package_name t = Alice_manifest.Package_name.to_string t.manifest.package.name
 
 let read_src_dir t =
@@ -120,7 +121,7 @@ let run_ocaml_exe ~ctx t ~args =
       let exe_name = package_name t |> Path.relative in
       if Sys.win32 then Path.add_extension exe_name ~ext:".exe" else exe_name
   in
-  let exe_path = Path.concat (out_dir t) exe_name in
+  let exe_path = out_dir t / exe_name in
   let args = Path.to_filename exe_name :: args in
   let exe_filename = Path.to_filename exe_path in
   println (verb_message `Running (path_to_string exe_path));
@@ -141,7 +142,11 @@ let run_ocaml_exe ~ctx t ~args =
     exit 0
 ;;
 
-let clean t = File_ops.rm_rf (build_dir t)
+let clean t =
+  let open Alice_ui in
+  println (verb_message `Removing (Alice_ui.path_to_string (build_dir t)));
+  File_ops.rm_rf (build_dir t)
+;;
 
 let dot_ocaml ~ctx t =
   let ocaml_plan = ocaml_plan ~ctx ~exe_only:false t in
@@ -150,33 +155,54 @@ let dot_ocaml ~ctx t =
 ;;
 
 let new_ocaml name path kind =
-  if File_ops.exists path
+  if File_ops.exists (path / Paths.manifest)
   then
     user_error
-      [ Pp.text
-          "Refusing to create project because destination directory already exists.\n"
-      ; Pp.textf "Destination directory is: %s" (Alice_ui.path_to_string path)
+      [ Pp.textf
+          "Refusing to create project because destination directory exists and contains \
+           project manifest (%s).\n"
+          (Alice_ui.path_to_string (path / Paths.manifest))
+      ; Pp.text "Delete this file before proceeding."
       ];
+  if File_ops.exists (path / Paths.src)
+  then
+    if File_ops.is_directory (path / Paths.src)
+    then
+      user_error
+        [ Pp.textf
+            "Refusing to create project because destination directory exists and \
+             contains src directory (%s).\n"
+            (Alice_ui.path_to_string (path / Paths.src))
+        ; Pp.text "Delete this directory before proceeding."
+        ]
+    else
+      user_error
+        [ Pp.textf
+            "Refusing to create project because destination directory exists and \
+             contains a file named \"src\" (%s).\n"
+            (Alice_ui.path_to_string (path / Paths.src))
+        ; Pp.text "Delete this file before proceeding."
+        ];
   let manifest =
     { Alice_manifest.Project.package =
         { name; version = Alice_manifest.Semantic_version.of_string "0.1.0" }
     ; dependencies = None
     }
   in
-  File_ops.mkdir_p (Path.concat path Paths.src);
+  File_ops.mkdir_p (path / Paths.src);
   File_ops.write_text_file
-    (Path.concat path (Path.relative ".gitignore"))
+    (path / Path.relative ".gitignore")
     (Path.to_filename Paths.build);
   File_ops.write_text_file
-    (Path.concat path (Path.relative manifest_name))
+    (path / Paths.manifest)
     (Alice_manifest.Project.to_toml_string manifest);
   match kind with
   | `Exe ->
     File_ops.write_text_file
-      (Path.concat (Path.concat path Paths.src) Paths.exe_root_ml)
+      (path / Paths.src / Paths.exe_root_ml)
       "let () = print_endline \"Hello, World!\""
   | `Lib ->
     File_ops.write_text_file
-      (Path.concat (Path.concat path Paths.src) Paths.lib_root_ml)
+      (path / Paths.src / Paths.lib_root_ml)
       "let add lhs rhs = lhs + rhs"
 ;;

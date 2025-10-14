@@ -311,3 +311,5 @@ module Dir = struct
   let path { path; _ } = path
   let contents { contents; _ } = contents
 end
+
+let ( / ) = Path.concat

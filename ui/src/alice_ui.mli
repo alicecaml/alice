@@ -27,6 +27,7 @@ type verb =
   | `Compiling
   | `Running
   | `Creating
+  | `Removing
   ]
 
 val verb_message : ?verb_style:Ansi_style.t -> verb -> string -> message

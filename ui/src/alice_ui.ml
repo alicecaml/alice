@@ -35,16 +35,17 @@ let path_to_string path =
       if Path.has_extension path ~ext:".exe" then Path.remove_extension path else path
     in
     let filename = Path.to_filename path in
-    let concat = String.concat ~sep:"/" in
+    let normalize_filename filename =
+      (* The start of the path will always be a period. Skip it. *)
+      let (_current_dir :: components) = Filename.to_components filename in
+      if List.is_empty components then "." else String.concat ~sep:"/" components
+    in
     (match Path.to_either path with
-     | `Relative _ ->
-       let components = Filename.to_components filename in
-       concat (Nonempty_list.to_list components)
+     | `Relative _ -> normalize_filename filename
      | `Absolute path ->
        let path = Path.chop_prefix path ~prefix:(Path.absolute (Sys.getcwd ())) in
        let filename = Path.to_filename path in
-       let components = Filename.to_components filename in
-       concat (Nonempty_list.to_list components))
+       normalize_filename filename)
 ;;
 
 let raw_message ?(style = Ansi_style.default) raw = [ Pp.text raw |> Pp.tag style ]
@@ -56,6 +57,7 @@ type verb =
   | `Compiling
   | `Running
   | `Creating
+  | `Removing
   ]
 
 let verb_to_string_padded = function
@@ -64,6 +66,7 @@ let verb_to_string_padded = function
   | `Compiling -> " Compiling"
   | `Running -> "   Running"
   | `Creating -> "  Creating"
+  | `Removing -> "  Removing"
 ;;
 
 let verb_message ?(verb_style = default_verb_style) verb object_ =

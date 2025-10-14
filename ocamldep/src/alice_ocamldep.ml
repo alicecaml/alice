@@ -1,6 +1,7 @@
 open! Alice_stdlib
 open Alice_hierarchy
 open Alice_error
+module Log = Alice_log
 
 let exe_name () = Alice_which.ocamldep ()
 let command args = Command.create (exe_name ()) ~args
@@ -45,7 +46,9 @@ end
 
 let native_deps path =
   if not (Alice_io.File_ops.exists path)
-  then panic [ Pp.textf "File does not exist: %s" (Path.to_filename path) ];
+  then panic [ Pp.textf "File does not exist: %s" (Alice_ui.path_to_string path) ];
+  Log.info
+    [ Pp.textf "Analyzing dependencies of file: %s" (Alice_ui.path_to_string path) ];
   match run_lines [ "-one-line"; "-native"; Path.to_filename path ] with
   | [ line ] -> Deps.of_line (Path.kind path) line
   | [] -> panic [ Pp.text "Unexpected empty output!" ]

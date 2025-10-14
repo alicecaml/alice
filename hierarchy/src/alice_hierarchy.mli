@@ -124,3 +124,6 @@ module Dir : sig
   val path : 'a t -> 'a Path.t
   val contents : 'a t -> 'a File.t list
 end
+
+(** Infix [Path.concat] operator *)
+val ( / ) : 'a Path.t -> Path.relative Path.t -> 'a Path.t
