@@ -84,6 +84,7 @@ module Path : sig
   val dirname : 'a t -> 'a t
   val match_ : 'a t -> absolute:(absolute t -> 'b) -> relative:(relative t -> 'b) -> 'b
   val to_either : 'a t -> Either.t
+  val compare : 'a t -> 'a t -> int
 end
 
 module File : sig
@@ -111,6 +112,7 @@ module File : sig
   val is_regular_or_link : _ t -> bool
   val traverse_bottom_up : 'path_kind t -> f:('path_kind t -> unit) -> unit
   val map_paths : 'a t -> f:('a Path.t -> 'b Path.t) -> 'b t
+  val compare_by_path : 'a t -> 'a t -> int
 end
 
 module Dir : sig

@@ -217,6 +217,13 @@ module Path = struct
     | Absolute absolute -> `Absolute (Absolute absolute)
     | Relative relative -> `Relative (Relative relative)
   ;;
+
+  let compare : type a. a t -> a t -> int =
+    fun a b ->
+    match a, b with
+    | Absolute a, Absolute b -> Filename.compare a b
+    | Relative a, Relative b -> Filename.compare a b
+  ;;
 end
 
 module File = struct
@@ -291,6 +298,8 @@ module File = struct
     in
     { path; kind }
   ;;
+
+  let compare_by_path a b = Path.compare (path a) (path b)
 end
 
 module Dir = struct

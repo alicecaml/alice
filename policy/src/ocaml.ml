@@ -31,6 +31,7 @@ let compile_source_rules ctx dir =
   Alice_io.File_ops.with_working_dir (Dir.path dir) ~f:(fun () ->
     Dir.to_relative dir
     |> Dir.contents
+    |> List.sort ~cmp:File.compare_by_path
     |> List.filter_map ~f:(fun file ->
       if
         File.is_regular_or_link file
