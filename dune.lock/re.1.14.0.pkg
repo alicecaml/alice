@@ -1,4 +1,4 @@
-(version 1.13.2)
+(version 1.14.0)
 
 (build
  (all_platforms
@@ -9,9 +9,9 @@
 
 (depends
  (all_platforms
-  (dune ocaml seq)))
+  (dune ocaml)))
 
 (source
  (fetch
-  (url https://github.com/ocaml/ocaml-re/archive/refs/tags/1.13.2.tar.gz)
-  (checksum md5=df37d9787450525a2182ce4364048d11)))
+  (url https://github.com/ocaml/ocaml-re/archive/refs/tags/1.14.0.tar.gz)
+  (checksum md5=03f4a83100cb9229a796b85c698076e1)))
