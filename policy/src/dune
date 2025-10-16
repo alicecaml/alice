@@ -6,4 +6,5 @@
   alice_hierarchy
   alice_io
   alice_which
-  alice_ocamldep))
+  alice_ocamldep
+  alice_manifest))

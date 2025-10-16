@@ -23,7 +23,8 @@ module Plan : sig
     -> exe_root_ml:Path.Relative.t option
     -> lib_root_ml:Path.Relative.t option
     -> src_dir:_ File.dir
-    -> build_dir:Path.Absolute.t
+    -> out_dir:Path.Absolute.t
+    -> package:Alice_manifest.Package.t
     -> t
 
   val traverse_exe : t -> Build_plan.Traverse.t

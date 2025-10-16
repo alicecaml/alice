@@ -6,4 +6,5 @@
   alice_error
   alice_log
   alice_io
-  alice_ui))
+  alice_ui
+  alice_manifest))

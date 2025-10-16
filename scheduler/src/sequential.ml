@@ -55,7 +55,7 @@ let files_to_build ~src_dir ~out_dir traverse =
     ~acc_files_to_build:Path.Relative.Set.empty
 ;;
 
-let run ~src_dir ~out_dir traverse =
+let run ~src_dir ~out_dir ~package traverse =
   let panic_context () =
     [ Pp.textf "src_dir: %s\n" (Alice_ui.path_to_string src_dir)
     ; Pp.textf "out_dir: %s\n" (Alice_ui.path_to_string out_dir)
@@ -82,10 +82,13 @@ let run ~src_dir ~out_dir traverse =
     | true ->
       (match Traverse.origin traverse with
        | Source path ->
-         Log.info [ Pp.textf "Copying source file: %s" (Alice_ui.path_to_string path) ];
+         Log.info
+           ~package
+           [ Pp.textf "Copying source file: %s" (Alice_ui.path_to_string path) ];
          File_ops.cp_f ~src:(Path.concat src_dir path) ~dst:Path.current_dir
        | Build (build : Build_plan.Build.t) ->
          Log.info
+           ~package
            [ Pp.textf
                "Building targets: %s"
                (Path.Relative.Set.to_list build.outputs

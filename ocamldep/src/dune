@@ -6,5 +6,4 @@
   alice_hierarchy
   alice_io
   alice_which
-  alice_ui
-  alice_log))
+  alice_ui))

@@ -40,7 +40,7 @@ let out_dir t =
   Path.concat_multi
     (build_dir t)
     [ Path.relative "packages"
-    ; Path.relative (Alice_manifest.Package.name_version_string t.manifest.package)
+    ; Path.relative (Alice_manifest.Package.name_dash_version_string t.manifest.package)
     ]
 ;;
 
@@ -76,18 +76,23 @@ let ocaml_plan ~ctx ~exe_only t =
     | false -> None
   in
   let src_dir = read_dir_exn (src_dir t) in
-  let build_dir = build_dir t in
+  let out_dir = out_dir t in
   Alice_policy.Ocaml.Plan.create
     ctx
     ~name:(package_name t |> Path.relative)
     ~exe_root_ml
     ~lib_root_ml
     ~src_dir
-    ~build_dir
+    ~out_dir
+    ~package:t.manifest.package
 ;;
 
 let run_traverse t ~traverse =
-  Alice_scheduler.Sequential.run ~src_dir:(src_dir t) ~out_dir:(out_dir t) traverse
+  Alice_scheduler.Sequential.run
+    ~src_dir:(src_dir t)
+    ~out_dir:(out_dir t)
+    ~package:t.manifest.package
+    traverse
 ;;
 
 let compiling_message t =

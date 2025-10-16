@@ -4,6 +4,7 @@ module Rule = Alice_engine.Rule
 module Build_plan = Alice_engine.Build_plan
 module Build = Alice_engine.Build_plan.Build
 module File_ops = Alice_io.File_ops
+module Log = Alice_log
 
 module Ctx = struct
   type t =
@@ -41,10 +42,13 @@ module Ocamldep_cache = struct
 
   let filename = Path.relative "ocamldeps_cache.marshal"
 
-  let load ~build_dir =
-    let path = build_dir / filename in
+  let load ~out_dir ~package =
+    let path = out_dir / filename in
     if File_ops.exists path
     then (
+      Log.info
+        ~package
+        [ Pp.textf "Loading ocamldeps cache from: %s" (Alice_ui.path_to_string filename) ];
       let deps =
         File_ops.with_in_channel path ~mode:`Bin ~f:(fun channel ->
           Marshal.from_channel channel)
@@ -54,39 +58,49 @@ module Ocamldep_cache = struct
     else { deps = Path.Relative.Map.empty; mtime = 0.0 }
   ;;
 
-  let store_deps (deps : deps) ~build_dir =
-    File_ops.mkdir_p build_dir;
-    let path = build_dir / filename in
+  let store_deps (deps : deps) ~out_dir =
+    File_ops.mkdir_p out_dir;
+    let path = out_dir / filename in
     File_ops.with_out_channel path ~mode:`Bin ~f:(fun channel ->
       Marshal.to_channel channel deps [])
   ;;
 
-  let get_deps t source_path =
+  let get_deps t source_path ~package =
     let source_mtime = File_ops.mtime source_path in
+    let run_ocamldep () =
+      Log.info
+        ~package
+        [ Pp.textf
+            "Analyzing dependencies of file: %s"
+            (Alice_ui.path_to_string source_path)
+        ];
+      Alice_ocamldep.native_deps source_path
+    in
     if source_mtime > t.mtime
     then
       (* Source file is newer than the cache so we need to run ocamldep. *)
-      Alice_ocamldep.native_deps source_path
+      run_ocamldep ()
     else (
       match Path.Relative.Map.find_opt source_path t.deps with
       | None ->
         (* Source file is absent from the cache. This is unusual because the
            source file is older than the cache. Run ocamldep to compute the
            result anyway. *)
-        Alice_log.warn
+        Log.warn
+          ~package
           [ Pp.textf
               "The ocamldeps cache (%s) is newer than source file %S, however there is \
                no entry in the ocamldeps cache for that source file."
               (Alice_ui.path_to_string filename)
               (Alice_ui.path_to_string source_path)
           ];
-        Alice_ocamldep.native_deps source_path
+        run_ocamldep ()
       | Some deps -> deps)
   ;;
 end
 
-let compile_source_rules ctx dir ~build_dir =
-  let ocamldep_cache = Ocamldep_cache.load ~build_dir in
+let compile_source_rules ctx dir ~out_dir ~package =
+  let ocamldep_cache = Ocamldep_cache.load ~out_dir ~package in
   let deps =
     File_ops.with_working_dir (Dir.path dir) ~f:(fun () ->
       Dir.to_relative dir
@@ -99,10 +113,11 @@ let compile_source_rules ctx dir ~build_dir =
               || Path.has_extension file.path ~ext:".mli")
         with
         | false -> None
-        | true -> Some (file.path, Ocamldep_cache.get_deps ocamldep_cache file.path)))
+        | true ->
+          Some (file.path, Ocamldep_cache.get_deps ocamldep_cache file.path ~package)))
     |> Path.Relative.Map.of_list_exn
   in
-  Ocamldep_cache.store_deps deps ~build_dir;
+  Ocamldep_cache.store_deps deps ~out_dir;
   Path.Relative.Map.to_list deps
   |> List.map ~f:(fun (source_path, (deps : Path.relative Alice_ocamldep.Deps.t)) ->
     let inputs = Path.Relative.Set.of_list (source_path :: deps.inputs) in
@@ -211,10 +226,10 @@ module Plan = struct
     ; lib_name_cmxa : Path.Relative.t option
     }
 
-  let create ctx ~name ~exe_root_ml ~lib_root_ml ~src_dir ~build_dir =
+  let create ctx ~name ~exe_root_ml ~lib_root_ml ~src_dir ~out_dir ~package =
     let exe_name = if Sys.win32 then Path.add_extension name ~ext:".exe" else name in
     let lib_name_cmxa = Path.add_extension name ~ext:".cmxa" in
-    let source_rules_db = compile_source_rules ctx src_dir ~build_dir in
+    let source_rules_db = compile_source_rules ctx src_dir ~out_dir ~package in
     let lib_rules ~lib_root_ml =
       rules ctx ~name:lib_name_cmxa ~root_ml:lib_root_ml ~source_rules_db `Lib
     in
