@@ -199,8 +199,7 @@ let link_rule ctx ~name ~cmx_deps_in_order kind =
     }
 ;;
 
-let rules ctx ~name ~root_ml ~src_dir ~build_dir kind =
-  let source_rules_db = compile_source_rules ctx src_dir ~build_dir in
+let rules ctx ~name ~root_ml ~source_rules_db kind =
   let cmx_deps_in_order = cmx_file_order ~root_ml source_rules_db kind in
   link_rule ctx ~name ~cmx_deps_in_order kind :: source_rules_db
 ;;
@@ -215,11 +214,12 @@ module Plan = struct
   let create ctx ~name ~exe_root_ml ~lib_root_ml ~src_dir ~build_dir =
     let exe_name = if Sys.win32 then Path.add_extension name ~ext:".exe" else name in
     let lib_name_cmxa = Path.add_extension name ~ext:".cmxa" in
+    let source_rules_db = compile_source_rules ctx src_dir ~build_dir in
     let lib_rules ~lib_root_ml =
-      rules ctx ~name:lib_name_cmxa ~root_ml:lib_root_ml ~src_dir ~build_dir `Lib
+      rules ctx ~name:lib_name_cmxa ~root_ml:lib_root_ml ~source_rules_db `Lib
     in
     let exe_rules ~exe_root_ml =
-      rules ctx ~name:exe_name ~root_ml:exe_root_ml ~src_dir ~build_dir `Exe
+      rules ctx ~name:exe_name ~root_ml:exe_root_ml ~source_rules_db `Exe
     in
     let outputs, rules =
       match exe_root_ml, lib_root_ml with
