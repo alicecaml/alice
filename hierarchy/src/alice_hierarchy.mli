@@ -29,6 +29,7 @@ module Path : sig
 
     module Set : Set.S with type elt = t
     module Map : Map.S with type key = t
+    module Hashtbl : Hashtbl.S with type key = t
   end
 
   val to_dyn : _ t -> Dyn.t

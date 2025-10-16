@@ -4,6 +4,7 @@ module Dyn = Dyn
 module Filename = Filename
 module Fileutils = FileUtil
 module List = List
+module Hashtbl = Hashtbl
 module Map = Map
 module Nonempty_list = Nonempty_list
 module Option = Option

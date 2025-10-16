@@ -41,6 +41,8 @@ module Path = struct
     else `Absolute (Absolute filename)
   ;;
 
+  let hash t = to_filename t |> String.hash
+
   let absolute filename =
     match of_filename filename with
     | `Absolute path -> path
@@ -118,6 +120,8 @@ module Path = struct
 
       val compare : t -> t -> int
       val to_dyn : t -> Dyn.t
+      val equal : t -> t -> bool
+      val hash : t -> int
       val to_filename : t -> Filename.t
       val of_filename_internal : Filename.t -> t
       val map_filename : t -> f:(Filename.t -> Filename.t) -> t
@@ -126,6 +130,7 @@ module Path = struct
     include T
     module Map = Map.Make (T)
     module Set = Set.Make (T)
+    module Hashtbl = Hashtbl.Make (T)
 
     let equal a b = Filename.equal (to_filename a) (to_filename b)
     let has_extension t ~ext = Filename.has_extension (to_filename t) ~ext
@@ -151,10 +156,12 @@ module Path = struct
         type nonrec t = absolute t
 
         let compare (Absolute a) (Absolute b) = Filename.compare a b
+        let equal (Absolute a) (Absolute b) = Filename.equal a b
         let to_dyn (Absolute t) = Filename.to_dyn t
         let to_filename (Absolute t) = t
         let of_filename_internal t = Absolute t
         let map_filename = map_filename
+        let hash = hash
       end)
   end
 
@@ -163,10 +170,12 @@ module Path = struct
         type nonrec t = relative t
 
         let compare (Relative a) (Relative b) = Filename.compare a b
+        let equal (Relative a) (Relative b) = Filename.equal a b
         let to_dyn (Relative t) = Filename.to_dyn t
         let to_filename (Relative t) = t
         let of_filename_internal t = Relative t
         let map_filename = map_filename
+        let hash = hash
       end)
   end
 
@@ -185,6 +194,13 @@ module Path = struct
           | `Relative _, `Absolute _ -> 1
         ;;
 
+        let equal a b =
+          match a, b with
+          | `Absolute a, `Absolute b -> Absolute.equal a b
+          | `Relative a, `Relative b -> Relative.equal a b
+          | `Absolute _, `Relative _ | `Relative _, `Absolute _ -> false
+        ;;
+
         let to_dyn = function
           | `Absolute absolute -> Dyn.variant "Absolute" [ Absolute.to_dyn absolute ]
           | `Relative relative -> Dyn.variant "Relative" [ Relative.to_dyn relative ]
@@ -201,6 +217,11 @@ module Path = struct
           match t with
           | `Absolute absolute -> `Absolute (Absolute.map_filename absolute ~f)
           | `Relative relative -> `Relative (Relative.map_filename relative ~f)
+        ;;
+
+        let hash = function
+          | `Absolute absolute -> hash absolute
+          | `Relative relative -> hash relative
         ;;
       end)
 
