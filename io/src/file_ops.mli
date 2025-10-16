@@ -20,7 +20,9 @@ val with_working_dir : _ Path.t -> f:(unit -> 'a) -> 'a
 
 val exists : _ Path.t -> bool
 val is_directory : _ Path.t -> bool
+val with_out_channel : _ Path.t -> mode:[ `Text | `Bin ] -> f:(out_channel -> 'a) -> 'a
 val write_text_file : _ Path.t -> string -> unit
+val with_in_channel : _ Path.t -> mode:[ `Text | `Bin ] -> f:(in_channel -> 'a) -> 'a
 val read_text_file : _ Path.t -> string
 val mtime : _ Path.t -> float
 val symlink : src:_ Path.t -> dst:_ Path.t -> unit

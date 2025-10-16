@@ -3,6 +3,7 @@ open Alice_hierarchy
 module Rule = Alice_engine.Rule
 module Build_plan = Alice_engine.Build_plan
 module Build = Alice_engine.Build_plan.Build
+module File_ops = Alice_io.File_ops
 
 module Ctx = struct
   type t =
@@ -27,37 +28,98 @@ module Ctx = struct
   ;;
 end
 
-let compile_source_rules ctx dir =
-  Alice_io.File_ops.with_working_dir (Dir.path dir) ~f:(fun () ->
-    Dir.to_relative dir
-    |> Dir.contents
-    |> List.sort ~cmp:File.compare_by_path
-    |> List.filter_map ~f:(fun file ->
-      if
-        File.is_regular_or_link file
-        && (Path.has_extension file.path ~ext:".ml"
-            || Path.has_extension file.path ~ext:".mli")
-      then (
-        let deps = Alice_ocamldep.native_deps file.path in
-        let inputs = Path.Relative.Set.of_list (file.path :: deps.inputs) in
-        let outputs =
-          Path.Relative.Set.of_list
-            (deps.output
-             ::
-             (if Path.has_extension file.path ~ext:".ml"
-              then [ Path.replace_extension file.path ~ext:".o" ]
-              else []))
-        in
-        let rule =
-          Rule.static
-            { inputs
-            ; outputs
-            ; commands =
-                [ Ctx.ocamlopt_command ctx ~args:[ "-c"; Path.to_filename file.path ] ]
-            }
-        in
-        Some rule)
-      else None))
+module Ocamldep_cache = struct
+  type deps = Path.relative Alice_ocamldep.Deps.t Path.Relative.Map.t
+
+  (* Cache which is serialized in the build directory to avoid running ocamldep
+     when it's output is guaranteed to be the same as the previous time it was
+     run on some file. *)
+  type t =
+    { deps : deps
+    ; mtime : float
+    }
+
+  let filename = Path.relative "ocamldeps_cache.marshal"
+
+  let load ~build_dir =
+    let path = build_dir / filename in
+    if File_ops.exists path
+    then (
+      let deps =
+        File_ops.with_in_channel path ~mode:`Bin ~f:(fun channel ->
+          Marshal.from_channel channel)
+      in
+      let mtime = File_ops.mtime path in
+      { deps; mtime })
+    else { deps = Path.Relative.Map.empty; mtime = 0.0 }
+  ;;
+
+  let store_deps (deps : deps) ~build_dir =
+    File_ops.mkdir_p build_dir;
+    let path = build_dir / filename in
+    File_ops.with_out_channel path ~mode:`Bin ~f:(fun channel ->
+      Marshal.to_channel channel deps [])
+  ;;
+
+  let get_deps t source_path =
+    let source_mtime = File_ops.mtime source_path in
+    if source_mtime > t.mtime
+    then
+      (* Source file is newer than the cache so we need to run ocamldep. *)
+      Alice_ocamldep.native_deps source_path
+    else (
+      match Path.Relative.Map.find_opt source_path t.deps with
+      | None ->
+        (* Source file is absent from the cache. This is unusual because the
+           source file is older than the cache. Run ocamldep to compute the
+           result anyway. *)
+        Alice_log.warn
+          [ Pp.textf
+              "The ocamldeps cache (%s) is newer than source file %S, however there is \
+               no entry in the ocamldeps cache for that source file."
+              (Alice_ui.path_to_string filename)
+              (Alice_ui.path_to_string source_path)
+          ];
+        Alice_ocamldep.native_deps source_path
+      | Some deps -> deps)
+  ;;
+end
+
+let compile_source_rules ctx dir ~build_dir =
+  let ocamldep_cache = Ocamldep_cache.load ~build_dir in
+  let deps =
+    File_ops.with_working_dir (Dir.path dir) ~f:(fun () ->
+      Dir.to_relative dir
+      |> Dir.contents
+      |> List.sort ~cmp:File.compare_by_path
+      |> List.filter_map ~f:(fun file ->
+        match
+          File.is_regular_or_link file
+          && (Path.has_extension file.path ~ext:".ml"
+              || Path.has_extension file.path ~ext:".mli")
+        with
+        | false -> None
+        | true -> Some (file.path, Ocamldep_cache.get_deps ocamldep_cache file.path)))
+    |> Path.Relative.Map.of_list_exn
+  in
+  Ocamldep_cache.store_deps deps ~build_dir;
+  Path.Relative.Map.to_list deps
+  |> List.map ~f:(fun (source_path, (deps : Path.relative Alice_ocamldep.Deps.t)) ->
+    let inputs = Path.Relative.Set.of_list (source_path :: deps.inputs) in
+    let outputs =
+      Path.Relative.Set.of_list
+        (deps.output
+         ::
+         (if Path.has_extension source_path ~ext:".ml"
+          then [ Path.replace_extension source_path ~ext:".o" ]
+          else []))
+    in
+    Rule.static
+      { inputs
+      ; outputs
+      ; commands =
+          [ Ctx.ocamlopt_command ctx ~args:[ "-c"; Path.to_filename source_path ] ]
+      })
 ;;
 
 (* Given the path to the source file which will be the module root [root_ml]
@@ -137,8 +199,8 @@ let link_rule ctx ~name ~cmx_deps_in_order kind =
     }
 ;;
 
-let rules ctx ~name ~root_ml ~src_dir kind =
-  let source_rules_db = compile_source_rules ctx src_dir in
+let rules ctx ~name ~root_ml ~src_dir ~build_dir kind =
+  let source_rules_db = compile_source_rules ctx src_dir ~build_dir in
   let cmx_deps_in_order = cmx_file_order ~root_ml source_rules_db kind in
   link_rule ctx ~name ~cmx_deps_in_order kind :: source_rules_db
 ;;
@@ -150,14 +212,14 @@ module Plan = struct
     ; lib_name_cmxa : Path.Relative.t option
     }
 
-  let create ctx ~name ~exe_root_ml ~lib_root_ml ~src_dir =
+  let create ctx ~name ~exe_root_ml ~lib_root_ml ~src_dir ~build_dir =
     let exe_name = if Sys.win32 then Path.add_extension name ~ext:".exe" else name in
     let lib_name_cmxa = Path.add_extension name ~ext:".cmxa" in
     let lib_rules ~lib_root_ml =
-      rules ctx ~name:lib_name_cmxa ~root_ml:lib_root_ml ~src_dir `Lib
+      rules ctx ~name:lib_name_cmxa ~root_ml:lib_root_ml ~src_dir ~build_dir `Lib
     in
     let exe_rules ~exe_root_ml =
-      rules ctx ~name:exe_name ~root_ml:exe_root_ml ~src_dir `Exe
+      rules ctx ~name:exe_name ~root_ml:exe_root_ml ~src_dir ~build_dir `Exe
     in
     let outputs, rules =
       match exe_root_ml, lib_root_ml with

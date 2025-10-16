@@ -48,16 +48,20 @@ let contains_exe t = File_ops.exists (src_dir t / Paths.exe_root_ml)
 let contains_lib t = File_ops.exists (src_dir t / Paths.lib_root_ml)
 let package_name t = Alice_manifest.Package_name.to_string t.manifest.package.name
 
-let read_src_dir t =
-  let src_dir = src_dir t in
-  match Alice_io.Read_hierarchy.read src_dir with
+let read_dir path =
+  match Alice_io.Read_hierarchy.read path with
   | Error `Not_found ->
-    user_error [ Pp.textf "Directory not found: %s" (Alice_ui.path_to_string src_dir) ]
+    Error [ Pp.textf "Directory not found: %s" (Alice_ui.path_to_string path) ]
   | Ok file ->
     (match File.as_dir file with
-     | Some dir -> dir
-     | None ->
-       user_error [ Pp.textf "%S is not a directory" (Alice_ui.path_to_string src_dir) ])
+     | Some dir -> Ok dir
+     | None -> Error [ Pp.textf "%S is not a directory" (Alice_ui.path_to_string path) ])
+;;
+
+let read_dir_exn path =
+  match read_dir path with
+  | Ok x -> x
+  | Error pps -> user_error pps
 ;;
 
 let ocaml_plan ~ctx ~exe_only t =
@@ -71,13 +75,15 @@ let ocaml_plan ~ctx ~exe_only t =
     | true -> Some Paths.lib_root_ml
     | false -> None
   in
-  let src_dir = read_src_dir t in
+  let src_dir = read_dir_exn (src_dir t) in
+  let build_dir = build_dir t in
   Alice_policy.Ocaml.Plan.create
     ctx
     ~name:(package_name t |> Path.relative)
     ~exe_root_ml
     ~lib_root_ml
     ~src_dir
+    ~build_dir
 ;;
 
 let run_traverse t ~traverse =

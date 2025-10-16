@@ -124,18 +124,37 @@ let with_working_dir path ~f =
 let exists path = Sys.file_exists (Path.to_filename path)
 let is_directory path = Sys.is_directory (Path.to_filename path)
 
-let write_text_file path text =
-  let channel = Out_channel.open_text (Path.to_filename path) in
-  Out_channel.output_string channel text;
+let with_out_channel path ~mode ~f =
+  let open_channel =
+    match mode with
+    | `Text -> Out_channel.open_text
+    | `Bin -> Out_channel.open_bin
+  in
+  let channel = open_channel (Path.to_filename path) in
+  let ret = f channel in
   Out_channel.close channel;
-  ()
+  ret
+;;
+
+let write_text_file path text =
+  with_out_channel path ~mode:`Text ~f:(fun channel ->
+    Out_channel.output_string channel text)
+;;
+
+let with_in_channel path ~mode ~f =
+  let open_channel =
+    match mode with
+    | `Text -> In_channel.open_text
+    | `Bin -> In_channel.open_bin
+  in
+  let in_channel = open_channel (Path.to_filename path) in
+  let ret = f in_channel in
+  In_channel.close in_channel;
+  ret
 ;;
 
 let read_text_file path =
-  let in_channel = In_channel.open_text (Path.to_filename path) in
-  let text = In_channel.input_all in_channel in
-  In_channel.close in_channel;
-  text
+  with_in_channel path ~mode:`Text ~f:(fun channel -> In_channel.input_all channel)
 ;;
 
 let mtime path =

@@ -93,12 +93,7 @@ the dependency graph from this file to the output should be rebuilt:
 
   $ alice build --normalize-paths --verbose
    Compiling foo v0.1.0
-   [INFO] Analyzing dependencies of file: bar.ml
-   [INFO] Analyzing dependencies of file: foo.ml
-   [INFO] Analyzing dependencies of file: foo.mli
    [INFO] Analyzing dependencies of file: foo_dep.ml
-   [INFO] Analyzing dependencies of file: foo_dep.mli
-   [INFO] Analyzing dependencies of file: main.ml
    [INFO] Copying source file: foo_dep.ml
    [INFO] Building targets: foo_dep.cmx, foo_dep.o
    [INFO] Building targets: foo.cmx, foo.o
@@ -112,11 +107,6 @@ Change a shallow dependency and rebuild. Only the final build steps should run:
 
   $ alice build --normalize-paths --verbose
    Compiling foo v0.1.0
-   [INFO] Analyzing dependencies of file: bar.ml
-   [INFO] Analyzing dependencies of file: foo.ml
-   [INFO] Analyzing dependencies of file: foo.mli
-   [INFO] Analyzing dependencies of file: foo_dep.ml
-   [INFO] Analyzing dependencies of file: foo_dep.mli
    [INFO] Analyzing dependencies of file: main.ml
    [INFO] Copying source file: main.ml
    [INFO] Building targets: main.cmx, main.o
@@ -130,12 +120,7 @@ Change an interface and rebuild:
 
   $ alice build --normalize-paths --verbose
    Compiling foo v0.1.0
-   [INFO] Analyzing dependencies of file: bar.ml
-   [INFO] Analyzing dependencies of file: foo.ml
    [INFO] Analyzing dependencies of file: foo.mli
-   [INFO] Analyzing dependencies of file: foo_dep.ml
-   [INFO] Analyzing dependencies of file: foo_dep.mli
-   [INFO] Analyzing dependencies of file: main.ml
    [INFO] Copying source file: foo.mli
    [INFO] Building targets: foo.cmi
    [INFO] Building targets: foo.cmx, foo.o

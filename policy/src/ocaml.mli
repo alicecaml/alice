@@ -23,6 +23,7 @@ module Plan : sig
     -> exe_root_ml:Path.Relative.t option
     -> lib_root_ml:Path.Relative.t option
     -> src_dir:_ File.dir
+    -> build_dir:Path.Absolute.t
     -> t
 
   val traverse_exe : t -> Build_plan.Traverse.t
