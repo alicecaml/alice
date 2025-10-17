@@ -149,32 +149,7 @@ module Traverse = struct
       Path.Set.to_list inputs
       |> List.map ~f:(fun output ->
         let origin = Path.Map.find output t.build_plan in
-        { origin; build_plan = t.build_plan })
-  ;;
-
-  let rec all_origins t =
-    List.fold_left (deps t) ~init:[ t.origin ] ~f:(fun acc dep -> all_origins dep @ acc)
-  ;;
-
-  let dot t =
-    List.filter_map (all_origins t) ~f:(fun (origin : Origin.t) ->
-      match origin with
-      | Source _ -> None
-      | Build { inputs; outputs; commands = _ } ->
-        let outputs_str =
-          Path.Set.to_list outputs
-          |> List.map ~f:(fun path -> sprintf "\"%s\"" (Alice_ui.path_to_string path))
-          |> String.concat ~sep:", "
-        in
-        let inputs_str =
-          Path.Set.to_list inputs
-          |> List.map ~f:(fun path -> sprintf "\"%s\"" (Alice_ui.path_to_string path))
-          |> String.concat ~sep:", "
-        in
-        Some (sprintf "  {%s} -> {%s}" outputs_str inputs_str))
-    |> List.sort_uniq ~cmp:String.compare
-    |> String.concat ~sep:"\n"
-    |> sprintf "digraph {\n%s\n}"
+        { t with origin })
   ;;
 end
 
@@ -196,7 +171,7 @@ let dot t =
           |> String.concat ~sep:", "
         in
         Some (sprintf "  \"%s\" -> {%s}" (Alice_ui.path_to_string output) inputs_str))
-    |> List.sort_uniq ~cmp:String.compare
+    |> List.sort ~cmp:String.compare
   in
   String.concat ~sep:"\n" lines |> sprintf "digraph {\n%s\n}"
 ;;

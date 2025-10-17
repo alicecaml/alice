@@ -26,16 +26,17 @@ module Origin : sig
 end
 
 module Traverse : sig
-  (** Helper for traversing a DAG *)
+  (** Helper for traversing a DAG. Traversals begin at output nodes. A
+      traversal is a node in the DAG (an [Origin]) which knows how to expand
+      the dependencies (inputs) to the node. Doesn't attempt to prevent
+      visiting nodes multiple times. *)
   type t
 
   val origin : t -> Origin.t
   val outputs : t -> Path.Set.t
-  val deps : t -> t list
 
-  (** Returns the graphviz source code for rendering this traversal of the
-      build graph. *)
-  val dot : t -> string
+  (** The list of nodes whose outputs are the inputs to the current node. *)
+  val deps : t -> t list
 end
 
 (** A DAG that knows how to build a collection of interdependent files and the
