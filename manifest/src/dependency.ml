@@ -4,51 +4,33 @@ open Alice_hierarchy
 
 type t =
   { name : Package_name.t
-  ; version_pattern : Version_pattern.t
+  ; path : Path.Either.t
   }
 
-let to_dyn { name; version_pattern } =
-  Dyn.record
-    [ "name", Package_name.to_dyn name
-    ; "version_pattern", Version_pattern.to_dyn version_pattern
-    ]
+let to_dyn { name; path } =
+  Dyn.record [ "name", Package_name.to_dyn name; "path", Path.Either.to_dyn path ]
 ;;
 
 module Keys = struct
   module Key = Toml.Types.Table.Key
 
-  let version_pattern = Key.of_string "name"
+  let path = Key.of_string "path"
+  let all = [ path ]
 end
 
 let of_toml ~manifest_path_for_messages ~name toml_value =
-  let error pps =
-    user_error
-      (Pp.textf
-         "Error while parsing toml file %S:\n"
-         (Path.to_filename manifest_path_for_messages)
-       :: pps)
-  in
-  let parse_version_pattern version_pattern_s =
-    match Version_pattern.of_string_res version_pattern_s with
-    | Ok version_pattern -> version_pattern
-    | Error e -> error e
-  in
   match (toml_value : Toml.Types.value) with
-  | TString version_pattern_s ->
-    let version_pattern = parse_version_pattern version_pattern_s in
-    { name; version_pattern }
   | TTable toml_table ->
-    let version_pattern_s =
-      Fields.parse_field
-        ~manifest_path_for_messages
-        Keys.version_pattern
-        toml_table
-        ~f:(function
-        | Toml.Types.TString version_pattern_s -> `Ok version_pattern_s
+    Fields.check_for_extraneous_fields
+      ~manifest_path_for_messages
+      ~all_keys:Keys.all
+      toml_table;
+    let path =
+      Fields.parse_field ~manifest_path_for_messages Keys.path toml_table ~f:(function
+        | Toml.Types.TString path -> `Ok (Path.of_filename path)
         | _ -> `Expected "string")
     in
-    let version_pattern = parse_version_pattern version_pattern_s in
-    { name; version_pattern }
+    { name; path }
   | other ->
     user_error
       [ Pp.textf
@@ -59,6 +41,12 @@ let of_toml ~manifest_path_for_messages ~name toml_value =
       ]
 ;;
 
-let to_toml_except_name { name = _; version_pattern } =
-  Toml.Types.TString (Version_pattern.to_string version_pattern)
+let to_toml { name; path } =
+  let table =
+    [ Keys.path, Toml.Types.TString (Path.Either.to_filename path) ]
+    |> Toml.Types.Table.of_key_values
+  in
+  let rhs = Toml.Types.TTable table in
+  let lhs = Toml.Types.Table.Key.of_string (Package_name.to_string name) in
+  lhs, rhs
 ;;

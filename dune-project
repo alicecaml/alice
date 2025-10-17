@@ -58,6 +58,10 @@
  (depends ocaml))
 
 (package
+ (name alice_dag)
+ (depends ocaml))
+
+(package
  (name alice_root)
  (depends
   ocaml

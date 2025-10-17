@@ -2,7 +2,7 @@
 
 (env
  (dev
-  (flags :standard -warn-error -26-27-32-33-34-37-39-23-38-69)))
+  (flags :standard -warn-error -26-27-32-33-34-37-39-23-38-69-67)))
 
 (repository
  (name alice_frozen)

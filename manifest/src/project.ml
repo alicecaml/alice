@@ -57,3 +57,7 @@ let to_toml { package; dependencies } =
 ;;
 
 let to_toml_string t = to_toml t |> Toml.Printer.string_of_table
+
+let dependencies { dependencies; _ } =
+  Option.value dependencies ~default:Dependencies.empty
+;;

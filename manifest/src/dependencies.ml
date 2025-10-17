@@ -36,9 +36,5 @@ let of_toml ~manifest_path_for_messages toml =
 ;;
 
 let to_toml t =
-  Toml.Types.Table.of_list
-    (Package_name.Map.values t
-     |> List.map ~f:(fun (dependency : Dependency.t) ->
-       ( Toml.Types.Table.Key.of_string (Package_name.to_string dependency.name)
-       , Dependency.to_toml_except_name dependency )))
+  Toml.Types.Table.of_list (Package_name.Map.values t |> List.map ~f:Dependency.to_toml)
 ;;
