@@ -37,7 +37,7 @@ let parse_manifest_path_and_validate =
     (match File_ops.exists absolute_path with
      | true -> absolute_path
      | false ->
-       user_error
+       user_exn
          [ Pp.text "Can't find file passed to --manifest-path.\n"
          ; Pp.textf "%S does not exist." (Path.to_filename absolute_path)
          ])
@@ -46,7 +46,7 @@ let parse_manifest_path_and_validate =
     (match File_ops.exists path with
      | true -> path
      | false ->
-       user_error
+       user_exn
          [ Pp.textf
              "This command must be run from a directory containing a file named %S.\n"
              Project.manifest_name

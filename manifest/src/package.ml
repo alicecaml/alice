@@ -32,7 +32,7 @@ end
 
 let of_toml ~manifest_path_for_messages toml_table =
   let error pps =
-    user_error
+    user_exn
       (Pp.textf
          "Error while parsing toml file %S:\n"
          (Path.to_filename manifest_path_for_messages)

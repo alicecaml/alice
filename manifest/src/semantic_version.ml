@@ -209,5 +209,5 @@ let of_string_res s =
 let of_string s =
   match of_string_res s with
   | Ok t -> t
-  | Error pps -> Alice_error.user_error pps
+  | Error pps -> Alice_error.user_exn pps
 ;;

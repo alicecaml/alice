@@ -1,3 +1,3 @@
-# alice_dag
+# Dag
 
 A generic directed acyclic graph.

@@ -10,7 +10,7 @@ let read_table path =
   match toml_result with
   | `Ok table -> table
   | `Error (message, { source; line; column = _; position = _ }) ->
-    user_error
+    user_exn
       [ Pp.text "Failed to parse toml file!\n"; Pp.textf "%s:%d: %s" source line message ]
 ;;
 

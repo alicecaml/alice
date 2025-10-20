@@ -9,7 +9,7 @@ let parse_field_opt ~manifest_path_for_messages key toml_table ~f =
     match f value with
     | `Ok x -> x
     | `Expected expected ->
-      user_error
+      user_exn
         [ Pp.textf
             "Error while parsing toml file %S:\n"
             (Path.to_filename manifest_path_for_messages)
@@ -25,7 +25,7 @@ let parse_field ~manifest_path_for_messages key toml_table ~f =
   match parse_field_opt ~manifest_path_for_messages key toml_table ~f with
   | Some value -> value
   | None ->
-    user_error
+    user_exn
       [ Pp.textf
           "Error while parsing toml file %S:\nCan't find required field %S."
           (Path.to_filename manifest_path_for_messages)
@@ -40,7 +40,7 @@ let check_for_extraneous_fields ~manifest_path_for_messages ~all_keys toml_table
        let key = Table.Key.to_string key in
        match String.Set.mem key all_keys with
        | false ->
-         user_error
+         user_exn
            [ Pp.textf
                "Error while parsing toml file %S:\n"
                (Path.to_filename manifest_path_for_messages)

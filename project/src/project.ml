@@ -61,7 +61,7 @@ let read_dir path =
 let read_dir_exn path =
   match read_dir path with
   | Ok x -> x
-  | Error pps -> user_error pps
+  | Error pps -> user_exn pps
 ;;
 
 let ocaml_plan ~ctx ~exe_only t =
@@ -168,7 +168,7 @@ let dot_ocaml ~ctx t =
 let new_ocaml name path kind =
   if File_ops.exists (path / Paths.manifest)
   then
-    user_error
+    user_exn
       [ Pp.textf
           "Refusing to create project because destination directory exists and contains \
            project manifest (%s).\n"
@@ -179,7 +179,7 @@ let new_ocaml name path kind =
   then
     if File_ops.is_directory (path / Paths.src)
     then
-      user_error
+      user_exn
         [ Pp.textf
             "Refusing to create project because destination directory exists and \
              contains src directory (%s).\n"
@@ -187,7 +187,7 @@ let new_ocaml name path kind =
         ; Pp.text "Delete this directory before proceeding."
         ]
     else
-      user_error
+      user_exn
         [ Pp.textf
             "Refusing to create project because destination directory exists and \
              contains a file named \"src\" (%s).\n"

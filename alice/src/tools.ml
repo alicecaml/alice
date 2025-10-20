@@ -269,7 +269,7 @@ module Root = struct
     match Target.Map.find_opt target t.remote_tarballs_by_target with
     | Some x -> x
     | None ->
-      Alice_error.user_error
+      Alice_error.user_exn
         [ Pp.textf
             "Root %s is not available for platform %s-%s (%sally linked)"
             t.name

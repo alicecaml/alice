@@ -14,7 +14,7 @@ let of_toml ~manifest_path_for_messages toml =
       match Package_name.of_string_res (Toml.Types.Table.Key.to_string key) with
       | Ok package_name -> package_name
       | Error pps ->
-        user_error
+        user_exn
           (Pp.textf
              "Error while parsing toml file %S:\n"
              (Path.to_filename manifest_path_for_messages)
@@ -28,7 +28,7 @@ let of_toml ~manifest_path_for_messages toml =
   |> function
   | Ok t -> t
   | Error (duplicate_name, _, _) ->
-    user_error
+    user_exn
       [ Pp.textf
           "Duplicate package name in dependencies: %s"
           (Package_name.to_string duplicate_name)

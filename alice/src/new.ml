@@ -24,8 +24,7 @@ let new_ =
     match exe, lib with
     | false, false | true, false -> `Exe
     | false, true -> `Lib
-    | true, true ->
-      Alice_error.user_error [ Pp.text "Can't specify both --exe and --lib" ]
+    | true, true -> Alice_error.user_exn [ Pp.text "Can't specify both --exe and --lib" ]
   in
   let kind_string =
     match kind with

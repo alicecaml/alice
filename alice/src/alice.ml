@@ -18,4 +18,10 @@ let command =
 
 Internal.command_for_completion_script := Some command
 
-let () = Command.run command ~program_name:(Literal "alice")
+let () =
+  match Command.run command ~program_name:(Literal "alice") with
+  | () -> ()
+  | exception Alice_error.User_error.E error ->
+    Alice_error.User_error.eprint error;
+    exit 1
+;;

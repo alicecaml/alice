@@ -32,7 +32,7 @@ let of_toml ~manifest_path_for_messages ~name toml_value =
     in
     { name; path }
   | other ->
-    user_error
+    user_exn
       [ Pp.textf
           "Error while parsing toml file %S:\n"
           (Path.to_filename manifest_path_for_messages)
