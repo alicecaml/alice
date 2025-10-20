@@ -1,13 +1,14 @@
 open! Alice_stdlib
 open Alice_hierarchy
 open Alice_error
+open Alice_package
 module File_ops = Alice_io.File_ops
 
 let manifest_name = "Alice.toml"
 
 type t =
   { root : Path.Absolute.t
-  ; manifest : Alice_manifest.Project.t
+  ; manifest : Alice_package.Package.t
   }
 
 let create ~root ~manifest = { root; manifest }
@@ -40,13 +41,13 @@ let out_dir t =
   Path.concat_multi
     (build_dir t)
     [ Path.relative "packages"
-    ; Path.relative (Alice_manifest.Package.name_dash_version_string t.manifest.package)
+    ; Path.relative (Package.id t.manifest |> Package_id.name_dash_version_string)
     ]
 ;;
 
 let contains_exe t = File_ops.exists (src_dir t / Paths.exe_root_ml)
 let contains_lib t = File_ops.exists (src_dir t / Paths.lib_root_ml)
-let package_name t = Alice_manifest.Package_name.to_string t.manifest.package.name
+let package_name t = Package_name.to_string (Package.id t.manifest).name
 
 let read_dir path =
   match Alice_io.Read_hierarchy.read path with
@@ -84,22 +85,22 @@ let ocaml_plan ~ctx ~exe_only t =
     ~lib_root_ml
     ~src_dir
     ~out_dir
-    ~package:t.manifest.package
+    ~package:(Package.id t.manifest)
 ;;
 
 let run_traverse t ~traverse =
   Alice_scheduler.Sequential.run
     ~src_dir:(src_dir t)
     ~out_dir:(out_dir t)
-    ~package:t.manifest.package
+    ~package:(Package.id t.manifest)
     traverse
 ;;
 
 let compiling_message t =
   let open Alice_ui in
-  let package = t.manifest.package in
-  let name_string = Alice_manifest.Package_name.to_string package.name in
-  let version_string = Alice_manifest.Semantic_version.to_string package.version in
+  let package = Package.id t.manifest in
+  let name_string = Package_name.to_string package.name in
+  let version_string = Semantic_version.to_string package.version in
   verb_message `Compiling (sprintf "%s v%s" name_string version_string)
 ;;
 
@@ -195,18 +196,18 @@ let new_ocaml name path kind =
         ; Pp.text "Delete this file before proceeding."
         ];
   let manifest =
-    { Alice_manifest.Project.package =
-        { name; version = Alice_manifest.Semantic_version.of_string "0.1.0" }
-    ; dependencies = None
-    }
+    Alice_package.Package.create
+      ~id:
+        { name
+        ; version = Semantic_version.of_string_res "0.1.0" |> User_error.get_or_panic
+        }
+      ~dependencies:None
   in
   File_ops.mkdir_p (path / Paths.src);
   File_ops.write_text_file
     (path / Path.relative ".gitignore")
     (Path.to_filename Paths.build);
-  File_ops.write_text_file
-    (path / Paths.manifest)
-    (Alice_manifest.Project.to_toml_string manifest);
+  Alice_manifest.write_package (path / Paths.manifest) manifest;
   match kind with
   | `Exe ->
     File_ops.write_text_file

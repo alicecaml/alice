@@ -1,17 +1,15 @@
 open! Alice_stdlib
 open Alice_error
 open Alice_hierarchy
-
-type t = Dependency.t Package_name.Map.t
-
-let empty = Package_name.Map.empty
-let to_dyn = Package_name.Map.to_dyn Dependency.to_dyn
+include Alice_package.Dependencies
 
 let of_toml ~manifest_path_for_messages toml =
   Toml.Types.Table.to_list toml
   |> List.map ~f:(fun (key, value) ->
     let package_name =
-      match Package_name.of_string_res (Toml.Types.Table.Key.to_string key) with
+      match
+        Alice_package.Package_name.of_string_res (Toml.Types.Table.Key.to_string key)
+      with
       | Ok package_name -> package_name
       | Error pps ->
         user_exn
@@ -24,17 +22,18 @@ let of_toml ~manifest_path_for_messages toml =
       Dependency.of_toml ~manifest_path_for_messages ~name:package_name value
     in
     package_name, dependency)
-  |> Package_name.Map.of_list
+  |> Alice_package.Package_name.Map.of_list
   |> function
   | Ok t -> t
   | Error (duplicate_name, _, _) ->
     user_exn
       [ Pp.textf
           "Duplicate package name in dependencies: %s"
-          (Package_name.to_string duplicate_name)
+          (Alice_package.Package_name.to_string duplicate_name)
       ]
 ;;
 
 let to_toml t =
-  Toml.Types.Table.of_list (Package_name.Map.values t |> List.map ~f:Dependency.to_toml)
+  Toml.Types.Table.of_list
+    (Alice_package.Package_name.Map.values t |> List.map ~f:Dependency.to_toml)
 ;;

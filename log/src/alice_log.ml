@@ -43,7 +43,7 @@ let log ?pos ?package ~level message =
       | Some package ->
         Pp.tag
           tag_package
-          (Pp.textf "[%s] " (Alice_manifest.Package.name_v_version_string package))
+          (Pp.textf "[%s] " (Alice_package.Package_id.name_v_version_string package))
         :: message
     in
     let message =

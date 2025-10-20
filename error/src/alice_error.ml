@@ -25,6 +25,11 @@ module User_error = struct
 
   let eprint t = Alice_print.Raw.pps_eprint (Pp.newline :: t)
   let get = Result.get_ok
+
+  let get_or_panic = function
+    | Ok t -> t
+    | Error pps -> panic pps
+  ;;
 end
 
 type 'a user_result = 'a User_error.result

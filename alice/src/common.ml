@@ -61,7 +61,7 @@ let parse_project =
   let+ manifest_path = parse_manifest_path_and_validate in
   Project.create
     ~root:(Path.dirname manifest_path)
-    ~manifest:(Alice_manifest.Io.read_project manifest_path)
+    ~manifest:(Alice_manifest.read_package manifest_path)
 ;;
 
 let parse_ctx =

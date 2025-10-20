@@ -1,75 +1,46 @@
 open! Alice_stdlib
-open Alice_error
-open Alice_hierarchy
-
-type t =
-  { name : Package_name.t
-  ; version : Semantic_version.t
-  }
-
-let to_dyn { name; version } =
-  Dyn.record
-    [ "name", Package_name.to_dyn name; "version", Semantic_version.to_dyn version ]
-;;
-
-let name_dash_version_string { name; version } =
-  String.concat
-    ~sep:"-"
-    [ Package_name.to_string name; Semantic_version.to_string version ]
-;;
-
-let name_v_version_string { name; version } =
-  sprintf "%s v%s" (Package_name.to_string name) (Semantic_version.to_string version)
-;;
+include Alice_package.Package
 
 module Keys = struct
   module Key = Toml.Types.Table.Key
 
-  let name = Key.of_string "name"
-  let version = Key.of_string "version"
-  let all = [ name; version ]
+  let package = Key.of_string "package"
+  let dependencies = Key.of_string "dependencies"
+  let all = [ package; dependencies ]
 end
 
 let of_toml ~manifest_path_for_messages toml_table =
-  let error pps =
-    user_exn
-      (Pp.textf
-         "Error while parsing toml file %S:\n"
-         (Path.to_filename manifest_path_for_messages)
-       :: pps)
-  in
   Fields.check_for_extraneous_fields
     ~manifest_path_for_messages
     ~all_keys:Keys.all
     toml_table;
-  let name =
-    Fields.parse_field ~manifest_path_for_messages Keys.name toml_table ~f:(function
-      | Toml.Types.TString name -> `Ok name
-      | _ -> `Expected "string")
+  let package_table =
+    Fields.parse_field ~manifest_path_for_messages Keys.package toml_table ~f:(function
+      | Toml.Types.TTable table -> `Ok table
+      | _ -> `Expected "table")
   in
-  let name =
-    match Package_name.of_string_res name with
-    | Ok name -> name
-    | Error pps -> error pps
+  let id = Package_id.of_toml ~manifest_path_for_messages package_table in
+  let dependencies =
+    Fields.parse_field_opt
+      ~manifest_path_for_messages
+      Keys.dependencies
+      toml_table
+      ~f:(function
+      | Toml.Types.TTable dependencies ->
+        `Ok (Dependencies.of_toml ~manifest_path_for_messages dependencies)
+      | _ -> `Expected "table")
   in
-  let version =
-    Fields.parse_field ~manifest_path_for_messages Keys.version toml_table ~f:(function
-      | Toml.Types.TString version -> `Ok version
-      | _ -> `Expected "string")
-  in
-  let version =
-    match Semantic_version.of_string_res version with
-    | Ok version -> version
-    | Error pps -> error pps
-  in
-  { name; version }
+  create ~id ~dependencies
 ;;
 
-let to_toml { name; version } =
+let to_toml t =
+  let fields = [ Keys.package, Toml.Types.TTable (Package_id.to_toml (id t)) ] in
   let fields =
-    [ Keys.name, Toml.Types.TString (Package_name.to_string name)
-    ; Keys.version, Toml.Types.TString (Semantic_version.to_string version)
-    ]
+    match dependencies_ t with
+    | Some dependencies ->
+      fields
+      @ [ Keys.dependencies, Toml.Types.TTable (Dependencies.to_toml dependencies) ]
+    | None -> fields
   in
   Toml.Types.Table.of_list fields
 ;;

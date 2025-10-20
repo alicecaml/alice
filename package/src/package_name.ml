@@ -49,7 +49,7 @@ let validate s =
 
 let of_string_res s = validate s |> Result.map ~f:(fun () -> s)
 
-let of_string s =
+let of_string_exn s =
   match validate s with
   | Error pps -> user_exn pps
   | Ok () -> s

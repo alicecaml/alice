@@ -16,7 +16,12 @@ module User_error : sig
   exception E of t
 
   val eprint : t -> unit
+
+  (** Raises an [E] exception on the error case *)
   val get : 'a result -> 'a
+
+  (** Panics on the error case *)
+  val get_or_panic : 'a result -> 'a
 end
 
 type 'a user_result = 'a User_error.result

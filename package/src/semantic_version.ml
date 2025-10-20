@@ -206,7 +206,7 @@ let of_string_res s =
   Ok { major; minor; patch; pre_release; metadata }
 ;;
 
-let of_string s =
+let of_string_exn s =
   match of_string_res s with
   | Ok t -> t
   | Error pps -> Alice_error.user_exn pps

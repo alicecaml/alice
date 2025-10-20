@@ -6,7 +6,7 @@
   alice_error
   alice_print
   alice_io
-  alice_manifest
+  alice_package
   alice_hierarchy
   alice_policy
   alice_project

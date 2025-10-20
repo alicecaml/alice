@@ -1,0 +1,10 @@
+open! Alice_stdlib
+
+type t =
+  { name : Package_name.t
+  ; version : Semantic_version.t
+  }
+
+val to_dyn : t -> Dyn.t
+val name_dash_version_string : t -> string
+val name_v_version_string : t -> string

@@ -7,7 +7,7 @@ type level =
   | `Error
   ]
 
-type package := Alice_manifest.Package.t
+type package := Alice_package.Package_id.t
 
 val set_level : level -> unit
 
