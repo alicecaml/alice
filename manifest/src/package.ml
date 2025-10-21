@@ -14,12 +14,13 @@ let of_toml ~manifest_path_for_messages toml_table =
     ~manifest_path_for_messages
     ~all_keys:Keys.all
     toml_table;
-  let package_table =
+  let metadata_table =
+    (* General metadata is under a key "package" in the manifet *)
     Fields.parse_field ~manifest_path_for_messages Keys.package toml_table ~f:(function
       | Toml.Types.TTable table -> `Ok table
       | _ -> `Expected "table")
   in
-  let id = Package_id.of_toml ~manifest_path_for_messages package_table in
+  let id = Package_id.of_toml ~manifest_path_for_messages metadata_table in
   let dependencies =
     Fields.parse_field_opt
       ~manifest_path_for_messages

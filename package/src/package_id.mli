@@ -6,5 +6,6 @@ type t =
   }
 
 val to_dyn : t -> Dyn.t
+val equal : t -> t -> bool
 val name_dash_version_string : t -> string
 val name_v_version_string : t -> string

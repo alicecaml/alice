@@ -12,6 +12,10 @@ let to_dyn { name; version } =
     [ "name", Package_name.to_dyn name; "version", Semantic_version.to_dyn version ]
 ;;
 
+let equal t { name; version } =
+  Package_name.equal t.name name && Semantic_version.equal t.version version
+;;
+
 let name_dash_version_string { name; version } =
   String.concat
     ~sep:"-"

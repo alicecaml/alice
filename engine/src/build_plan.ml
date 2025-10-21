@@ -24,14 +24,15 @@ module Build = struct
 end
 
 module Origin = struct
+  module Name = struct
+    include Path
+
+    let to_string = Alice_ui.path_to_string
+  end
+
   type t =
     | Source of Path.t
     | Build of Build.t
-
-  type name = Path.t
-
-  module Name_set = Path.Set
-  module Name_map = Path.Map
 
   let to_dyn = function
     | Source path -> Dyn.variant "Source" [ Path.to_dyn path ]
@@ -55,7 +56,7 @@ module Origin = struct
     | Build build -> build.outputs
   ;;
 
-  let deps = inputs
+  let dep_names = inputs
 end
 
 include Alice_dag.Make (Origin)
@@ -94,21 +95,3 @@ module Staging = struct
            [ Pp.textf " - %s" (Alice_ui.path_to_string file); Pp.newline ]))
   ;;
 end
-
-let dot t =
-  let lines =
-    to_list t
-    |> List.filter_map ~f:(fun (output, (origin : Origin.t)) ->
-      match origin with
-      | Source _ -> None
-      | Build { inputs; outputs = _; commands = _ } ->
-        let inputs_str =
-          Path.Set.to_list inputs
-          |> List.map ~f:(fun path -> sprintf "\"%s\"" (Alice_ui.path_to_string path))
-          |> String.concat ~sep:", "
-        in
-        Some (sprintf "  \"%s\" -> {%s}" (Alice_ui.path_to_string output) inputs_str))
-    |> List.sort ~cmp:String.compare
-  in
-  String.concat ~sep:"\n" lines |> sprintf "digraph {\n%s\n}"
-;;

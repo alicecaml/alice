@@ -15,8 +15,15 @@ let to_dyn { id; dependencies } =
     ]
 ;;
 
+let equal t { id; dependencies } =
+  Package_id.equal t.id id
+  && Option.equal t.dependencies dependencies ~eq:Dependencies.equal
+;;
+
 let create ~id ~dependencies = { id; dependencies }
 let id { id; _ } = id
+let name t = (id t).name
+let version t = (id t).version
 
 let dependencies { dependencies; _ } =
   Option.value dependencies ~default:Dependencies.empty

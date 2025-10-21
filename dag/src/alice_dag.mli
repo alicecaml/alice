@@ -1,18 +1,22 @@
 open! Alice_stdlib
 
 module type Node = sig
+  module Name : sig
+    type t
+
+    val to_string : t -> string
+
+    module Set : Set.S with type elt = t
+    module Map : Map.S with type key = t
+  end
+
   (** A node in a DAG. Nodes have names which are used to link nodes to their
       dependencies in the graph. *)
   type t
 
-  type name
-
-  module Name_set : Set.S with type elt = name
-  module Name_map : Map.S with type key = name
-
   val to_dyn : t -> Dyn.t
   val equal : t -> t -> bool
-  val deps : t -> Name_set.t
+  val dep_names : t -> Name.Set.t
 end
 
 module Make (Node : Node) : sig
@@ -20,7 +24,10 @@ module Make (Node : Node) : sig
 
   val empty : t
   val to_dyn : t -> Dyn.t
-  val to_list : t -> (Node.name * Node.t) list
+  val to_list : t -> (Node.Name.t * Node.t) list
+
+  (** Returns the graphviz source code for rendering the dag. *)
+  val dot : t -> string
 
   module Traverse : sig
     (** Helper for traversing a DAG. Traversals begin at output nodes. A
@@ -35,7 +42,7 @@ module Make (Node : Node) : sig
 
   (** [traverse t ~name] returns a traversal of [t] starting at the node named
       [name] if such a node exists in [t], otherwise returns [None]. *)
-  val traverse : t -> name:Node.name -> Traverse.t option
+  val traverse : t -> name:Node.Name.t -> Traverse.t option
 
   module Staging : sig
     type dag := t
@@ -50,12 +57,12 @@ module Make (Node : Node) : sig
 
     (** Add a node to the graph. The deps of the new node don't all need to be
         present in the graph. *)
-    val add : t -> Node.name -> Node.t -> (t, [ `Conflict of Node.t ]) result
+    val add : t -> Node.Name.t -> Node.t -> (t, [ `Conflict of Node.t ]) result
 
     (** Returns a DAG provided that the staging graph is complete and free of
         cycles. *)
     val finalize
       :  t
-      -> (dag, [ `Dangling of Node.name | `Cycle of Node.name list ]) result
+      -> (dag, [ `Dangling of Node.Name.t | `Cycle of Node.Name.t list ]) result
   end
 end

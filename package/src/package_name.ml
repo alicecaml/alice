@@ -8,6 +8,9 @@ module T = struct
 end
 
 include T
+
+let equal = String.equal
+
 module Set = Set.Make (T)
 module Map = Map.Make (T)
 
