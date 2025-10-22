@@ -19,9 +19,9 @@ wget "$BASE_URL/$OCAML.tar.gz"
 wget "$BASE_URL/$OCAMLLSP.tar.gz"
 wget "$BASE_URL/$OCAMLFORMAT.tar.gz"
 
-echo 4e9b683dc39867dcd5452e25a154c2964cd02a992ca4d3da33a46a24b6cb2187  $OCAML.tar.gz | sha256sum -c
-echo bbfcd59f655dd96eebfa3864f37fea3d751d557b7773a5445e6f75891bc03cd3  $OCAMLLSP.tar.gz | sha256sum -c
-echo 555d460f1b9577fd74a361eb5675f840ad2a73a4237fb310b8d6bc169c0df90c  $OCAMLFORMAT.tar.gz | sha256sum -c
+echo 4e9b683dc39867dcd5452e25a154c2964cd02a992ca4d3da33a46a24b6cb2187  $OCAML.tar.gz | sha256sum -c -
+echo bbfcd59f655dd96eebfa3864f37fea3d751d557b7773a5445e6f75891bc03cd3  $OCAMLLSP.tar.gz | sha256sum -c -
+echo 555d460f1b9577fd74a361eb5675f840ad2a73a4237fb310b8d6bc169c0df90c  $OCAMLFORMAT.tar.gz | sha256sum -c -
 
 tar xf "$OCAML.tar.gz"
 tar xf "$OCAMLLSP.tar.gz"
