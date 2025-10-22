@@ -1,6 +1,4 @@
 open! Alice_stdlib
-open Alice_error
-open Alice_hierarchy
 
 type t =
   { name : Package_name.t
