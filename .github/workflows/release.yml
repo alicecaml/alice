@@ -132,7 +132,7 @@ jobs:
           allowUpdates: true
           artifacts: "*.tar.gz"
 
-  release-linux-musl-static:
+  release-x86_64-linux-musl-static:
     name: Build for x86_64-linux-musl-static
     runs-on: ubuntu-latest
     steps:
