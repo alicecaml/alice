@@ -79,7 +79,7 @@ module Arch = struct
         X86_64)
     else (
       match Alice_io.Uname.uname_m () with
-      | "arm64" -> Aarch64
+      | "arm64" | "aarch64" -> Aarch64
       | "x86_64" -> X86_64
       | other -> Alice_error.panic [ Pp.textf "Unknown architecture: %s" other ])
   ;;
