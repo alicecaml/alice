@@ -7,24 +7,29 @@ RUN apk update && apk add \
     wget \
     git \
     bash \
+    opam \
     ;
-
-# Install the OCaml compiler (via alice)
-RUN curl -fsSL https://alicecaml.org/install.sh | sh -s -- --global /usr --no-prompt --install-tools --no-update-shell-config
-
-# Install Dune
-RUN curl -4fsSL https://github.com/ocaml-dune/dune-bin-install/releases/download/v3/install.sh | sh -s 3.20.2 --install-root /usr --no-update-shell-config
 
 RUN adduser -D -G users -G wheel user
 WORKDIR /home/user
-COPY --chmod=0755 . alice
+COPY --chmod=0755 alice alice
 RUN chown -R user alice
 
 USER user
 WORKDIR alice
 
-RUN awk '{ print } /\(executable/ { print " (link_flags (:standard -cclib -static))" }' alice/src/dune > /tmp/alice_static_dune && cp /tmp/alice_static_dune alice/src/dune
-RUN dune build
+RUN boot/aarch64-linux-musl-static.sh
+
+RUN opam init --disable-sandbox --auto-setup --bare
+
+ENV PATH=/home/user/.alice/current/bin:$PATH
+
+# There's no Dune binary distro available for aarch64 linux, so install it with Opam instead.
+RUN opam switch create . --empty
+RUN opam repo add alice git+https://github.com/alicecaml/alice-opam-repo --all-switches
+RUN opam update
+RUN opam install -y ocaml-system.5.3.1+relocatable dune
+RUN opam exec dune build
 
 RUN (git describe --exact-match --tags || git rev-parse HEAD) | cat > version.txt
 RUN uname -m > arch.txt
@@ -34,7 +39,7 @@ RUN chmod a+w $(cat name.txt)/bin/alice
 RUN strip $(cat name.txt)/bin/alice
 RUN chmod a-w $(cat name.txt)/bin/alice
 RUN mkdir -p $(cat name.txt)/share/bash-completion/completions
-RUN scripts/generate_minified_bash_completion_script.sh > $(cat name.txt)/share/bash-completion/completions/alice
+RUN opam exec scripts/generate_minified_bash_completion_script.sh > $(cat name.txt)/share/bash-completion/completions/alice
 RUN tar czf $(cat name.txt).tar.gz $(cat name.txt)
 
 FROM scratch
