@@ -21,7 +21,6 @@ module Make (Node : Node) = struct
 
   let empty = Node.Name.Map.empty
   let to_dyn = Node.Name.Map.to_dyn Node.to_dyn
-  let to_list = Node.Name.Map.to_list
   let nodes = Node.Name.Map.values
 
   let dot t =
