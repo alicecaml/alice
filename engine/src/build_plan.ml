@@ -69,7 +69,7 @@ module Artifact_with_origin = struct
   ;;
 
   let dep_names t = Origin.inputs t.origin
-  let show t = Path.to_filename t.artifact
+  let show t = Alice_ui.path_to_string t.artifact
 end
 
 include Alice_dag.Make (Artifact_with_origin)
