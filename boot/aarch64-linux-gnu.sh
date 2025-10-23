@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Bootsrapping script for aarch64-linux-gnu. Creates an alice environment similar
-# to the one created by `alice tools get` which can be used to build alice.
+# to the one created by `alice tools install` which can be used to build alice.
 
 set -eux
 
