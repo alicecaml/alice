@@ -76,6 +76,71 @@ module Remote_tarballs = struct
   ;;
 
   (* Just hard-code these for now to keep things simple! *)
+
+  let aarch64_linux_musl_static_5_3_1 =
+    { compiler =
+        rt
+          ~name:"ocaml"
+          ~version:"5.3.1+relocatable"
+          ~url_base:url_base_5_3_1
+          ~url_file:"ocaml-5.3.1+relocatable-aarch64-linux-musl-static.tar.gz"
+          ~top_level_dir:"ocaml-5.3.1+relocatable-aarch64-linux-musl-static"
+          ~sha256:"661463be46580dd00285bef75b4d6311f2095c7deae8584667f9d76ed869276e"
+    ; ocamllsp =
+        rt
+          ~name:"ocamllsp"
+          ~version:"1.22.0"
+          ~url_base:url_base_5_3_1
+          ~url_file:
+            "ocamllsp-1.22.0-built-with-ocaml-5.3.1+relocatable-aarch64-linux-musl-static.tar.gz"
+          ~top_level_dir:
+            "ocamllsp-1.22.0-built-with-ocaml-5.3.1+relocatable-aarch64-linux-musl-static"
+          ~sha256:"522880c7800230d62b89820419ec21e364f72d54ed560eb0920d55338438cacf"
+    ; ocamlformat =
+        rt
+          ~name:"ocamlformat"
+          ~version:"0.27.0"
+          ~url_base:url_base_5_3_1
+          ~url_file:
+            "ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-aarch64-linux-musl-static.tar.gz"
+          ~top_level_dir:
+            "ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-aarch64-linux-musl-static"
+          ~sha256:"3cba0bfa0f075f3ab4f01752d18dd5dbbec03e50153892fdb83bc6b55b8e5f0e"
+    }
+  ;;
+
+  let aarch64_linux_gnu_5_3_1 =
+    { compiler =
+        rt
+          ~name:"ocaml"
+          ~version:"5.3.1+relocatable"
+          ~url_base:url_base_5_3_1
+          ~url_file:"ocaml-5.3.1+relocatable-aarch64-linux-gnu.tar.gz"
+          ~top_level_dir:"ocaml-5.3.1+relocatable-aarch64-linux-gnu"
+          ~sha256:"c89f1fc2a34222a95984a05e823a032f5c5e7d6917444685d88e837b6744491a"
+    ; ocamllsp =
+        rt
+          ~name:"ocamllsp"
+          ~version:"1.22.0"
+          ~url_base:url_base_5_3_1
+          ~url_file:
+            "ocamllsp-1.22.0-built-with-ocaml-5.3.1+relocatable-aarch64-linux-gnu.tar.gz"
+          ~top_level_dir:
+            "ocamllsp-1.22.0-built-with-ocaml-5.3.1+relocatable-aarch64-linux-gnu"
+          ~sha256:"05ee153f176fbf077166fe637136fc679edd64a0942b8a74e8ac77878ac25d3f"
+    ; ocamlformat =
+        rt
+          ~name:"ocamlformat"
+          ~version:"0.27.0"
+          ~url_base:url_base_5_3_1
+          ~url_file:
+            "ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-aarch64-linux-gnu.tar.gz"
+          ~top_level_dir:
+            "ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-aarch64-linux-gnu"
+          ~sha256:"28bceaceeb6055fada11cf3ba1dcc3ffec4997925dee096a736fdaef4d370e56"
+    }
+  ;;
+
   let aarch64_macos_5_3_1 =
     { compiler =
         rt
@@ -251,7 +316,11 @@ module Root = struct
     { name = "5.3.1+relocatable"
     ; remote_tarballs_by_target =
         Target.Map.of_list_exn
-          [ ( Target.create ~os:Macos ~arch:Aarch64 ~linked:Dynamic
+          [ ( Target.create ~os:Linux ~arch:Aarch64 ~linked:Static
+            , Remote_tarballs.aarch64_linux_musl_static_5_3_1 )
+          ; ( Target.create ~os:Linux ~arch:Aarch64 ~linked:Dynamic
+            , Remote_tarballs.aarch64_linux_gnu_5_3_1 )
+          ; ( Target.create ~os:Macos ~arch:Aarch64 ~linked:Dynamic
             , Remote_tarballs.aarch64_macos_5_3_1 )
           ; ( Target.create ~os:Linux ~arch:X86_64 ~linked:Static
             , Remote_tarballs.x86_64_linux_musl_static_5_3_1 )
