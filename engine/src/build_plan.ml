@@ -24,12 +24,6 @@ module Build = struct
 end
 
 module Origin = struct
-  module Name = struct
-    include Path
-
-    let to_string = Alice_ui.path_to_string
-  end
-
   type t =
     | Source of Path.t
     | Build of Build.t
@@ -55,16 +49,35 @@ module Origin = struct
     | Source path -> Path.Set.singleton path
     | Build build -> build.outputs
   ;;
-
-  let dep_names = inputs
 end
 
-include Alice_dag.Make (Origin)
+module Artifact_with_origin = struct
+  module Name = Path
+
+  (** A build artifact along with its origin. *)
+  type t =
+    { artifact : Path.t
+    ; origin : Origin.t
+    }
+
+  let to_dyn { origin; artifact } =
+    Dyn.record [ "artifact", Path.to_dyn artifact; "origin", Origin.to_dyn origin ]
+  ;;
+
+  let equal t { artifact; origin } =
+    Path.equal t.artifact artifact && Origin.equal t.origin origin
+  ;;
+
+  let dep_names t = Origin.inputs t.origin
+  let show t = Path.to_filename t.artifact
+end
+
+include Alice_dag.Make (Artifact_with_origin)
 
 module Traverse = struct
   include Traverse
 
-  let origin = node
+  let origin t = (node t).origin
   let outputs t = Origin.outputs (origin t)
 end
 
@@ -75,7 +88,8 @@ module Staging = struct
 
   let add_origin t origin =
     Path.Set.fold (Origin.outputs origin) ~init:t ~f:(fun output t ->
-      match add t output origin with
+      let artifact_with_origin = { Artifact_with_origin.artifact = output; origin } in
+      match add t output artifact_with_origin with
       | Ok t -> t
       | Error (`Conflict _) ->
         Alice_error.panic

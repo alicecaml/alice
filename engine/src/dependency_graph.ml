@@ -6,6 +6,7 @@ module Package = struct
   include Package
 
   let dep_names t = dependencies t |> Dependencies.names |> Package_name.Set.of_list
+  let show t = Package.id t |> Package_id.name_v_version_string
 end
 
 include Alice_dag.Make (Package)

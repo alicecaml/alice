@@ -5,12 +5,16 @@
  (depends ocaml climate sha))
 
 (package
+ (name alice_dependencies)
+ (depends ocaml))
+
+(package
  (name alice_engine)
  (depends ocaml))
 
 (package
  (name alice_error)
- (depends ocaml alice_stdlib))
+ (depends ocaml))
 
 (package
  (name alice_io)

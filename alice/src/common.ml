@@ -12,7 +12,10 @@ let parse_manifest_path_opt =
   named_opt
     [ "manifest-path" ]
     file
-    ~doc:(sprintf "Read project metadata from FILE instead of %s." Project.manifest_name)
+    ~doc:
+      (sprintf
+         "Read project metadata from FILE instead of %s."
+         Alice_manifest.manifest_name)
 ;;
 
 let parse_absolute_path ?doc names =
@@ -42,14 +45,14 @@ let parse_manifest_path_and_validate =
          ; Pp.textf "%S does not exist." (Path.to_filename absolute_path)
          ])
   | None ->
-    let path = Path.concat (cwd ()) (Path.relative Project.manifest_name) in
+    let path = Path.concat (cwd ()) (Path.relative Alice_manifest.manifest_name) in
     (match File_ops.exists path with
      | true -> path
      | false ->
        user_exn
          [ Pp.textf
              "This command must be run from a directory containing a file named %S.\n"
-             Project.manifest_name
+             Alice_manifest.manifest_name
          ; Pp.textf "The file %S does not exist.\n" (Path.to_filename path)
          ; Pp.text
              "Alternatitvely, pass the location of a metadata file with --metadata-path."
@@ -61,7 +64,7 @@ let parse_project =
   let+ manifest_path = parse_manifest_path_and_validate in
   Project.create
     ~root:(Path.dirname manifest_path)
-    ~manifest:(Alice_manifest.read_package manifest_path)
+    ~manifest:(Alice_manifest.read_package_manifest ~manifest_path)
 ;;
 
 let parse_ctx =

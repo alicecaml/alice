@@ -7,7 +7,7 @@ let find_in_search_path exe_name search_paths =
     search_paths
     ~f:
       (Path.Either.with_
-         ~f:
+         ~with_path:
            { f =
                (fun search_path ->
                  let exe_path = Path.concat search_path exe_name in

@@ -18,22 +18,16 @@ let of_toml ~manifest_path_for_messages toml =
              (Path.to_filename manifest_path_for_messages)
            :: pps)
     in
-    let dependency =
-      Dependency.of_toml ~manifest_path_for_messages ~name:package_name value
-    in
-    package_name, dependency)
-  |> Alice_package.Package_name.Map.of_list
+    Dependency.of_toml ~manifest_path_for_messages ~name:package_name value)
+  |> of_list
   |> function
   | Ok t -> t
-  | Error (duplicate_name, _, _) ->
+  | Error (`Duplicate_name name) ->
     user_exn
       [ Pp.textf
           "Duplicate package name in dependencies: %s"
-          (Alice_package.Package_name.to_string duplicate_name)
+          (Alice_package.Package_name.to_string name)
       ]
 ;;
 
-let to_toml t =
-  Toml.Types.Table.of_list
-    (Alice_package.Package_name.Map.values t |> List.map ~f:Dependency.to_toml)
-;;
+let to_toml t = Toml.Types.Table.of_list (to_list t |> List.map ~f:Dependency.to_toml)

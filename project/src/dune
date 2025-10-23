@@ -3,6 +3,7 @@
  (libraries
   alice_stdlib
   alice_error
+  alice_dependencies
   alice_hierarchy
   alice_policy
   alice_manifest

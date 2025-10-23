@@ -20,6 +20,7 @@ module Staging : sig
   type t
 
   val to_dyn : t -> Dyn.t
+  val empty : t
   val add_package : t -> Package.t -> t
   val finalize : t -> dependency_graph
 end

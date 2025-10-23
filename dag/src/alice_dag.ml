@@ -4,8 +4,6 @@ module type Node = sig
   module Name : sig
     type t
 
-    val to_string : t -> string
-
     module Set : Set.S with type elt = t
     module Map : Map.S with type key = t
   end
@@ -15,6 +13,7 @@ module type Node = sig
   val to_dyn : t -> Dyn.t
   val equal : t -> t -> bool
   val dep_names : t -> Name.Set.t
+  val show : t -> string
 end
 
 module Make (Node : Node) = struct
@@ -23,11 +22,12 @@ module Make (Node : Node) = struct
   let empty = Node.Name.Map.empty
   let to_dyn = Node.Name.Map.to_dyn Node.to_dyn
   let to_list = Node.Name.Map.to_list
+  let nodes = Node.Name.Map.values
 
   let dot t =
     let lines =
-      to_list t
-      |> List.filter_map ~f:(fun (name, node) ->
+      nodes t
+      |> List.filter_map ~f:(fun node ->
         let dep_names = Node.dep_names node in
         if Node.Name.Set.is_empty dep_names
         then None
@@ -35,10 +35,11 @@ module Make (Node : Node) = struct
           let deps_str =
             Node.Name.Set.to_list dep_names
             |> List.map ~f:(fun dep_name ->
-              sprintf "\"%s\"" (Node.Name.to_string dep_name))
+              let dep_node = Node.Name.Map.find dep_name t in
+              sprintf "\"%s\"" (Node.show dep_node))
             |> String.concat ~sep:", "
           in
-          Some (sprintf "  \"%s\" -> {%s}" (Node.Name.to_string name) deps_str)))
+          Some (sprintf "  \"%s\" -> {%s}" (Node.show node) deps_str)))
       |> List.sort ~cmp:String.compare
     in
     String.concat ~sep:"\n" lines |> sprintf "digraph {\n%s\n}"

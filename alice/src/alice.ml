@@ -22,6 +22,6 @@ let () =
   match Command.run command ~program_name:(Literal "alice") with
   | () -> ()
   | exception Alice_error.User_error.E error ->
-    Alice_error.User_error.eprint error;
+    Alice_error.User_error.eprint (error @ [ Pp.newline ]);
     exit 1
 ;;

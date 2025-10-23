@@ -4,8 +4,6 @@ module type Node = sig
   module Name : sig
     type t
 
-    val to_string : t -> string
-
     module Set : Set.S with type elt = t
     module Map : Map.S with type key = t
   end
@@ -17,6 +15,9 @@ module type Node = sig
   val to_dyn : t -> Dyn.t
   val equal : t -> t -> bool
   val dep_names : t -> Name.Set.t
+
+  (** How to display this node when visualizing the graph with graphviz. *)
+  val show : t -> string
 end
 
 module Make (Node : Node) : sig
@@ -24,7 +25,6 @@ module Make (Node : Node) : sig
 
   val empty : t
   val to_dyn : t -> Dyn.t
-  val to_list : t -> (Node.Name.t * Node.t) list
 
   (** Returns the graphviz source code for rendering the dag. *)
   val dot : t -> string

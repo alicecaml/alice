@@ -2,6 +2,8 @@ open! Alice_stdlib
 open Alice_hierarchy
 open Alice_error
 
+let manifest_name = "Alice.toml"
+
 let read_table path =
   let filename = Path.to_filename path in
   let channel = In_channel.open_text filename in
@@ -14,11 +16,15 @@ let read_table path =
       [ Pp.text "Failed to parse toml file!\n"; Pp.textf "%s:%d: %s" source line message ]
 ;;
 
-let read_package path =
-  read_table path |> Package.of_toml ~manifest_path_for_messages:path
+let read_package_manifest ~manifest_path =
+  read_table manifest_path |> Package.of_toml ~manifest_path_for_messages:manifest_path
 ;;
 
-let write_package path package =
+let read_package_dir ~dir_path =
+  read_package_manifest ~manifest_path:(dir_path / Path.relative manifest_name)
+;;
+
+let write_package_manifest ~manifest_path package =
   let package_string = Package.to_toml package |> Toml.Printer.string_of_table in
-  Alice_io.File_ops.write_text_file path package_string
+  Alice_io.File_ops.write_text_file manifest_path package_string
 ;;

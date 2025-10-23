@@ -4,8 +4,6 @@ open Alice_error
 open Alice_package
 module File_ops = Alice_io.File_ops
 
-let manifest_name = "Alice.toml"
-
 type t =
   { root : Path.Absolute.t
   ; manifest : Alice_package.Package.t
@@ -31,7 +29,7 @@ module Paths = struct
   (* The file inside the source directory containing the entry point for the
      library, if the project contains a library. *)
   let lib_root_ml = Path.relative "lib.ml"
-  let manifest = Path.relative manifest_name
+  let manifest = Path.relative Alice_manifest.manifest_name
 end
 
 let src_dir t = t.root / Paths.src
@@ -160,10 +158,15 @@ let clean t =
   File_ops.rm_rf (build_dir t)
 ;;
 
-let dot_ocaml ~ctx t =
-  let ocaml_plan = ocaml_plan ~ctx ~exe_only:false t in
+let dot_build_artifacts t =
+  let ocaml_plan = ocaml_plan ~ctx:Alice_policy.Ocaml.Ctx.debug ~exe_only:false t in
   let build_plan = Alice_policy.Ocaml.Plan.build_plan ocaml_plan in
   Alice_engine.Build_plan.dot build_plan
+;;
+
+let dot_package_dependencies t =
+  let dependency_graph = Alice_dependencies.resolve t.manifest in
+  Alice_engine.Dependency_graph.dot dependency_graph
 ;;
 
 let new_ocaml name path kind =
@@ -207,7 +210,7 @@ let new_ocaml name path kind =
   File_ops.write_text_file
     (path / Path.relative ".gitignore")
     (Path.to_filename Paths.build);
-  Alice_manifest.write_package (path / Paths.manifest) manifest;
+  Alice_manifest.write_package_manifest ~manifest_path:(path / Paths.manifest) manifest;
   match kind with
   | `Exe ->
     File_ops.write_text_file

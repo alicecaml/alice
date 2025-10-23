@@ -24,7 +24,7 @@ let of_toml ~manifest_path_for_messages ~name toml_value =
         | _ -> `Expected "string")
     in
     let source = Dependency_source.Local_directory path in
-    { name; source }
+    Dependency.create ~name ~source
   | other ->
     user_exn
       [ Pp.textf
@@ -35,7 +35,9 @@ let of_toml ~manifest_path_for_messages ~name toml_value =
       ]
 ;;
 
-let to_toml { name; source } =
+let to_toml t =
+  let name = Dependency.name t in
+  let source = Dependency.source t in
   let (Dependency_source.Local_directory path) = source in
   let table =
     [ Keys.path, Toml.Types.TString (Path.Either.to_filename path) ]
