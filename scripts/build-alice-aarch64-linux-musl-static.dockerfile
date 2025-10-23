@@ -12,7 +12,7 @@ RUN apk update && apk add \
 
 RUN adduser -D -G users -G wheel user
 WORKDIR /home/user
-COPY --chmod=0755 alice alice
+COPY --chmod=0755 . alice
 RUN chown -R user alice
 
 USER user
