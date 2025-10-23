@@ -1,16 +1,18 @@
-FROM alpine:3.22.0 AS builder
+FROM ubuntu:noble-20250529 AS builder
 
-RUN apk update && apk add \
-    build-base \
-    musl-dev \
+RUN apt-get update -y && apt-get upgrade -y && apt-get install -y \
+    build-essential \
     curl \
     wget \
     git \
     bash \
-    opam \
+    unzip \
     ;
 
-RUN adduser -D -G users -G wheel user
+# Install Opam. Don't use the apt package because it would interfere with alice's OCaml binary distribution.
+RUN curl -fsSL https://opam.ocaml.org/install.sh > install_opam.sh && yes '' | sh install_opam.sh
+
+RUN useradd --create-home --gid users user
 WORKDIR /home/user
 COPY --chmod=0755 . alice
 RUN chown -R user alice
@@ -18,7 +20,7 @@ RUN chown -R user alice
 USER user
 WORKDIR alice
 
-RUN boot/aarch64-linux-musl-static.sh
+RUN boot/aarch64-linux-gnu.sh
 
 RUN opam init --disable-sandbox --auto-setup --bare
 
@@ -29,12 +31,11 @@ RUN opam switch create . --empty
 RUN opam repo add alice git+https://github.com/alicecaml/alice-opam-repo --all-switches
 RUN opam update
 RUN opam install -y ocaml-system.5.3.1+relocatable dune
-RUN awk '{ print } /\(executable/ { print " (link_flags (:standard -cclib -static))" }' alice/src/dune > /tmp/alice_static_dune && cp /tmp/alice_static_dune alice/src/dune
 RUN opam exec dune build
 
 RUN (git describe --exact-match --tags || git rev-parse HEAD) | cat > version.txt
 RUN uname -m > arch.txt
-RUN echo alice-$(cat version.txt)-$(cat arch.txt)-linux-musl-static > name.txt
+RUN echo alice-$(cat version.txt)-$(cat arch.txt)-linux-gnu > name.txt
 RUN cp -rvL _build/install/default $(cat name.txt)
 RUN chmod a+w $(cat name.txt)/bin/alice
 RUN strip $(cat name.txt)/bin/alice
