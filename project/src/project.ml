@@ -1,12 +1,12 @@
 open! Alice_stdlib
 open Alice_hierarchy
 open Alice_error
-open Alice_package
+open Alice_package_meta
 module File_ops = Alice_io.File_ops
 
 type t =
   { root : Path.Absolute.t
-  ; manifest : Alice_package.Package.t
+  ; manifest : Package_meta.t
   }
 
 let create ~root ~manifest = { root; manifest }
@@ -39,13 +39,13 @@ let out_dir t =
   Path.concat_multi
     (build_dir t)
     [ Path.relative "packages"
-    ; Path.relative (Package.id t.manifest |> Package_id.name_dash_version_string)
+    ; Path.relative (Package_meta.id t.manifest |> Package_id.name_dash_version_string)
     ]
 ;;
 
 let contains_exe t = File_ops.exists (src_dir t / Paths.exe_root_ml)
 let contains_lib t = File_ops.exists (src_dir t / Paths.lib_root_ml)
-let package_name t = Package_name.to_string (Package.id t.manifest).name
+let package_name t = Package_name.to_string (Package_meta.id t.manifest).name
 
 let read_dir path =
   match Alice_io.Read_hierarchy.read path with
@@ -83,20 +83,20 @@ let ocaml_plan ~ctx ~exe_only t =
     ~lib_root_ml
     ~src_dir
     ~out_dir
-    ~package:(Package.id t.manifest)
+    ~package:(Package_meta.id t.manifest)
 ;;
 
 let run_traverse t ~traverse =
   Alice_scheduler.Sequential.run
     ~src_dir:(src_dir t)
     ~out_dir:(out_dir t)
-    ~package:(Package.id t.manifest)
+    ~package:(Package_meta.id t.manifest)
     traverse
 ;;
 
 let compiling_message t =
   let open Alice_ui in
-  let package = Package.id t.manifest in
+  let package = Package_meta.id t.manifest in
   let name_string = Package_name.to_string package.name in
   let version_string = Semantic_version.to_string package.version in
   verb_message `Compiling (sprintf "%s v%s" name_string version_string)
@@ -199,7 +199,7 @@ let new_ocaml name path kind =
         ; Pp.text "Delete this file before proceeding."
         ];
   let manifest =
-    Alice_package.Package.create
+    Package_meta.create
       ~id:
         { name
         ; version = Semantic_version.of_string_res "0.1.0" |> User_error.get_or_panic

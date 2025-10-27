@@ -1,7 +1,7 @@
 open! Alice_stdlib
 open Alice_error
 open Alice_hierarchy
-open Alice_package
+open Alice_package_meta
 include Package_id
 
 module Keys = struct

@@ -1,3 +1,3 @@
 open! Alice_stdlib
 
-val resolve : Alice_package.Package.t -> Alice_engine.Dependency_graph.t
+val resolve : Alice_package_meta.Package_meta.t -> Alice_engine.Dependency_graph.t

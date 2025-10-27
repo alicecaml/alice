@@ -7,4 +7,4 @@
   alice_log
   alice_io
   alice_ui
-  alice_package))
+  alice_package_meta))

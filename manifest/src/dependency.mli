@@ -1,5 +1,5 @@
 open! Alice_stdlib
-open Alice_package
+open Alice_package_meta
 include module type of Dependency
 
 val of_toml

@@ -1,12 +1,12 @@
 open! Alice_stdlib
-open Alice_package
+open Alice_package_meta
 
 module Package = struct
   module Name = Package_name
-  include Package
+  include Package_meta
 
   let dep_names t = dependencies t |> Dependencies.names |> Package_name.Set.of_list
-  let show t = Package.id t |> Package_id.name_v_version_string
+  let show t = Package_meta.id t |> Package_id.name_v_version_string
 end
 
 include Alice_dag.Make (Package)

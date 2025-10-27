@@ -1,5 +1,5 @@
 open! Alice_stdlib
-include Alice_package.Package
+include Alice_package_meta.Package_meta
 
 module Keys = struct
   module Key = Toml.Types.Table.Key

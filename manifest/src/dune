@@ -4,6 +4,6 @@
   alice_stdlib
   alice_error
   alice_hierarchy
-  alice_package
+  alice_package_meta
   toml
   alice_io))

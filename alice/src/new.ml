@@ -14,7 +14,7 @@ let new_ =
   and+ exe =
     flag [ "exe" ] ~doc:"Create a project containing an executable package (default)"
   and+ lib = flag [ "lib" ] ~doc:"Create a project containing a library package" in
-  let package_name = Alice_package.Package_name.of_string_exn name in
+  let package_name = Alice_package_meta.Package_name.of_string_exn name in
   let path =
     match path with
     | Some path -> path

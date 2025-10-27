@@ -1,12 +1,12 @@
 open! Alice_stdlib
-open Alice_package
+open Alice_package_meta
 open Alice_hierarchy
 module Dependency_graph = Alice_engine.Dependency_graph
 
 let transitive_dependency_closure package =
   let rec loop acc package =
     let acc = package :: acc in
-    let deps = Package.dependencies package |> Dependencies.to_list in
+    let deps = Package_meta.dependencies package |> Dependencies.to_list in
     let dep_packages =
       List.map deps ~f:(fun dep ->
         match Dependency.source dep with

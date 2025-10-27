@@ -1,14 +1,14 @@
 open! Alice_stdlib
 open Alice_error
 open Alice_hierarchy
-include Alice_package.Dependencies
+include Alice_package_meta.Dependencies
 
 let of_toml ~manifest_path_for_messages toml =
   Toml.Types.Table.to_list toml
   |> List.map ~f:(fun (key, value) ->
     let package_name =
       match
-        Alice_package.Package_name.of_string_res (Toml.Types.Table.Key.to_string key)
+        Alice_package_meta.Package_name.of_string_res (Toml.Types.Table.Key.to_string key)
       with
       | Ok package_name -> package_name
       | Error pps ->
@@ -26,7 +26,7 @@ let of_toml ~manifest_path_for_messages toml =
     user_exn
       [ Pp.textf
           "Duplicate package name in dependencies: %s"
-          (Alice_package.Package_name.to_string name)
+          (Alice_package_meta.Package_name.to_string name)
       ]
 ;;
 

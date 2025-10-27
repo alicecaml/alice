@@ -29,7 +29,7 @@
  (depends ocaml))
 
 (package
- (name alice_package)
+ (name alice_package_meta)
  (depends ocaml))
 
 (package

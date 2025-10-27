@@ -1,5 +1,5 @@
 open! Alice_stdlib
-open Alice_package
+open Alice_package_meta
 
 type t
 
@@ -8,7 +8,7 @@ val to_dyn : t -> Dyn.t
 module Traverse : sig
   type t
 
-  val package : t -> Package.t
+  val package : t -> Package_meta.t
   val deps : t -> t list
 end
 
@@ -21,6 +21,6 @@ module Staging : sig
 
   val to_dyn : t -> Dyn.t
   val empty : t
-  val add_package : t -> Package.t -> t
+  val add_package : t -> Package_meta.t -> t
   val finalize : t -> dependency_graph
 end
