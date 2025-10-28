@@ -1,6 +1,7 @@
 open! Alice_stdlib
 open Alice_hierarchy
 open Alice_package_meta
+open Type_bool
 
 type t
 
@@ -19,13 +20,42 @@ val dependencies : t -> Dependencies.t
 val src_dir_path : t -> Path.Absolute.t
 
 val src_dir_exn : t -> Path.absolute File.dir
-val contains_exe : t -> bool
-val contains_lib : t -> bool
 
-(** The file inside the source directory containing the entry point for the
-    executable, if the project contains an executable. *)
-val exe_root_ml : t -> Path.Relative.t
+module Typed : sig
+  type package := t
 
-(** The file inside the source directory containing the entry point for the
-    library, if the project contains a library. *)
-val lib_root_ml : t -> Path.Relative.t
+  type ('exe, 'lib) type_ =
+    | Exe_only : (true_t, false_t) type_
+    | Lib_only : (false_t, true_t) type_
+    | Exe_and_lib : (true_t, true_t) type_
+
+  (** A package with type-level boolean type annotations indicating whether it
+      contains an executable or a library or both. *)
+  type ('exe, 'lib) t
+
+  (** Ignore the presence of a library in a package containing both a library
+      and an executable. *)
+  val limit_to_exe_only : (true_t, true_t) t -> (true_t, false_t) t
+
+  (** Ignore the presence of an executable in a package containing both an
+      executable and a library. *)
+  val limit_to_lib_only : (true_t, true_t) t -> (false_t, true_t) t
+
+  val package : (_, _) t -> package
+  val type_ : ('exe, 'lib) t -> ('exe, 'lib) type_
+
+  (** The file inside the source directory containing the entry point for the
+    executable. *)
+  val exe_root_ml : (true_t, _) t -> Path.Relative.t
+
+  (** The file inside the source directory containing the entry point for the
+    library. *)
+  val lib_root_ml : (_, true_t) t -> Path.Relative.t
+
+  val of_package
+    :  package
+    -> [ `Exe_only of (true_t, false_t) t
+       | `Lib_only of (false_t, true_t) t
+       | `Exe_and_lib of (true_t, true_t) t
+       ]
+end

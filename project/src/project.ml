@@ -55,25 +55,30 @@ let compiling_message t =
 let build_ocaml ~ctx t =
   let open Alice_ui in
   println (compiling_message t);
-  let planner =
-    Build_plan.Package_build_planner.create_exe_and_lib ctx t ~out_dir:(out_dir t)
+  let out_dir = out_dir t in
+  let build_plans =
+    match Package.Typed.of_package t with
+    | `Exe_only pt -> [ Build_plan.create_exe ctx pt ~out_dir ]
+    | `Lib_only pt -> [ Build_plan.create_lib ctx pt ~out_dir ]
+    | `Exe_and_lib pt ->
+      let planner = Build_plan.Package_build_planner.create ctx pt ~out_dir in
+      [ Build_plan.Package_build_planner.plan_lib planner
+      ; Build_plan.Package_build_planner.plan_exe planner
+      ]
   in
-  if Package.contains_lib t
-  then eval_build_plan t (Build_plan.Package_build_planner.build_lib planner);
-  if Package.contains_exe t
-  then eval_build_plan t (Build_plan.Package_build_planner.build_exe planner)
+  List.iter build_plans ~f:(eval_build_plan t)
 ;;
 
 let run_ocaml_exe ~ctx t ~args =
   let open Alice_ui in
-  (match Package.contains_exe t with
-   | true -> ()
-   | false -> panic [ Pp.text "Cannot run project as it lacks an executable." ]);
-  let planner =
-    Build_plan.Package_build_planner.create_exe_only ctx t ~out_dir:(out_dir t)
+  let package_typed =
+    match Package.Typed.of_package t with
+    | `Lib_only _ -> user_exn [ Pp.text "Cannot run project as it lacks an executable." ]
+    | `Exe_only pt -> pt
+    | `Exe_and_lib pt -> Package.Typed.limit_to_exe_only pt
   in
   println (compiling_message t);
-  let build_plan = Build_plan.Package_build_planner.build_exe planner in
+  let build_plan = Build_plan.create_exe ctx package_typed ~out_dir:(out_dir t) in
   eval_build_plan t build_plan;
   let exe_name =
     match Path.Relative.Set.to_list (Build_plan.outputs build_plan) with
@@ -112,10 +117,14 @@ let clean t =
 
 let dot_build_artifacts t =
   let ctx = Build_plan.Ctx.debug in
-  let planner =
-    Build_plan.Package_build_planner.create_exe_and_lib ctx t ~out_dir:(out_dir t)
+  let dot pt =
+    let planner = Build_plan.Package_build_planner.create ctx pt ~out_dir:(out_dir t) in
+    Build_plan.Package_build_planner.dot planner
   in
-  Build_plan.Package_build_planner.dot planner
+  match Package.Typed.of_package t with
+  | `Exe_only pt -> dot pt
+  | `Lib_only pt -> dot pt
+  | `Exe_and_lib pt -> dot pt
 ;;
 
 let dot_package_dependencies t = Dependency_graph.dot (Dependency_graph.compute t)

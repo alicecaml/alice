@@ -1,6 +1,7 @@
 open! Alice_stdlib
 open Alice_hierarchy
 open Alice_package
+open Type_bool
 module File_ops = Alice_io.File_ops
 module Log = Alice_log
 include Build_graph.Traverse
@@ -221,48 +222,19 @@ let rules ctx ~name ~root_ml ~source_rules_db kind =
 ;;
 
 module Package_build_planner = struct
-  type exe_enabled = |
-  type exe_disabled = |
-  type lib_enabled = |
-  type lib_disabled = |
-
-  type (_, _) what =
-    | Exe_only : (exe_enabled, lib_disabled) what
-    | Lib_only : (exe_disabled, lib_enabled) what
-    | Exe_and_lib : (exe_enabled, lib_enabled) what
-
-  type 'what t =
+  type ('exe, 'lib) t =
     { build_graph : Build_graph.t
-    ; exe_name : Path.Relative.t option
-    ; lib_name_cmxa : Path.Relative.t option
+    ; exe_name : Path.Relative.t
+    ; lib_name_cmxa : Path.Relative.t
     }
 
   let create
     : type exe lib.
-      (exe, lib) what
-      -> Ctx.t
-      -> Package.t
-      -> out_dir:Path.Absolute.t
-      -> (exe, lib) what t
+      Ctx.t -> (exe, lib) Package.Typed.t -> out_dir:Path.Absolute.t -> (exe, lib) t
     =
-    fun what ctx package ~out_dir ->
-    let exe_enabled, lib_enabled =
-      match what with
-      | Exe_only -> true, false
-      | Lib_only -> false, true
-      | Exe_and_lib -> true, true
-    in
+    fun ctx package_typed ~out_dir ->
+    let package = Package.Typed.package package_typed in
     let name = Package.name package |> Package_name.to_string |> Path.relative in
-    let exe_root_ml =
-      if Package.contains_exe package && exe_enabled
-      then Some (Package.exe_root_ml package)
-      else None
-    in
-    let lib_root_ml =
-      if Package.contains_lib package && lib_enabled
-      then Some (Package.lib_root_ml package)
-      else None
-    in
     let src_dir = Package.src_dir_exn package in
     let exe_name = if Sys.win32 then Path.add_extension name ~ext:".exe" else name in
     let lib_name_cmxa = Path.add_extension name ~ext:".cmxa" in
@@ -276,41 +248,40 @@ module Package_build_planner = struct
       rules ctx ~name:exe_name ~root_ml:exe_root_ml ~source_rules_db `Exe
     in
     let outputs, rules =
-      match exe_root_ml, lib_root_ml with
-      | Some exe_root_ml, Some lib_root_ml ->
-        [ exe_name; lib_name_cmxa ], lib_rules ~lib_root_ml @ exe_rules ~exe_root_ml
-      | Some exe_root_ml, None -> [ exe_name ], exe_rules ~exe_root_ml
-      | None, Some lib_root_ml -> [ lib_name_cmxa ], lib_rules ~lib_root_ml
-      | None, None ->
-        Alice_error.panic [ Pp.text "Specify one of ~exe_root_ml and ~lib_root_ml" ]
+      match Package.Typed.type_ package_typed with
+      | Exe_only ->
+        [ exe_name ], exe_rules ~exe_root_ml:(Package.Typed.exe_root_ml package_typed)
+      | Lib_only ->
+        ( [ lib_name_cmxa ]
+        , lib_rules ~lib_root_ml:(Package.Typed.lib_root_ml package_typed) )
+      | Exe_and_lib ->
+        ( [ exe_name; lib_name_cmxa ]
+        , lib_rules ~lib_root_ml:(Package.Typed.lib_root_ml package_typed)
+          @ exe_rules ~exe_root_ml:(Package.Typed.exe_root_ml package_typed) )
     in
     { build_graph = Build_rule.Database.create_build_graph rules ~outputs
-    ; exe_name = Option.map exe_root_ml ~f:(Fun.const exe_name)
-    ; lib_name_cmxa = Option.map lib_root_ml ~f:(Fun.const lib_name_cmxa)
+    ; exe_name
+    ; lib_name_cmxa
     }
   ;;
 
-  let create_exe_only = create Exe_only
-  let create_lib_only = create Lib_only
-  let create_exe_and_lib = create Exe_and_lib
-
-  let build_exe { build_graph; exe_name; _ } =
-    let output =
-      match exe_name with
-      | None -> Alice_error.panic [ Pp.text "Build plan cannot produce executable." ]
-      | Some exe_name -> exe_name
-    in
-    Build_graph.traverse build_graph ~output |> Option.get
+  let plan_exe ({ build_graph; exe_name; _ } : (true_t, _) t) =
+    Build_graph.traverse build_graph ~output:exe_name |> Option.get
   ;;
 
-  let build_lib { build_graph; lib_name_cmxa; _ } =
-    let output =
-      match lib_name_cmxa with
-      | None -> Alice_error.panic [ Pp.text "Build plan cannot produce library." ]
-      | Some lib_name_cmxa -> lib_name_cmxa
-    in
-    Build_graph.traverse build_graph ~output |> Option.get
+  let plan_lib ({ build_graph; lib_name_cmxa; _ } : (_, true_t) t) =
+    Build_graph.traverse build_graph ~output:lib_name_cmxa |> Option.get
   ;;
 
   let dot { build_graph; _ } = Build_graph.dot build_graph
 end
+
+let create_exe ctx package_typed ~out_dir =
+  Package_build_planner.create ctx package_typed ~out_dir
+  |> Package_build_planner.plan_exe
+;;
+
+let create_lib ctx package_typed ~out_dir =
+  Package_build_planner.create ctx package_typed ~out_dir
+  |> Package_build_planner.plan_lib
+;;

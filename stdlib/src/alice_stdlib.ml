@@ -15,6 +15,7 @@ module Result = Result
 module Seq = Seq
 module Set = Set
 module String = String
+module Type_bool = Type_bool
 module Xdg = Xdg
 
 let sprintf = Printf.sprintf

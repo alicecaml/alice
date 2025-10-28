@@ -1,6 +1,7 @@
 open! Alice_stdlib
 open Alice_hierarchy
 open Alice_package
+open Type_bool
 
 (** A plan for building a set of files. Evaluating a build plan requires first
     evaluating all the build plan's dependencies, which are also build plans. *)
@@ -27,22 +28,23 @@ module Ctx : sig
   val release : t
 end
 
+val create_exe : Ctx.t -> (true_t, _) Package.Typed.t -> out_dir:Path.Absolute.t -> t
+val create_lib : Ctx.t -> (_, true_t) Package.Typed.t -> out_dir:Path.Absolute.t -> t
+
 module Package_build_planner : sig
   type build_plan := t
-  type exe_enabled
-  type exe_disabled
-  type lib_enabled
-  type lib_disabled
-  type ('exe, 'lib) what
-  type exe_only := (exe_enabled, lib_disabled) what
-  type lib_only := (exe_disabled, lib_enabled) what
-  type exe_and_lib := (exe_enabled, lib_enabled) what
-  type 'what t
 
-  val create_exe_only : Ctx.t -> Package.t -> out_dir:Path.Absolute.t -> exe_only t
-  val create_lib_only : Ctx.t -> Package.t -> out_dir:Path.Absolute.t -> lib_only t
-  val create_exe_and_lib : Ctx.t -> Package.t -> out_dir:Path.Absolute.t -> exe_and_lib t
-  val build_exe : (exe_enabled, _) what t -> build_plan
-  val build_lib : (_, lib_enabled) what t -> build_plan
+  (** Type params are expected to be type-level booleans indicating whether the
+      package defines an executable and a library respectively. *)
+  type ('exe, 'lib) t
+
+  val create
+    :  Ctx.t
+    -> ('exe, 'lib) Package.Typed.t
+    -> out_dir:Path.Absolute.t
+    -> ('exe, 'lib) t
+
+  val plan_exe : (true_t, _) t -> build_plan
+  val plan_lib : (_, true_t) t -> build_plan
   val dot : _ t -> string
 end

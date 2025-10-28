@@ -1,6 +1,7 @@
 open! Alice_stdlib
 open Alice_package_meta
 open Alice_hierarchy
+open Alice_error
 open Alice_io.Read_hierarchy
 module File_ops = Alice_io.File_ops
 
@@ -38,8 +39,46 @@ module Paths = struct
 end
 
 let src_dir_path t = root t / Paths.src
+let src_dir_exn t = src_dir_path t |> read_dir_exn
 let contains_exe t = File_ops.exists (src_dir_path t / Paths.exe_root_ml)
 let contains_lib t = File_ops.exists (src_dir_path t / Paths.lib_root_ml)
-let src_dir_exn t = src_dir_path t |> read_dir_exn
-let exe_root_ml _ = Paths.exe_root_ml
-let lib_root_ml _ = Paths.lib_root_ml
+
+module Typed = struct
+  open Type_bool
+
+  type ('exe, 'lib) type_ =
+    | Exe_only : (true_t, false_t) type_
+    | Lib_only : (false_t, true_t) type_
+    | Exe_and_lib : (true_t, true_t) type_
+
+  type nonrec ('exe, 'lib) t =
+    { package : t
+    ; type_ : ('exe, 'lib) type_
+    }
+
+  let limit_to_exe_only : (true_t, true_t) t -> (true_t, false_t) t =
+    fun { package; _ } -> { package; type_ = Exe_only }
+  ;;
+
+  let limit_to_lib_only : (true_t, true_t) t -> (false_t, true_t) t =
+    fun { package; _ } -> { package; type_ = Lib_only }
+  ;;
+
+  let package { package; _ } = package
+  let type_ { type_; _ } = type_
+  let exe_root_ml _ = Paths.exe_root_ml
+  let lib_root_ml _ = Paths.lib_root_ml
+
+  let of_package package =
+    match contains_exe package, contains_lib package with
+    | false, false ->
+      user_exn
+        [ Pp.textf
+            "Package %S defines contains neither an executable nor a library."
+            (Package_id.name_v_version_string (id package))
+        ]
+    | true, false -> `Exe_only { package; type_ = Exe_only }
+    | false, true -> `Lib_only { package; type_ = Lib_only }
+    | true, true -> `Exe_and_lib { package; type_ = Exe_and_lib }
+  ;;
+end
