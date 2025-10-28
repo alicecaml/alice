@@ -7,4 +7,5 @@
   alice_io
   alice_which
   alice_ocamldep
-  alice_package_meta))
+  alice_package_meta
+  alice_package))

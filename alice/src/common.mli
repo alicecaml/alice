@@ -1,6 +1,7 @@
 open! Alice_stdlib
 open Alice_project
 open Alice_hierarchy
+open Alice_build_plan
 open Climate
 
 (** [parse_absolute_path ?dac names] returns a named argument parser of
@@ -11,7 +12,7 @@ val parse_absolute_path
   -> Path.Absolute.t option Arg_parser.t
 
 val parse_project : Project.t Arg_parser.t
-val parse_ctx : Alice_policy.Ocaml.Ctx.t Arg_parser.t
+val parse_ctx : Build_plan.Ctx.t Arg_parser.t
 
 (** Parse the "--verbose" and "--quiet" and have the side effect of setting the
     global log level and print mode. *)

@@ -1,10 +1,10 @@
 open! Alice_stdlib
 open Alice_hierarchy
-module Build_ctx := Alice_policy.Ocaml.Ctx
+module Build_ctx := Alice_build_plan.Build_plan.Ctx
 
 type t
 
-val create : root:Path.Absolute.t -> manifest:Alice_package_meta.Package_meta.t -> t
+val of_package : Alice_package.Package.t -> t
 val build_ocaml : ctx:Build_ctx.t -> t -> unit
 val run_ocaml_exe : ctx:Build_ctx.t -> t -> args:string list -> unit
 val clean : t -> unit

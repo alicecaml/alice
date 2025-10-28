@@ -6,4 +6,5 @@
   alice_hierarchy
   alice_log
   alice_env
+  alice_ui
   unix))

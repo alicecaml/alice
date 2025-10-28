@@ -1,5 +1,6 @@
 open! Alice_stdlib
 open Alice_hierarchy
+open Alice_package
 module Build_plan = Alice_engine.Build_plan
 
 module Ctx : sig
@@ -19,12 +20,10 @@ module Plan : sig
 
   val create
     :  Ctx.t
-    -> name:Path.Relative.t
-    -> exe_root_ml:Path.Relative.t option
-    -> lib_root_ml:Path.Relative.t option
-    -> src_dir:_ File.dir
+    -> Package.t
+    -> exe_only:bool
+    -> lib_only:bool
     -> out_dir:Path.Absolute.t
-    -> package:Alice_package_meta.Package_id.t
     -> t
 
   val traverse_exe : t -> Build_plan.Traverse.t

@@ -2,6 +2,7 @@ open! Alice_stdlib
 open Alice_hierarchy
 open Alice_error
 open Alice_project
+open Alice_build_plan
 module File_ops = Alice_io.File_ops
 open Climate
 
@@ -62,17 +63,15 @@ let parse_manifest_path_and_validate =
 let parse_project =
   let open Arg_parser in
   let+ manifest_path = parse_manifest_path_and_validate in
-  Project.create
-    ~root:(Path.dirname manifest_path)
-    ~manifest:(Alice_manifest.read_package_manifest ~manifest_path)
+  Alice_package.Package.read_root (Path.dirname manifest_path) |> Project.of_package
 ;;
 
 let parse_ctx =
   let open Arg_parser in
   let+ release = flag [ "release" ] ~doc:"Build with optimizations." in
   match release with
-  | true -> Alice_policy.Ocaml.Ctx.release
-  | false -> Alice_policy.Ocaml.Ctx.debug
+  | true -> Build_plan.Ctx.release
+  | false -> Build_plan.Ctx.debug
 ;;
 
 let set_log_level_from_verbose_flag =

@@ -51,3 +51,19 @@ let read base_path =
     in
     Ok (loop base_path)
 ;;
+
+let read_dir path =
+  match read path with
+  | Error `Not_found ->
+    Error [ Pp.textf "Directory not found: %s" (Alice_ui.path_to_string path) ]
+  | Ok file ->
+    (match File.as_dir file with
+     | Some dir -> Ok dir
+     | None -> Error [ Pp.textf "%S is not a directory" (Alice_ui.path_to_string path) ])
+;;
+
+let read_dir_exn path =
+  match read_dir path with
+  | Ok x -> x
+  | Error pps -> Alice_error.user_exn pps
+;;

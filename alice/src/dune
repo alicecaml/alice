@@ -3,6 +3,7 @@
  (package alice)
  (libraries
   alice_engine
+  alice_build_plan
   alice_error
   alice_print
   alice_io

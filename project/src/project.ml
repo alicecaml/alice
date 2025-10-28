@@ -1,17 +1,13 @@
 open! Alice_stdlib
 open Alice_hierarchy
 open Alice_error
-open Alice_package_meta
 open Alice_package
+open Alice_build_plan
 module File_ops = Alice_io.File_ops
 
-type t =
-  { root : Path.Absolute.t
-  ; manifest : Package_meta.t
-  }
+type t = Package.t
 
-let create ~root ~manifest = { root; manifest }
-let to_package { root; manifest } = Package.create ~root ~meta:manifest
+let of_package t = t
 
 (* Paths relating to the layout of a project. In the future it might make
    sense to make these fields of the project type rather than hard-coded them
@@ -34,71 +30,23 @@ module Paths = struct
   let manifest = Path.relative Alice_manifest.manifest_name
 end
 
-let src_dir t = t.root / Paths.src
-let build_dir t = t.root / Paths.build
+let build_dir t = Package.root t / Paths.build
 
 let out_dir t =
   Path.concat_multi
     (build_dir t)
     [ Path.relative "packages"
-    ; Path.relative (Package_meta.id t.manifest |> Package_id.name_dash_version_string)
+    ; Path.relative (Package.id t |> Package_id.name_dash_version_string)
     ]
 ;;
 
-let contains_exe t = File_ops.exists (src_dir t / Paths.exe_root_ml)
-let contains_lib t = File_ops.exists (src_dir t / Paths.lib_root_ml)
-let package_name t = Package_name.to_string (Package_meta.id t.manifest).name
-
-let read_dir path =
-  match Alice_io.Read_hierarchy.read path with
-  | Error `Not_found ->
-    Error [ Pp.textf "Directory not found: %s" (Alice_ui.path_to_string path) ]
-  | Ok file ->
-    (match File.as_dir file with
-     | Some dir -> Ok dir
-     | None -> Error [ Pp.textf "%S is not a directory" (Alice_ui.path_to_string path) ])
-;;
-
-let read_dir_exn path =
-  match read_dir path with
-  | Ok x -> x
-  | Error pps -> user_exn pps
-;;
-
-let ocaml_plan ~ctx ~exe_only t =
-  let exe_root_ml =
-    match contains_exe t with
-    | true -> Some Paths.exe_root_ml
-    | false -> None
-  in
-  let lib_root_ml =
-    match (not exe_only) && contains_lib t with
-    | true -> Some Paths.lib_root_ml
-    | false -> None
-  in
-  let src_dir = read_dir_exn (src_dir t) in
-  let out_dir = out_dir t in
-  Alice_policy.Ocaml.Plan.create
-    ctx
-    ~name:(package_name t |> Path.relative)
-    ~exe_root_ml
-    ~lib_root_ml
-    ~src_dir
-    ~out_dir
-    ~package:(Package_meta.id t.manifest)
-;;
-
-let run_traverse t ~traverse =
-  Alice_scheduler.Sequential.run
-    ~src_dir:(src_dir t)
-    ~out_dir:(out_dir t)
-    ~package:(Package_meta.id t.manifest)
-    traverse
+let eval_build_plan t build_plan =
+  Scheduler.Sequential.eval_build_plan build_plan t ~out_dir:(out_dir t)
 ;;
 
 let compiling_message t =
   let open Alice_ui in
-  let package = Package_meta.id t.manifest in
+  let package = Package.id t in
   let name_string = Package_name.to_string package.name in
   let version_string = Semantic_version.to_string package.version in
   verb_message `Compiling (sprintf "%s v%s" name_string version_string)
@@ -107,30 +55,32 @@ let compiling_message t =
 let build_ocaml ~ctx t =
   let open Alice_ui in
   println (compiling_message t);
-  let ocaml_plan = ocaml_plan ~ctx ~exe_only:false t in
-  if contains_lib t
-  then run_traverse t ~traverse:(Alice_policy.Ocaml.Plan.traverse_lib ocaml_plan);
-  if contains_exe t
-  then run_traverse t ~traverse:(Alice_policy.Ocaml.Plan.traverse_exe ocaml_plan)
+  let planner =
+    Build_plan.Package_build_planner.create_exe_and_lib ctx t ~out_dir:(out_dir t)
+  in
+  if Package.contains_lib t
+  then eval_build_plan t (Build_plan.Package_build_planner.build_lib planner);
+  if Package.contains_exe t
+  then eval_build_plan t (Build_plan.Package_build_planner.build_exe planner)
 ;;
 
 let run_ocaml_exe ~ctx t ~args =
   let open Alice_ui in
-  (match contains_exe t with
+  (match Package.contains_exe t with
    | true -> ()
    | false -> panic [ Pp.text "Cannot run project as it lacks an executable." ]);
-  let ocaml_plan = ocaml_plan ~ctx ~exe_only:true t in
+  let planner =
+    Build_plan.Package_build_planner.create_exe_only ctx t ~out_dir:(out_dir t)
+  in
   println (compiling_message t);
-  let traverse = Alice_policy.Ocaml.Plan.traverse_exe ocaml_plan in
-  run_traverse t ~traverse;
+  let build_plan = Build_plan.Package_build_planner.build_exe planner in
+  eval_build_plan t build_plan;
   let exe_name =
-    match
-      Path.Relative.Set.to_list (Alice_engine.Build_plan.Traverse.outputs traverse)
-    with
+    match Path.Relative.Set.to_list (Build_plan.outputs build_plan) with
     | [ exe_name ] -> exe_name
     | _ ->
       (* This should never happen but let's try to handle it anyway. *)
-      let exe_name = package_name t |> Path.relative in
+      let exe_name = Package.name t |> Package_name.to_string |> Path.relative in
       if Sys.win32 then Path.add_extension exe_name ~ext:".exe" else exe_name
   in
   let exe_path = out_dir t / exe_name in
@@ -161,15 +111,14 @@ let clean t =
 ;;
 
 let dot_build_artifacts t =
-  let ocaml_plan = ocaml_plan ~ctx:Alice_policy.Ocaml.Ctx.debug ~exe_only:false t in
-  let build_plan = Alice_policy.Ocaml.Plan.build_plan ocaml_plan in
-  Alice_engine.Build_plan.dot build_plan
+  let ctx = Build_plan.Ctx.debug in
+  let planner =
+    Build_plan.Package_build_planner.create_exe_and_lib ctx t ~out_dir:(out_dir t)
+  in
+  Build_plan.Package_build_planner.dot planner
 ;;
 
-let dot_package_dependencies t =
-  let dependency_graph = to_package t |> Dependency_graph.compute in
-  Dependency_graph.dot dependency_graph
-;;
+let dot_package_dependencies t = Dependency_graph.dot (Dependency_graph.compute t)
 
 let new_ocaml name path kind =
   if File_ops.exists (path / Paths.manifest)

@@ -1,11 +1,9 @@
 open! Alice_stdlib
 open Alice_hierarchy
 open Alice_package
-module Rule = Alice_engine.Rule
-module Build_plan = Alice_engine.Build_plan
-module Build = Alice_engine.Build_plan.Build
 module File_ops = Alice_io.File_ops
 module Log = Alice_log
+include Build_graph.Traverse
 
 module Ctx = struct
   type t =
@@ -130,7 +128,7 @@ let compile_source_rules ctx dir ~out_dir ~package =
           then [ Path.replace_extension source_path ~ext:".o" ]
           else []))
     in
-    Rule.static
+    Build_rule.static
       { inputs
       ; outputs
       ; commands =
@@ -149,9 +147,11 @@ let cmx_file_order ~root_ml source_rules_db kind =
     | `Lib -> ".cmx"
   in
   let root_cmx = Path.replace_extension root_ml ~ext in
-  let plan = Rule.Database.create_build_plan source_rules_db ~outputs:[ root_cmx ] in
+  let plan =
+    Build_rule.Database.create_build_graph source_rules_db ~outputs:[ root_cmx ]
+  in
   let rec loop acc traverse =
-    let module Traverse = Build_plan.Traverse in
+    let module Traverse = Build_graph.Traverse in
     let cmx_outputs =
       Traverse.outputs traverse
       |> Path.Relative.Set.filter ~f:(Path.has_extension ~ext)
@@ -169,7 +169,7 @@ let cmx_file_order ~root_ml source_rules_db kind =
   in
   loop
     []
-    (match Build_plan.traverse plan ~output:root_cmx with
+    (match Build_graph.traverse plan ~output:root_cmx with
      | None ->
        Alice_error.panic [ Pp.textf "No rule to produce %s" (Path.to_filename root_cmx) ]
      | Some traverse -> traverse)
@@ -201,7 +201,7 @@ let link_rule ctx ~name ~cmx_deps_in_order kind =
     | `Exe -> []
     | `Lib -> [ "-a" ]
   in
-  Rule.static
+  Build_rule.static
     { inputs
     ; outputs
     ; commands =
@@ -220,22 +220,46 @@ let rules ctx ~name ~root_ml ~source_rules_db kind =
   link_rule ctx ~name ~cmx_deps_in_order kind :: source_rules_db
 ;;
 
-module Plan = struct
-  type t =
-    { build_plan : Build_plan.t
+module Package_build_planner = struct
+  type exe_enabled = |
+  type exe_disabled = |
+  type lib_enabled = |
+  type lib_disabled = |
+
+  type (_, _) what =
+    | Exe_only : (exe_enabled, lib_disabled) what
+    | Lib_only : (exe_disabled, lib_enabled) what
+    | Exe_and_lib : (exe_enabled, lib_enabled) what
+
+  type 'what t =
+    { build_graph : Build_graph.t
     ; exe_name : Path.Relative.t option
     ; lib_name_cmxa : Path.Relative.t option
     }
 
-  let create ctx package ~exe_only ~lib_only ~out_dir =
+  let create
+    : type exe lib.
+      (exe, lib) what
+      -> Ctx.t
+      -> Package.t
+      -> out_dir:Path.Absolute.t
+      -> (exe, lib) what t
+    =
+    fun what ctx package ~out_dir ->
+    let exe_enabled, lib_enabled =
+      match what with
+      | Exe_only -> true, false
+      | Lib_only -> false, true
+      | Exe_and_lib -> true, true
+    in
     let name = Package.name package |> Package_name.to_string |> Path.relative in
     let exe_root_ml =
-      if Package.contains_exe package && not lib_only
+      if Package.contains_exe package && exe_enabled
       then Some (Package.exe_root_ml package)
       else None
     in
     let lib_root_ml =
-      if Package.contains_lib package && not exe_only
+      if Package.contains_lib package && not lib_enabled
       then Some (Package.lib_root_ml package)
       else None
     in
@@ -260,29 +284,33 @@ module Plan = struct
       | None, None ->
         Alice_error.panic [ Pp.text "Specify one of ~exe_root_ml and ~lib_root_ml" ]
     in
-    { build_plan = Rule.Database.create_build_plan rules ~outputs
+    { build_graph = Build_rule.Database.create_build_graph rules ~outputs
     ; exe_name = Option.map exe_root_ml ~f:(Fun.const exe_name)
     ; lib_name_cmxa = Option.map lib_root_ml ~f:(Fun.const lib_name_cmxa)
     }
   ;;
 
-  let traverse_exe { build_plan; exe_name; _ } =
+  let create_exe_only = create Exe_only
+  let create_lib_only = create Lib_only
+  let create_exe_and_lib = create Exe_and_lib
+
+  let build_exe { build_graph; exe_name; _ } =
     let output =
       match exe_name with
       | None -> Alice_error.panic [ Pp.text "Build plan cannot produce executable." ]
       | Some exe_name -> exe_name
     in
-    Build_plan.traverse build_plan ~output |> Option.get
+    Build_graph.traverse build_graph ~output |> Option.get
   ;;
 
-  let traverse_lib { build_plan; lib_name_cmxa; _ } =
+  let build_lib { build_graph; lib_name_cmxa; _ } =
     let output =
       match lib_name_cmxa with
       | None -> Alice_error.panic [ Pp.text "Build plan cannot produce library." ]
       | Some lib_name_cmxa -> lib_name_cmxa
     in
-    Build_plan.traverse build_plan ~output |> Option.get
+    Build_graph.traverse build_graph ~output |> Option.get
   ;;
 
-  let build_plan { build_plan; _ } = build_plan
+  let dot { build_graph; _ } = Build_graph.dot build_graph
 end
