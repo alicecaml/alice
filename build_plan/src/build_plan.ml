@@ -259,7 +259,7 @@ module Package_build_planner = struct
       else None
     in
     let lib_root_ml =
-      if Package.contains_lib package && not lib_enabled
+      if Package.contains_lib package && lib_enabled
       then Some (Package.lib_root_ml package)
       else None
     in
