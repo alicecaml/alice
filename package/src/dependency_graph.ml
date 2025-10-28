@@ -1,15 +1,16 @@
 open! Alice_stdlib
 open Alice_package_meta
+open Alice_hierarchy
 
-module Package = struct
+module Node = struct
+  include Package
   module Name = Package_name
-  include Package_meta
 
   let dep_names t = dependencies t |> Dependencies.names |> Package_name.Set.of_list
-  let show t = Package_meta.id t |> Package_id.name_v_version_string
+  let show t = id t |> Package_id.name_v_version_string
 end
 
-include Alice_dag.Make (Package)
+include Alice_dag.Make (Node)
 
 module Traverse = struct
   include Traverse
@@ -44,3 +45,29 @@ module Staging = struct
            [ Pp.textf " - %s" (Package_name.to_string file); Pp.newline ]))
   ;;
 end
+
+let transitive_dependency_closure package =
+  let rec loop acc package =
+    let acc = package :: acc in
+    let deps = Package.dependencies package |> Dependencies.to_list in
+    let dep_packages =
+      List.map deps ~f:(fun dep ->
+        match Dependency.source dep with
+        | Local_directory dir_path ->
+          let dep_root =
+            match dir_path with
+            | `Absolute root -> root
+            | `Relative rel_root -> Path.concat (Package.root package) rel_root
+          in
+          Package.read_root dep_root)
+    in
+    List.fold_left dep_packages ~init:acc ~f:loop
+  in
+  loop [] package
+;;
+
+let compute package =
+  let closure = transitive_dependency_closure package in
+  let staging = List.fold_left closure ~init:Staging.empty ~f:Staging.add_package in
+  Staging.finalize staging
+;;

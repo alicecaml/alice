@@ -2,6 +2,7 @@ open! Alice_stdlib
 open Alice_hierarchy
 open Alice_error
 open Alice_package_meta
+open Alice_package
 module File_ops = Alice_io.File_ops
 
 type t =
@@ -10,6 +11,7 @@ type t =
   }
 
 let create ~root ~manifest = { root; manifest }
+let to_package { root; manifest } = Package.create ~root ~meta:manifest
 
 (* Paths relating to the layout of a project. In the future it might make
    sense to make these fields of the project type rather than hard-coded them
@@ -165,8 +167,8 @@ let dot_build_artifacts t =
 ;;
 
 let dot_package_dependencies t =
-  let dependency_graph = Alice_dependencies.resolve t.manifest in
-  Alice_engine.Dependency_graph.dot dependency_graph
+  let dependency_graph = to_package t |> Dependency_graph.compute in
+  Dependency_graph.dot dependency_graph
 ;;
 
 let new_ocaml name path kind =

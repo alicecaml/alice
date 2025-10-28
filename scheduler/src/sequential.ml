@@ -61,10 +61,6 @@ let run ~src_dir ~out_dir ~package traverse =
     ; Pp.textf "out_dir: %s\n" (Alice_ui.path_to_string out_dir)
     ]
   in
-  let src_dir =
-    Path.match_ src_dir ~absolute:Fun.id ~relative:(fun src_dir ->
-      Path.concat (Path.absolute (Sys.getcwd ())) src_dir)
-  in
   let rec loop ~acc_files_to_build traverse =
     let acc_files_to_build =
       List.fold_left

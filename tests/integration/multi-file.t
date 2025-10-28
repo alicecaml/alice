@@ -34,7 +34,7 @@ Create a multi-file project:
   > EOF
 
 Print the dependency graph of the project:
-  $ alice dot --normalize-paths
+  $ alice dot artifacts --normalize-paths
   digraph {
     "bar.cmx" -> {"bar.ml"}
     "bar.o" -> {"bar.ml"}
