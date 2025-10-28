@@ -4,9 +4,7 @@
   alice_stdlib
   alice_error
   alice_hierarchy
-  alice_policy
   alice_manifest
-  alice_scheduler
   alice_build_plan
   alice_io
   alice_ui

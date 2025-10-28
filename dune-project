@@ -9,10 +9,6 @@
  (depends ocaml))
 
 (package
- (name alice_engine)
- (depends ocaml))
-
-(package
  (name alice_error)
  (depends ocaml))
 
@@ -58,15 +54,7 @@
  (depends ocaml))
 
 (package
- (name alice_policy)
- (depends ocaml))
-
-(package
  (name alice_hierarchy)
- (depends ocaml))
-
-(package
- (name alice_scheduler)
  (depends ocaml))
 
 (package

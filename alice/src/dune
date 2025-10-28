@@ -2,14 +2,12 @@
  (public_name alice)
  (package alice)
  (libraries
-  alice_engine
   alice_build_plan
   alice_error
   alice_print
   alice_io
   alice_package_meta
   alice_hierarchy
-  alice_policy
   alice_project
   alice_log
   alice_root
