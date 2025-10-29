@@ -14,6 +14,7 @@ module type Node = sig
 
   val to_dyn : t -> Dyn.t
   val equal : t -> t -> bool
+  val name : t -> Name.t
   val dep_names : t -> Name.Set.t
 
   (** How to display this node when visualizing the graph with graphviz. *)
@@ -25,9 +26,9 @@ module Make (Node : Node) : sig
 
   val empty : t
   val to_dyn : t -> Dyn.t
-
-  (** Returns the graphviz source code for rendering the dag. *)
-  val dot : t -> string
+  val nodes : t -> Node.t list
+  val roots : t -> Node.t list
+  val to_string_graph : t -> String.Set.t String.Map.t
 
   module Traverse : sig
     (** Helper for traversing a DAG. Traversals begin at output nodes. A

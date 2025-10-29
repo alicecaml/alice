@@ -19,6 +19,7 @@ module Artifact_with_origin = struct
     Path.Relative.equal t.artifact artifact && Origin.equal t.origin origin
   ;;
 
+  let name t = t.artifact
   let dep_names t = Origin.inputs t.origin
   let show t = Alice_ui.path_to_string t.artifact
 end
@@ -60,3 +61,5 @@ module Staging = struct
            [ Pp.textf " - %s" (Alice_ui.path_to_string file); Pp.newline ]))
   ;;
 end
+
+let dot t = to_string_graph t |> Alice_graphviz.dot_src_of_string_graph

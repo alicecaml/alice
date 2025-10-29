@@ -19,6 +19,3 @@ module Type_bool = Type_bool
 module Xdg = Xdg
 
 let sprintf = Printf.sprintf
-
-type true_t = Type_bool.true_t
-type false_t = Type_bool.false_t

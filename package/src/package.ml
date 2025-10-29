@@ -1,4 +1,5 @@
 open! Alice_stdlib
+open Type_bool
 open Alice_package_meta
 open Alice_hierarchy
 open Alice_error
@@ -53,6 +54,23 @@ module Typed = struct
     { package : t
     ; type_ : ('exe, 'lib) type_
     }
+
+  type lib_only_t = (false_t, true_t) t
+  type exe_only_t = (true_t, false_t) t
+  type exe_and_lib_t = (true_t, true_t) t
+
+  let to_dyn : type exe lib. (exe, lib) t -> Dyn.t =
+    fun { package; type_ } ->
+    let type_ =
+      match type_ with
+      | Exe_only -> "Exe_only"
+      | Lib_only -> "Lib_only"
+      | Exe_and_lib -> "Exe_and_lib"
+    in
+    Dyn.record [ "package", to_dyn package; "type_", Dyn.variant type_ [] ]
+  ;;
+
+  let equal t { package; type_ = _ } = equal t.package package
 
   let limit_to_exe_only : (true_t, true_t) t -> (true_t, false_t) t =
     fun { package; _ } -> { package; type_ = Exe_only }

@@ -1,4 +1,5 @@
 open! Alice_stdlib
+open Type_bool
 open Alice_hierarchy
 open Alice_package_meta
 
@@ -32,13 +33,20 @@ module Typed : sig
       contains an executable or a library or both. *)
   type ('exe, 'lib) t
 
+  type lib_only_t = (false_t, true_t) t
+  type exe_only_t = (true_t, false_t) t
+  type exe_and_lib_t = (true_t, true_t) t
+
+  val to_dyn : (_, _) t -> Dyn.t
+  val equal : ('exe, 'lib) t -> ('exe, 'lib) t -> bool
+
   (** Ignore the presence of a library in a package containing both a library
       and an executable. *)
-  val limit_to_exe_only : (true_t, true_t) t -> (true_t, false_t) t
+  val limit_to_exe_only : exe_and_lib_t -> exe_only_t
 
   (** Ignore the presence of an executable in a package containing both an
       executable and a library. *)
-  val limit_to_lib_only : (true_t, true_t) t -> (false_t, true_t) t
+  val limit_to_lib_only : exe_and_lib_t -> lib_only_t
 
   val package : (_, _) t -> package
   val type_ : ('exe, 'lib) t -> ('exe, 'lib) type_

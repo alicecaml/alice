@@ -1,0 +1,3 @@
+(library
+ (public_name alice_graphviz)
+ (libraries alice_stdlib))

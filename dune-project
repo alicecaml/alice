@@ -62,6 +62,10 @@
  (depends ocaml))
 
 (package
+ (name alice_graphviz)
+ (depends ocaml))
+
+(package
  (name alice_root)
  (depends
   ocaml

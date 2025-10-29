@@ -6,4 +6,5 @@
   alice_hierarchy
   alice_package_meta
   alice_manifest
-  alice_dag))
+  alice_dag
+  alice_graphviz))

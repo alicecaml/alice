@@ -1,4 +1,5 @@
 open! Alice_stdlib
+open Type_bool
 open Alice_hierarchy
 open Alice_package
 module File_ops = Alice_io.File_ops

@@ -12,6 +12,7 @@ module type Node = sig
 
   val to_dyn : t -> Dyn.t
   val equal : t -> t -> bool
+  val name : t -> Name.t
   val dep_names : t -> Name.Set.t
   val show : t -> string
 end
@@ -23,25 +24,28 @@ module Make (Node : Node) = struct
   let to_dyn = Node.Name.Map.to_dyn Node.to_dyn
   let nodes = Node.Name.Map.values
 
-  let dot t =
-    let lines =
-      nodes t
-      |> List.filter_map ~f:(fun node ->
-        let dep_names = Node.dep_names node in
-        if Node.Name.Set.is_empty dep_names
-        then None
-        else (
-          let deps_str =
-            Node.Name.Set.to_list dep_names
-            |> List.map ~f:(fun dep_name ->
-              let dep_node = Node.Name.Map.find dep_name t in
-              sprintf "\"%s\"" (Node.show dep_node))
-            |> String.concat ~sep:", "
-          in
-          Some (sprintf "  \"%s\" -> {%s}" (Node.show node) deps_str)))
-      |> List.sort ~cmp:String.compare
-    in
-    String.concat ~sep:"\n" lines |> sprintf "digraph {\n%s\n}"
+  let roots t =
+    Node.Name.Map.fold t ~init:t ~f:(fun ~key:_ ~data acc ->
+      Node.Name.Set.fold (Node.dep_names data) ~init:acc ~f:(fun name acc ->
+        Node.Name.Map.remove name acc))
+    |> Node.Name.Map.values
+  ;;
+
+  let to_string_graph t =
+    Node.Name.Map.values t
+    |> List.filter_map ~f:(fun node ->
+      let dep_names = Node.dep_names node in
+      if Node.Name.Set.is_empty dep_names
+      then None
+      else (
+        let value =
+          Node.Name.Set.to_list dep_names
+          |> List.map ~f:(fun name -> Node.Name.Map.find name t |> Node.show)
+          |> String.Set.of_list
+        in
+        let key = Node.show node in
+        Some (key, value)))
+    |> String.Map.of_list_exn
   ;;
 
   module Traverse = struct

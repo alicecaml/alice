@@ -1,6 +1,6 @@
 (lang package 0.1)
 
-(dependency_hash d440829d1602d3b765944c984bc02e26)
+(dependency_hash 4c8c2eea00918829053139ce1ac7d0ce)
 
 (ocaml ocaml-system)
 
@@ -28,8 +28,5 @@
   (os macos)
   (sys-ocaml-version 5.3.1+relocatable))
  ((arch x86_64)
-  (os win32)
-  (sys-ocaml-version 5.3.1+relocatable))
- ((arch arm64)
   (os win32)
   (sys-ocaml-version 5.3.1+relocatable)))
