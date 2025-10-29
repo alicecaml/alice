@@ -44,8 +44,6 @@ let contains_exe t = File_ops.exists (src_dir_path t / Paths.exe_root_ml)
 let contains_lib t = File_ops.exists (src_dir_path t / Paths.lib_root_ml)
 
 module Typed = struct
-  open Type_bool
-
   type ('exe, 'lib) type_ =
     | Exe_only : (true_t, false_t) type_
     | Lib_only : (false_t, true_t) type_
@@ -68,17 +66,18 @@ module Typed = struct
   let type_ { type_; _ } = type_
   let exe_root_ml _ = Paths.exe_root_ml
   let lib_root_ml _ = Paths.lib_root_ml
-
-  let of_package package =
-    match contains_exe package, contains_lib package with
-    | false, false ->
-      user_exn
-        [ Pp.textf
-            "Package %S defines contains neither an executable nor a library."
-            (Package_id.name_v_version_string (id package))
-        ]
-    | true, false -> `Exe_only { package; type_ = Exe_only }
-    | false, true -> `Lib_only { package; type_ = Lib_only }
-    | true, true -> `Exe_and_lib { package; type_ = Exe_and_lib }
-  ;;
 end
+
+let typed t =
+  let package = t in
+  match contains_exe package, contains_lib package with
+  | false, false ->
+    user_exn
+      [ Pp.textf
+          "Package %S defines contains neither an executable nor a library."
+          (Package_id.name_v_version_string (id package))
+      ]
+  | true, false -> `Exe_only { Typed.package; type_ = Exe_only }
+  | false, true -> `Lib_only { Typed.package; type_ = Lib_only }
+  | true, true -> `Exe_and_lib { Typed.package; type_ = Exe_and_lib }
+;;

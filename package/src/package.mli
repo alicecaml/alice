@@ -1,7 +1,6 @@
 open! Alice_stdlib
 open Alice_hierarchy
 open Alice_package_meta
-open Type_bool
 
 type t
 
@@ -51,11 +50,11 @@ module Typed : sig
   (** The file inside the source directory containing the entry point for the
     library. *)
   val lib_root_ml : (_, true_t) t -> Path.Relative.t
-
-  val of_package
-    :  package
-    -> [ `Exe_only of (true_t, false_t) t
-       | `Lib_only of (false_t, true_t) t
-       | `Exe_and_lib of (true_t, true_t) t
-       ]
 end
+
+val typed
+  :  t
+  -> [ `Exe_only of (true_t, false_t) Typed.t
+     | `Lib_only of (false_t, true_t) Typed.t
+     | `Exe_and_lib of (true_t, true_t) Typed.t
+     ]

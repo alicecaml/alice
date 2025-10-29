@@ -57,7 +57,7 @@ let build_ocaml ~ctx t =
   println (compiling_message t);
   let out_dir = out_dir t in
   let build_plans =
-    match Package.Typed.of_package t with
+    match Package.typed t with
     | `Exe_only pt -> [ Build_plan.create_exe ctx pt ~out_dir ]
     | `Lib_only pt -> [ Build_plan.create_lib ctx pt ~out_dir ]
     | `Exe_and_lib pt ->
@@ -72,7 +72,7 @@ let build_ocaml ~ctx t =
 let run_ocaml_exe ~ctx t ~args =
   let open Alice_ui in
   let package_typed =
-    match Package.Typed.of_package t with
+    match Package.typed t with
     | `Lib_only _ -> user_exn [ Pp.text "Cannot run project as it lacks an executable." ]
     | `Exe_only pt -> pt
     | `Exe_and_lib pt -> Package.Typed.limit_to_exe_only pt
@@ -121,7 +121,7 @@ let dot_build_artifacts t =
     let planner = Build_plan.Package_build_planner.create ctx pt ~out_dir:(out_dir t) in
     Build_plan.Package_build_planner.dot planner
   in
-  match Package.Typed.of_package t with
+  match Package.typed t with
   | `Exe_only pt -> dot pt
   | `Lib_only pt -> dot pt
   | `Exe_and_lib pt -> dot pt

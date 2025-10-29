@@ -1,7 +1,6 @@
 open! Alice_stdlib
 open Alice_hierarchy
 open Alice_package
-open Type_bool
 module File_ops = Alice_io.File_ops
 module Log = Alice_log
 include Build_graph.Traverse

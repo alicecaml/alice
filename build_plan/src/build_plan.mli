@@ -1,7 +1,6 @@
 open! Alice_stdlib
 open Alice_hierarchy
 open Alice_package
-open Type_bool
 
 (** A plan for building a set of files. Evaluating a build plan requires first
     evaluating all the build plan's dependencies, which are also build plans. *)
