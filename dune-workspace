@@ -25,4 +25,15 @@
    (= 5.3.1+relocatable)))
  (repositories upstream_frozen overlay_frozen alice_frozen)
  (solver_env
-  (sys-ocaml-version 5.3.1+relocatable)))
+  (sys-ocaml-version 5.3.1+relocatable))
+ (solve_for_platforms
+  ((arch x86_64)
+   (os linux))
+  ((arch arm64)
+   (os linux))
+  ((arch x86_64)
+   (os macos))
+  ((arch arm64)
+   (os macos))
+  ((arch x86_64)
+   (os win32))))
