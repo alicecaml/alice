@@ -23,23 +23,31 @@ module Deps = struct
     Dyn.record [ "output", Path.to_dyn output; "inputs", Dyn.list Path.to_dyn inputs ]
   ;;
 
+  let separator_pattern = lazy (Re.str " : " |> Re.compile)
+
   let of_line line =
-    match String.lsplit2 line ~on:':' with
-    | None ->
-      panic
-        [ Pp.textf "Expected line of the form \"<output> : <inputs>\", but got %S" line ]
-    | Some (left, right) ->
-      let left = String.trim left in
-      let right = String.trim right in
-      let output = Path.absolute left |> Path.basename in
-      let inputs =
-        if String.is_empty right
-        then []
-        else
-          String.split_on_char right ~sep:' '
-          |> List.map ~f:(fun filename -> Path.absolute filename |> Path.basename)
-      in
-      { output; inputs }
+    let parts = Re.split_delim (Lazy.force separator_pattern) line in
+    let left, right =
+      match parts with
+      | [] | _ :: _ :: _ :: _ ->
+        panic
+          [ Pp.textf "Expected line of the form \"<output> : <inputs>\", but got %S" line
+          ]
+      | [ left ] -> String.trim left, ""
+      | [ left; right ] ->
+        let left = String.trim left in
+        let right = String.trim right in
+        left, right
+    in
+    let output = Path.absolute left |> Path.basename in
+    let inputs =
+      if String.is_empty right
+      then []
+      else
+        String.split_on_char right ~sep:' '
+        |> List.map ~f:(fun filename -> Path.absolute filename |> Path.basename)
+    in
+    { output; inputs }
   ;;
 end
 

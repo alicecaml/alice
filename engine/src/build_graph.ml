@@ -294,7 +294,7 @@ let dot t =
         let source_path_rel_to_package =
           Path.chop_prefix source_path_abs ~prefix:(Package.root package)
         in
-        let source_path_string = Path.to_filename source_path_rel_to_package in
+        let source_path_string = Alice_ui.path_to_string source_path_rel_to_package in
         String.Map.update string_graph ~key:(Build_node.show node) ~f:(function
           | None -> Some (String.Set.singleton source_path_string)
           | Some existing -> Some (String.Set.add source_path_string existing)))
