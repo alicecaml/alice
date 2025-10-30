@@ -1,6 +1,20 @@
 open! Alice_stdlib
 open Alice_hierarchy
 
+module Build_node : sig
+  (** For the sake of simplicity, each node in the build graph corresponds to a
+      single file. Most build operations produce multiple files, so the same
+      operation may be associated with multiple nodes in the graph. When
+      evaluating the build graph, care should be taken to not run the same
+      operation multiple times. *)
+  type t =
+    { artifact : Path.Relative.t
+      (** A single file produced by the associated operation. *)
+    ; op : Typed_op.t
+      (** An operation which creates [artifact], but which may also create other files. *)
+    }
+end
+
 module Traverse : sig
   (** Helper for traversing a DAG. Traversals begin at output nodes. A
       traversal is a node in the DAG (an [Origin]) which knows how to expand

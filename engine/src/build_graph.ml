@@ -1,6 +1,27 @@
 open! Alice_stdlib
 open Alice_hierarchy
 
+module Build_node = struct
+  module Name = Path.Relative
+
+  type t =
+    { artifact : Path.Relative.t
+    ; op : Typed_op.t
+    }
+
+  let to_dyn { artifact; op } =
+    Dyn.record [ "artifact", Path.Relative.to_dyn artifact; "op", Typed_op.to_dyn op ]
+  ;;
+
+  let equal t { artifact; op } =
+    Path.Relative.equal t.artifact artifact && Typed_op.equal t.op op
+  ;;
+
+  let name t = t.artifact
+  let dep_names t = Typed_op.generated_inputs t.op
+  let show t = Alice_ui.path_to_string t.artifact
+end
+
 module Artifact_with_origin = struct
   module Name = Path.Absolute
 

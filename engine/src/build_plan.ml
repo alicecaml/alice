@@ -6,6 +6,75 @@ module File_ops = Alice_io.File_ops
 module Log = Alice_log
 include Build_graph.Traverse
 
+module Ocamldep_cache_ = struct
+  type deps = Alice_ocamldep.Deps.t Path.Absolute.Map.t
+
+  (* Cache which is serialized in the build directory to avoid running ocamldep
+     when it's output is guaranteed to be the same as the previous time it was
+     run on some file. *)
+  type t =
+    { deps : deps
+    ; mtime : float
+    }
+
+  let load build_dir package_id =
+    let path = Build_dir.package_ocamldeps_cache_file build_dir package_id in
+    if File_ops.exists path
+    then (
+      Log.info
+        ~package_id
+        [ Pp.textf "Loading ocamldeps cache from: %s" (Alice_ui.path_to_string path) ];
+      let deps =
+        File_ops.with_in_channel path ~mode:`Bin ~f:(fun channel ->
+          Marshal.from_channel channel)
+      in
+      let mtime = File_ops.mtime path in
+      { deps; mtime })
+    else { deps = Path.Absolute.Map.empty; mtime = 0.0 }
+  ;;
+
+  let store_deps (deps : deps) build_dir package_id =
+    let path = Build_dir.package_ocamldeps_cache_file build_dir package_id in
+    File_ops.mkdir_p (Path.dirname path);
+    File_ops.with_out_channel path ~mode:`Bin ~f:(fun channel ->
+      Marshal.to_channel channel deps [])
+  ;;
+
+  let get_deps t ~source_path build_dir package_id =
+    let path = Build_dir.package_ocamldeps_cache_file build_dir package_id in
+    let source_mtime = File_ops.mtime source_path in
+    let run_ocamldep () =
+      Log.info
+        ~package_id
+        [ Pp.textf
+            "Analyzing dependencies of file: %s"
+            (Alice_ui.path_to_string source_path)
+        ];
+      Alice_ocamldep.native_deps source_path
+    in
+    if source_mtime > t.mtime
+    then
+      (* Source file is newer than the cache so we need to run ocamldep. *)
+      run_ocamldep ()
+    else (
+      match Path.Absolute.Map.find_opt source_path t.deps with
+      | None ->
+        (* Source file is absent from the cache. This is unusual because the
+           source file is older than the cache. Run ocamldep to compute the
+           result anyway. *)
+        Log.warn
+          ~package_id
+          [ Pp.textf
+              "The ocamldeps cache (%s) is newer than source file %S, however there is \
+               no entry in the ocamldeps cache for that source file."
+              (Alice_ui.path_to_string path)
+              (Alice_ui.path_to_string source_path)
+          ];
+        run_ocamldep ()
+      | Some deps -> deps)
+  ;;
+end
+
 module Ocamldep_cache = struct
   type deps = Alice_ocamldep.Deps.t Path.Absolute.Map.t
 
@@ -24,7 +93,7 @@ module Ocamldep_cache = struct
     if File_ops.exists path
     then (
       Log.info
-        ~package
+        ~package_id:package
         [ Pp.textf "Loading ocamldeps cache from: %s" (Alice_ui.path_to_string filename) ];
       let deps =
         File_ops.with_in_channel path ~mode:`Bin ~f:(fun channel ->
@@ -46,7 +115,7 @@ module Ocamldep_cache = struct
     let source_mtime = File_ops.mtime source_path in
     let run_ocamldep () =
       Log.info
-        ~package
+        ~package_id:package
         [ Pp.textf
             "Analyzing dependencies of file: %s"
             (Alice_ui.path_to_string source_path)
@@ -64,7 +133,7 @@ module Ocamldep_cache = struct
            source file is older than the cache. Run ocamldep to compute the
            result anyway. *)
         Log.warn
-          ~package
+          ~package_id:package
           [ Pp.textf
               "The ocamldeps cache (%s) is newer than source file %S, however there is \
                no entry in the ocamldeps cache for that source file."
@@ -75,6 +144,100 @@ module Ocamldep_cache = struct
       | Some deps -> deps)
   ;;
 end
+
+let source_builds dir build_dir package_id =
+  let ocamldep_cache = Ocamldep_cache_.load build_dir package_id in
+  let deps =
+    Dir.contents dir
+    |> List.filter ~f:(fun file ->
+      File.is_regular_or_link file
+      && (Path.has_extension file.path ~ext:".ml"
+          || Path.has_extension file.path ~ext:".mli"))
+    |> List.sort ~cmp:File.compare_by_path
+    |> List.map ~f:(fun (file : _ File.t) ->
+      ( file.path
+      , Ocamldep_cache_.get_deps
+          ocamldep_cache
+          ~source_path:file.path
+          build_dir
+          package_id ))
+    |> Path.Absolute.Map.of_list_exn
+  in
+  Ocamldep_cache_.store_deps deps build_dir package_id;
+  Path.Absolute.Map.to_list deps
+  |> List.map ~f:(fun (source_path, (deps : Alice_ocamldep.Deps.t)) ->
+    let open Typed_op in
+    let open Alice_error in
+    match File.source_by_extension source_path with
+    | Error (`Unknown_extension _) ->
+      panic
+        [ Pp.textf
+            "Tried to treat %S as source path but it has an unrecognized extension."
+            (Alice_ui.path_to_string source_path)
+        ]
+    | Ok (`Ml direct_input) ->
+      let indirect_inputs =
+        List.map deps.inputs ~f:(fun dep ->
+          match File.compiled_by_extension dep with
+          | Ok (`Cmx cmx) -> `Cmx cmx
+          | Ok (`Cmi cmi) -> `Cmi cmi
+          | Ok _ ->
+            panic
+              [ Pp.textf
+                  "Running ocamldep on %S produced build input %S whose extension is \
+                   unexpected (expected either \".cmx\" or \".cmi\")."
+                  (Alice_ui.path_to_string source_path)
+                  (Alice_ui.path_to_string dep)
+              ]
+          | Error (`Unknown_extension _) ->
+            panic
+              [ Pp.textf
+                  "Running ocamldep on %S produced build input %S whose extension is \
+                   unrecognized."
+                  (Alice_ui.path_to_string source_path)
+                  (Alice_ui.path_to_string dep)
+              ])
+      in
+      let direct_output =
+        Path.chop_prefix source_path ~prefix:(Dir.path dir)
+        |> Path.replace_extension ~ext:".cmx"
+        |> File.compiled_cmx
+      in
+      let indirect_output =
+        Path.chop_prefix source_path ~prefix:(Dir.path dir)
+        |> Path.replace_extension ~ext:".o"
+        |> File.compiled_o
+      in
+      Compile_source { direct_input; indirect_inputs; direct_output; indirect_output }
+    | Ok (`Mli direct_input) ->
+      let indirect_inputs =
+        List.map deps.inputs ~f:(fun dep ->
+          match File.compiled_by_extension dep with
+          | Ok (`Cmi cmi) -> cmi
+          | Ok _ ->
+            panic
+              [ Pp.textf
+                  "Running ocamldep on %S produced build input %S whose extension is \
+                   unexpected (expected either \".cmi\")."
+                  (Alice_ui.path_to_string source_path)
+                  (Alice_ui.path_to_string dep)
+              ]
+          | Error (`Unknown_extension _) ->
+            panic
+              [ Pp.textf
+                  "Running ocamldep on %S produced build input %S whose extension is \
+                   unrecognized."
+                  (Alice_ui.path_to_string source_path)
+                  (Alice_ui.path_to_string dep)
+              ])
+      in
+      let direct_output =
+        Path.chop_prefix source_path ~prefix:(Dir.path dir)
+        |> Path.replace_extension ~ext:".cmi"
+        |> File.compiled_cmi
+      in
+      Compile_interface { direct_input; indirect_inputs; direct_output })
+;;
 
 let path_mv path ~dst =
   let basename = Path.basename path in
@@ -283,7 +446,7 @@ module Package_build_planner = struct
     match Package.Typed.type_ t.package_typed with
     | Exe_only -> [ plan_exe t ]
     | Lib_only -> [ plan_lib t ]
-    | Exe_and_lib -> [ plan_exe t; plan_lib t ]
+    | Exe_and_lib -> [ plan_lib t; plan_exe t ]
   ;;
 
   let dot { build_graph; _ } = Build_graph.dot build_graph

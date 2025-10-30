@@ -27,7 +27,7 @@ type pos = string * int * int * int
 
 let pp_pos (file, lnum, _cnum, _enum) = Pp.textf "%s:%d" file lnum
 
-let log ?pos ?package ~level message =
+let log ?pos ?package_id ~level message =
   if to_int level >= to_int !current_level
   then (
     let prefix =
@@ -38,12 +38,14 @@ let log ?pos ?package ~level message =
       | `Error -> Pp.tag tag_error (Pp.text "[ERROR] ")
     in
     let message =
-      match package with
+      match package_id with
       | None -> message
-      | Some package ->
+      | Some package_id ->
         Pp.tag
           tag_package
-          (Pp.textf "[%s] " (Alice_package_meta.Package_id.name_v_version_string package))
+          (Pp.textf
+             "[%s] "
+             (Alice_package_meta.Package_id.name_v_version_string package_id))
         :: message
     in
     let message =
@@ -54,7 +56,7 @@ let log ?pos ?package ~level message =
     Alice_print.Raw.pps_eprintln (prefix :: message))
 ;;
 
-let debug ?pos ?package message = log ?pos ?package ~level:`Debug message
-let info ?pos ?package message = log ?pos ?package ~level:`Info message
-let warn ?pos ?package message = log ?pos ?package ~level:`Warn message
-let error ?pos ?package message = log ?pos ?package ~level:`Error message
+let debug ?pos ?package_id message = log ?pos ?package_id ~level:`Debug message
+let info ?pos ?package_id message = log ?pos ?package_id ~level:`Info message
+let warn ?pos ?package_id message = log ?pos ?package_id ~level:`Warn message
+let error ?pos ?package_id message = log ?pos ?package_id ~level:`Error message

@@ -75,7 +75,7 @@ module Sequential = struct
          | Build (build : Origin.Build.t) ->
            print_compiling_message ();
            Log.info
-             ~package:(Package.id package)
+             ~package_id:(Package.id package)
              [ Pp.textf
                  "Building targets: %s"
                  (Path.Absolute.Set.to_list build.outputs
