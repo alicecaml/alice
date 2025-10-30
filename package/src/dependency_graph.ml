@@ -86,20 +86,20 @@ let transitive_dependency_closure package =
   loop [] package
 ;;
 
-type t =
-  { root : Package.t
+type ('exe, 'lib) t =
+  { root : ('exe, 'lib) Package.Typed.t
   ; dependency_dag : Dependency_dag.t
   }
 
 let to_dyn { root; dependency_dag } =
   Dyn.record
-    [ "root", Package.to_dyn root
+    [ "root", Package.Typed.to_dyn root
     ; "dependency_dag", Dependency_dag.to_dyn dependency_dag
     ]
 ;;
 
-let compute package =
-  let closure = transitive_dependency_closure package in
+let compute package_typed =
+  let closure = transitive_dependency_closure (Package.Typed.package package_typed) in
   let staging =
     List.fold_left
       closure
@@ -107,13 +107,13 @@ let compute package =
       ~f:Dependency_dag.Staging.add_package_typed
   in
   let dependency_dag = Dependency_dag.Staging.finalize staging in
-  { root = package; dependency_dag }
+  { root = package_typed; dependency_dag }
 ;;
 
 let to_string_graph t =
   Dependency_dag.to_string_graph t.dependency_dag
   |> String.Map.add
-       ~key:(Package_id.name_v_version_string (Package.id t.root))
+       ~key:(Package_id.name_v_version_string (Package.id (Package.Typed.package t.root)))
        ~data:
          (Dependency_dag.roots t.dependency_dag
           |> List.map ~f:Node.show
@@ -121,3 +121,17 @@ let to_string_graph t =
 ;;
 
 let dot t = to_string_graph t |> Alice_graphviz.dot_src_of_string_graph
+let root { root; _ } = root
+
+module Traverse_dependencies = struct
+  include Dependency_dag.Traverse
+
+  let package_typed = node
+end
+
+let traverse_dependencies { dependency_dag; _ } =
+  Dependency_dag.roots dependency_dag
+  |> List.filter_map ~f:(fun node ->
+    let name = Node.name node in
+    Dependency_dag.traverse dependency_dag ~name)
+;;

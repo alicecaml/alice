@@ -58,11 +58,16 @@ module Sequential = struct
   ;;
 
   let eval_build_plan build_plan package ~out_dir =
+    let open Alice_ui in
     let src_dir = Package.src_dir_path package in
     let panic_context () =
-      [ Pp.textf "src_dir: %s\n" (Alice_ui.path_to_string src_dir)
-      ; Pp.textf "out_dir: %s\n" (Alice_ui.path_to_string out_dir)
+      [ Pp.textf "src_dir: %s\n" (path_to_string src_dir)
+      ; Pp.textf "out_dir: %s\n" (path_to_string out_dir)
       ]
+    in
+    let print_compiling_message =
+      println_once
+        (verb_message `Compiling (Package_id.name_v_version_string (Package.id package)))
     in
     let rec loop ~acc_files_to_build build_plan =
       let acc_files_to_build =
@@ -79,11 +84,12 @@ module Sequential = struct
       match need_to_build with
       | false -> acc_files_to_build
       | true ->
+        print_compiling_message ();
         (match Build_plan.origin build_plan with
          | Source path ->
            Log.info
              ~package:(Package.id package)
-             [ Pp.textf "Copying source file: %s" (Alice_ui.path_to_string path) ];
+             [ Pp.textf "Copying source file: %s" (path_to_string path) ];
            File_ops.cp_f ~src:(Path.concat src_dir path) ~dst:Path.current_dir
          | Build (build : Origin.Build.t) ->
            Log.info
@@ -91,14 +97,14 @@ module Sequential = struct
              [ Pp.textf
                  "Building targets: %s"
                  (Path.Relative.Set.to_list build.outputs
-                  |> List.map ~f:Alice_ui.path_to_string
+                  |> List.map ~f:path_to_string
                   |> String.concat ~sep:", ")
              ];
            Path.Relative.Set.iter build.inputs ~f:(fun path ->
              if not (File_ops.exists path)
              then
                Alice_error.panic
-                 (Pp.textf "Missing input file: %s\n" (Alice_ui.path_to_string path)
+                 (Pp.textf "Missing input file: %s\n" (path_to_string path)
                   :: panic_context ()));
            List.iter build.commands ~f:(fun command ->
              let status =

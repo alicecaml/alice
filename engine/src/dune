@@ -1,5 +1,5 @@
 (library
- (public_name alice_build_plan)
+ (public_name alice_engine)
  (libraries
   alice_stdlib
   alice_error

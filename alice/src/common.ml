@@ -1,8 +1,7 @@
 open! Alice_stdlib
 open Alice_hierarchy
 open Alice_error
-open Alice_project
-open Alice_build_plan
+open Alice_engine
 module File_ops = Alice_io.File_ops
 open Climate
 
@@ -66,12 +65,12 @@ let parse_project =
   Alice_package.Package.read_root (Path.dirname manifest_path) |> Project.of_package
 ;;
 
-let parse_ctx =
+let parse_profile =
   let open Arg_parser in
   let+ release = flag [ "release" ] ~doc:"Build with optimizations." in
   match release with
-  | true -> Build_plan.Ctx.release
-  | false -> Build_plan.Ctx.debug
+  | true -> Profile.release
+  | false -> Profile.debug
 ;;
 
 let set_log_level_from_verbose_flag =

@@ -52,7 +52,7 @@ Print the dependency graph of the project:
 Test that the project can be built an run:
   $ alice run --normalize-paths
    Compiling foo v0.1.0
-     Running build/packages/foo-0.1.0/foo
+     Running build/debug/packages/foo-0.1.0/foo
   
   Hello, World!
 

@@ -7,14 +7,13 @@ let find_in_search_path exe_name search_paths =
     search_paths
     ~f:
       (Path.Either.with_
-         ~with_path:
-           { f =
-               (fun search_path ->
-                 let exe_path = Path.concat search_path exe_name in
-                 if Alice_io.File_ops.exists exe_path
-                 then Some (Path.to_either exe_path)
-                 else None)
-           })
+         { f =
+             (fun search_path ->
+               let exe_path = Path.concat search_path exe_name in
+               if Alice_io.File_ops.exists exe_path
+               then Some (Path.to_either exe_path)
+               else None)
+         })
 ;;
 
 let which exe_name =

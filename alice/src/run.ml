@@ -1,14 +1,14 @@
 open! Alice_stdlib
-open Alice_project
+open Alice_engine
 open Climate
 
 let run_ =
   let open Arg_parser in
   let+ () = Common.set_globals_from_flags
   and+ project = Common.parse_project
-  and+ ctx = Common.parse_ctx
+  and+ profile = Common.parse_profile
   and+ args = pos_all string ~doc:"Arguments to pass to the executable." in
-  Project.run_ocaml_exe ~ctx project ~args
+  Project.run project profile ~args
 ;;
 
 let subcommand =

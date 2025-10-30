@@ -1,7 +1,64 @@
 open! Alice_stdlib
-open Alice_project
 open Alice_hierarchy
 open Climate
+module File_ops = Alice_io.File_ops
+open Alice_error
+open Alice_package
+
+let make_project name path kind =
+  let src = Package.default_src in
+  let manifest_path = Path.relative Alice_manifest.manifest_name in
+  if File_ops.exists (path / manifest_path)
+  then
+    user_exn
+      [ Pp.textf
+          "Refusing to create project because destination directory exists and contains \
+           project manifest (%s).\n"
+          (Alice_ui.path_to_string (path / manifest_path))
+      ; Pp.text "Delete this file before proceeding."
+      ];
+  if File_ops.exists (path / src)
+  then
+    if File_ops.is_directory (path / src)
+    then
+      user_exn
+        [ Pp.textf
+            "Refusing to create project because destination directory exists and \
+             contains src directory (%s).\n"
+            (Alice_ui.path_to_string (path / src))
+        ; Pp.text "Delete this directory before proceeding."
+        ]
+    else
+      user_exn
+        [ Pp.textf
+            "Refusing to create project because destination directory exists and \
+             contains a file named \"src\" (%s).\n"
+            (Alice_ui.path_to_string (path / src))
+        ; Pp.text "Delete this file before proceeding."
+        ];
+  let manifest =
+    Package_meta.create
+      ~id:
+        { name
+        ; version = Semantic_version.of_string_res "0.1.0" |> User_error.get_or_panic
+        }
+      ~dependencies:None
+  in
+  File_ops.mkdir_p (path / src);
+  File_ops.write_text_file
+    (path / Path.relative ".gitignore")
+    (Path.to_filename Alice_engine.Project.build_dir_path_relative_to_project_root);
+  Alice_manifest.write_package_manifest ~manifest_path:(path / manifest_path) manifest;
+  match kind with
+  | `Exe ->
+    File_ops.write_text_file
+      (path / src / Package.default_exe_root_ml)
+      "let () = print_endline \"Hello, World!\""
+  | `Lib ->
+    File_ops.write_text_file
+      (path / src / Package.default_lib_root_ml)
+      "let add lhs rhs = lhs + rhs"
+;;
 
 let new_ =
   let open Arg_parser in
@@ -36,7 +93,7 @@ let new_ =
     (verb_message
        `Creating
        (sprintf "new %s package %S in %s" kind_string name (Alice_ui.path_to_string path)));
-  Project.new_ocaml package_name path kind;
+  make_project package_name path kind;
   print_newline ()
 ;;
 

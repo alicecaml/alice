@@ -15,6 +15,9 @@ val id : t -> Package_id.t
 val name : t -> Package_name.t
 val version : t -> Semantic_version.t
 val dependencies : t -> Dependencies.t
+val default_exe_root_ml : Path.Relative.t
+val default_lib_root_ml : Path.Relative.t
+val default_src : Path.Relative.t
 
 (** The path of the directory inside a package where the source code is located *)
 val src_dir_path : t -> Path.Absolute.t
@@ -66,3 +69,7 @@ val typed
      | `Lib_only of (false_t, true_t) Typed.t
      | `Exe_and_lib of (true_t, true_t) Typed.t
      ]
+
+type 'a with_typed = { f : 'exe 'lib. ('exe, 'lib) Typed.t -> 'a }
+
+val with_typed : 'a with_typed -> t -> 'a

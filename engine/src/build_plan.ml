@@ -6,29 +6,6 @@ module File_ops = Alice_io.File_ops
 module Log = Alice_log
 include Build_graph.Traverse
 
-module Ctx = struct
-  type t =
-    { optimization_level : [ `O2 | `O3 ] option
-    ; debug : bool
-    }
-
-  let debug = { optimization_level = None; debug = true }
-  let release = { optimization_level = Some `O2; debug = false }
-
-  let ocamlopt_command t ~args =
-    let prog = Alice_which.ocamlopt () in
-    let args =
-      (if t.debug then [ "-g" ] else [])
-      @ (match t.optimization_level with
-         | None -> []
-         | Some `O2 -> [ "-O2" ]
-         | Some `O3 -> [ "-O3" ])
-      @ args
-    in
-    Command.create prog ~args
-  ;;
-end
-
 module Ocamldep_cache = struct
   type deps = Path.relative Alice_ocamldep.Deps.t Path.Relative.Map.t
 
@@ -99,7 +76,7 @@ module Ocamldep_cache = struct
   ;;
 end
 
-let compile_source_rules ctx dir ~out_dir ~package =
+let compile_source_rules profile dir ~out_dir ~package =
   let ocamldep_cache = Ocamldep_cache.load ~out_dir ~package in
   let deps =
     File_ops.with_working_dir (Dir.path dir) ~f:(fun () ->
@@ -133,7 +110,8 @@ let compile_source_rules ctx dir ~out_dir ~package =
       { inputs
       ; outputs
       ; commands =
-          [ Ctx.ocamlopt_command ctx ~args:[ "-c"; Path.to_filename source_path ] ]
+          [ Profile.ocamlopt_command profile ~args:[ "-c"; Path.to_filename source_path ]
+          ]
       })
 ;;
 
@@ -180,7 +158,7 @@ let cmx_file_order ~root_ml source_rules_db kind =
    the ocaml compiler must be passed the cmx files in order such that for each
    file, all of its dependencies preceed it. The [cmx_deps_in_order] argument
    must be a list of paths to .cmx files in such an order. *)
-let link_rule ctx ~name ~cmx_deps_in_order kind =
+let link_rule profile ~name ~cmx_deps_in_order kind =
   let o_paths = List.map cmx_deps_in_order ~f:(Path.replace_extension ~ext:".o") in
   let inputs = Path.Relative.Set.of_list (cmx_deps_in_order @ o_paths) in
   let outputs =
@@ -206,8 +184,8 @@ let link_rule ctx ~name ~cmx_deps_in_order kind =
     { inputs
     ; outputs
     ; commands =
-        [ Ctx.ocamlopt_command
-            ctx
+        [ Profile.ocamlopt_command
+            profile
             ~args:
               (extra_flags
                @ [ "-o"; Path.Relative.to_filename name ]
@@ -216,36 +194,39 @@ let link_rule ctx ~name ~cmx_deps_in_order kind =
     }
 ;;
 
-let rules ctx ~name ~root_ml ~source_rules_db kind =
+let rules profile ~name ~root_ml ~source_rules_db kind =
   let cmx_deps_in_order = cmx_file_order ~root_ml source_rules_db kind in
-  link_rule ctx ~name ~cmx_deps_in_order kind :: source_rules_db
+  link_rule profile ~name ~cmx_deps_in_order kind :: source_rules_db
 ;;
 
 module Package_build_planner = struct
+  type build_plan = t
+
   type ('exe, 'lib) t =
-    { build_graph : Build_graph.t
+    { package_typed : ('exe, 'lib) Package.Typed.t
+    ; build_graph : Build_graph.t
     ; exe_name : Path.Relative.t
     ; lib_name_cmxa : Path.Relative.t
     }
 
   let create
     : type exe lib.
-      Ctx.t -> (exe, lib) Package.Typed.t -> out_dir:Path.Absolute.t -> (exe, lib) t
+      Profile.t -> (exe, lib) Package.Typed.t -> out_dir:Path.Absolute.t -> (exe, lib) t
     =
-    fun ctx package_typed ~out_dir ->
+    fun profile package_typed ~out_dir ->
     let package = Package.Typed.package package_typed in
     let name = Package.name package |> Package_name.to_string |> Path.relative in
     let src_dir = Package.src_dir_exn package in
     let exe_name = if Sys.win32 then Path.add_extension name ~ext:".exe" else name in
     let lib_name_cmxa = Path.add_extension name ~ext:".cmxa" in
     let source_rules_db =
-      compile_source_rules ctx src_dir ~out_dir ~package:(Package.id package)
+      compile_source_rules profile src_dir ~out_dir ~package:(Package.id package)
     in
     let lib_rules ~lib_root_ml =
-      rules ctx ~name:lib_name_cmxa ~root_ml:lib_root_ml ~source_rules_db `Lib
+      rules profile ~name:lib_name_cmxa ~root_ml:lib_root_ml ~source_rules_db `Lib
     in
     let exe_rules ~exe_root_ml =
-      rules ctx ~name:exe_name ~root_ml:exe_root_ml ~source_rules_db `Exe
+      rules profile ~name:exe_name ~root_ml:exe_root_ml ~source_rules_db `Exe
     in
     let outputs, rules =
       match Package.Typed.type_ package_typed with
@@ -259,7 +240,8 @@ module Package_build_planner = struct
         , lib_rules ~lib_root_ml:(Package.Typed.lib_root_ml package_typed)
           @ exe_rules ~exe_root_ml:(Package.Typed.exe_root_ml package_typed) )
     in
-    { build_graph = Build_rule.Database.create_build_graph rules ~outputs
+    { package_typed
+    ; build_graph = Build_rule.Database.create_build_graph rules ~outputs
     ; exe_name
     ; lib_name_cmxa
     }
@@ -273,15 +255,23 @@ module Package_build_planner = struct
     Build_graph.traverse build_graph ~output:lib_name_cmxa |> Option.get
   ;;
 
+  let all_plans : type exe lib. (exe, lib) t -> build_plan list =
+    fun t ->
+    match Package.Typed.type_ t.package_typed with
+    | Exe_only -> [ plan_exe t ]
+    | Lib_only -> [ plan_lib t ]
+    | Exe_and_lib -> [ plan_exe t; plan_lib t ]
+  ;;
+
   let dot { build_graph; _ } = Build_graph.dot build_graph
 end
 
-let create_exe ctx package_typed ~out_dir =
-  Package_build_planner.create ctx package_typed ~out_dir
+let create_exe profile package_typed ~out_dir =
+  Package_build_planner.create profile package_typed ~out_dir
   |> Package_build_planner.plan_exe
 ;;
 
-let create_lib ctx package_typed ~out_dir =
-  Package_build_planner.create ctx package_typed ~out_dir
+let create_lib profile package_typed ~out_dir =
+  Package_build_planner.create profile package_typed ~out_dir
   |> Package_build_planner.plan_lib
 ;;

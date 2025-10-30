@@ -12,6 +12,10 @@ type message
 
 val print : message -> unit
 val println : message -> unit
+
+(** Returns a thunk that prints a message the first time it's called. *)
+val println_once : message -> unit -> unit
+
 val print_newline : unit -> unit
 
 module Styles : sig

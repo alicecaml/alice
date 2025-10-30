@@ -1,5 +1,5 @@
 open! Alice_stdlib
-open Alice_project
+open Alice_engine
 open Climate
 
 let dot_artifacts =
@@ -13,7 +13,7 @@ let dot_packages =
   let open Arg_parser in
   let+ () = Common.set_globals_from_flags
   and+ project = Common.parse_project in
-  print_endline @@ Project.dot_package_dependencies project
+  print_endline @@ Project.dot_dependencies project
 ;;
 
 let subcommand =

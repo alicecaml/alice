@@ -75,3 +75,15 @@ let verb_message ?(verb_style = default_verb_style) verb object_ =
 
 let default_done_style = Ansi_style.create ~bold:true ~color:`Green ()
 let done_message ?(style = default_done_style) () = [ Pp.text "Done!" |> Pp.tag style ]
+
+(* Returns a thunk than invokes a given think the first time it's called. *)
+let once f =
+  let called = ref false in
+  fun () ->
+    if not !called
+    then (
+      called := true;
+      f ())
+;;
+
+let println_once pps = once (fun () -> println pps)

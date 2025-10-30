@@ -5,7 +5,7 @@
  (depends ocaml climate sha))
 
 (package
- (name alice_build_plan)
+ (name alice_engine)
  (depends ocaml))
 
 (package
@@ -47,10 +47,6 @@
 
 (package
  (name alice_print)
- (depends ocaml))
-
-(package
- (name alice_project)
  (depends ocaml))
 
 (package

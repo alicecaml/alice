@@ -50,12 +50,12 @@ module Path : sig
         | `Relative of Relative.t
         ]
 
-    val with_ : t -> with_path:'a with_path -> 'a
+    val with_ : 'a with_path -> t -> 'a
   end
 
   val to_filename : _ t -> Filename.t
   val of_filename : Filename.t -> Either.t
-  val with_filename : Filename.t -> with_path:'a with_path -> 'a
+  val with_filename : 'a with_path -> Filename.t -> 'a
   val absolute : Filename.t -> absolute t
   val relative : Filename.t -> relative t
   val kind : 'a t -> 'a Kind.t

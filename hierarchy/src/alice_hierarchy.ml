@@ -225,14 +225,14 @@ module Path = struct
         ;;
       end)
 
-    let with_ t ~with_path =
+    let with_ with_path t =
       match t with
       | `Absolute absolute -> with_path.f absolute
       | `Relative relative -> with_path.f relative
     ;;
   end
 
-  let with_filename filename ~with_path = of_filename filename |> Either.with_ ~with_path
+  let with_filename with_path filename = of_filename filename |> Either.with_ with_path
 
   let to_either : type a. a t -> Either.t = function
     | Absolute absolute -> `Absolute (Absolute absolute)
