@@ -82,16 +82,13 @@ let source_builds profile dir ~out_dir ~package =
     File_ops.with_working_dir (Dir.path dir) ~f:(fun () ->
       Dir.to_relative dir
       |> Dir.contents
+      |> List.filter ~f:(fun file ->
+        File.is_regular_or_link file
+        && (Path.has_extension file.path ~ext:".ml"
+            || Path.has_extension file.path ~ext:".mli"))
       |> List.sort ~cmp:File.compare_by_path
-      |> List.filter_map ~f:(fun file ->
-        match
-          File.is_regular_or_link file
-          && (Path.has_extension file.path ~ext:".ml"
-              || Path.has_extension file.path ~ext:".mli")
-        with
-        | false -> None
-        | true ->
-          Some (file.path, Ocamldep_cache.get_deps ocamldep_cache file.path ~package)))
+      |> List.map ~f:(fun (file : _ File.t) ->
+        file.path, Ocamldep_cache.get_deps ocamldep_cache file.path ~package))
     |> Path.Relative.Map.of_list_exn
   in
   Ocamldep_cache.store_deps deps ~out_dir;
@@ -117,12 +114,8 @@ let source_builds profile dir ~out_dir ~package =
    and a list of rules for compiling ocaml source files, computes an order of
    cmx(a) files from the output of given rules such that all dependencies of a
    file preceed that file. *)
-let cmx_file_order ~root_ml source_builds kind =
-  let ext =
-    match kind with
-    | `Exe -> ".cmx"
-    | `Lib -> ".cmx"
-  in
+let cmx_file_order ~root_ml source_builds =
+  let ext = ".cmx" in
   let root_cmx = Path.replace_extension root_ml ~ext in
   let plan = Build_graph.create source_builds ~outputs:[ root_cmx ] in
   let rec loop acc traverse =
@@ -190,7 +183,7 @@ let link_rule profile ~name ~cmx_deps_in_order kind =
 ;;
 
 let rules profile ~name ~root_ml ~source_builds kind =
-  let cmx_deps_in_order = cmx_file_order ~root_ml source_builds kind in
+  let cmx_deps_in_order = cmx_file_order ~root_ml source_builds in
   link_rule profile ~name ~cmx_deps_in_order kind :: source_builds
 ;;
 

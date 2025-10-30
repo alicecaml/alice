@@ -64,13 +64,13 @@ rebuilding the project.
 
 Initial build:
   $ alice build --normalize-paths --verbose
-   Compiling foo v0.1.0
    [INFO] [foo v0.1.0] Analyzing dependencies of file: bar.ml
    [INFO] [foo v0.1.0] Analyzing dependencies of file: foo.ml
    [INFO] [foo v0.1.0] Analyzing dependencies of file: foo.mli
    [INFO] [foo v0.1.0] Analyzing dependencies of file: foo_dep.ml
    [INFO] [foo v0.1.0] Analyzing dependencies of file: foo_dep.mli
    [INFO] [foo v0.1.0] Analyzing dependencies of file: main.ml
+   Compiling foo v0.1.0
    [INFO] [foo v0.1.0] Copying source file: bar.ml
    [INFO] [foo v0.1.0] Building targets: bar.cmx, bar.o
    [INFO] [foo v0.1.0] Copying source file: foo.mli
@@ -92,9 +92,9 @@ the dependency graph from this file to the output should be rebuilt:
   > EOF
 
   $ alice build --normalize-paths --verbose
-   Compiling foo v0.1.0
    [INFO] [foo v0.1.0] Loading ocamldeps cache from: ocamldeps_cache.marshal
    [INFO] [foo v0.1.0] Analyzing dependencies of file: foo_dep.ml
+   Compiling foo v0.1.0
    [INFO] [foo v0.1.0] Copying source file: foo_dep.ml
    [INFO] [foo v0.1.0] Building targets: foo_dep.cmx, foo_dep.o
    [INFO] [foo v0.1.0] Building targets: foo.cmx, foo.o
@@ -107,9 +107,9 @@ Change a shallow dependency and rebuild. Only the final build steps should run:
   > EOF
 
   $ alice build --normalize-paths --verbose
-   Compiling foo v0.1.0
    [INFO] [foo v0.1.0] Loading ocamldeps cache from: ocamldeps_cache.marshal
    [INFO] [foo v0.1.0] Analyzing dependencies of file: main.ml
+   Compiling foo v0.1.0
    [INFO] [foo v0.1.0] Copying source file: main.ml
    [INFO] [foo v0.1.0] Building targets: main.cmx, main.o
    [INFO] [foo v0.1.0] Building targets: foo
@@ -121,9 +121,9 @@ Change an interface and rebuild:
   > EOF
 
   $ alice build --normalize-paths --verbose
-   Compiling foo v0.1.0
    [INFO] [foo v0.1.0] Loading ocamldeps cache from: ocamldeps_cache.marshal
    [INFO] [foo v0.1.0] Analyzing dependencies of file: foo.mli
+   Compiling foo v0.1.0
    [INFO] [foo v0.1.0] Copying source file: foo.mli
    [INFO] [foo v0.1.0] Building targets: foo.cmi
    [INFO] [foo v0.1.0] Building targets: foo.cmx, foo.o
