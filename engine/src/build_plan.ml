@@ -7,7 +7,7 @@ module Log = Alice_log
 include Build_graph.Traverse
 
 module Ocamldep_cache = struct
-  type deps = Path.relative Alice_ocamldep.Deps.t Path.Relative.Map.t
+  type deps = Alice_ocamldep.Deps.t Path.Absolute.Map.t
 
   (* Cache which is serialized in the build directory to avoid running ocamldep
      when it's output is guaranteed to be the same as the previous time it was
@@ -32,7 +32,7 @@ module Ocamldep_cache = struct
       in
       let mtime = File_ops.mtime path in
       { deps; mtime })
-    else { deps = Path.Relative.Map.empty; mtime = 0.0 }
+    else { deps = Path.Absolute.Map.empty; mtime = 0.0 }
   ;;
 
   let store_deps (deps : deps) ~out_dir =
@@ -58,7 +58,7 @@ module Ocamldep_cache = struct
       (* Source file is newer than the cache so we need to run ocamldep. *)
       run_ocamldep ()
     else (
-      match Path.Relative.Map.find_opt source_path t.deps with
+      match Path.Absolute.Map.find_opt source_path t.deps with
       | None ->
         (* Source file is absent from the cache. This is unusual because the
            source file is older than the cache. Run ocamldep to compute the
@@ -76,37 +76,58 @@ module Ocamldep_cache = struct
   ;;
 end
 
+let path_mv path ~dst =
+  let basename = Path.basename path in
+  dst / basename
+;;
+
 let source_builds profile dir ~out_dir ~package =
   let ocamldep_cache = Ocamldep_cache.load ~out_dir ~package in
   let deps =
-    File_ops.with_working_dir (Dir.path dir) ~f:(fun () ->
-      Dir.to_relative dir
-      |> Dir.contents
-      |> List.filter ~f:(fun file ->
-        File.is_regular_or_link file
-        && (Path.has_extension file.path ~ext:".ml"
-            || Path.has_extension file.path ~ext:".mli"))
-      |> List.sort ~cmp:File.compare_by_path
-      |> List.map ~f:(fun (file : _ File.t) ->
-        file.path, Ocamldep_cache.get_deps ocamldep_cache file.path ~package))
-    |> Path.Relative.Map.of_list_exn
+    Dir.contents dir
+    |> List.filter ~f:(fun file ->
+      File.is_regular_or_link file
+      && (Path.has_extension file.path ~ext:".ml"
+          || Path.has_extension file.path ~ext:".mli"))
+    |> List.sort ~cmp:File.compare_by_path
+    |> List.map ~f:(fun (file : _ File.t) ->
+      file.path, Ocamldep_cache.get_deps ocamldep_cache file.path ~package)
+    |> Path.Absolute.Map.of_list_exn
   in
   Ocamldep_cache.store_deps deps ~out_dir;
-  Path.Relative.Map.to_list deps
-  |> List.map ~f:(fun (source_path, (deps : Path.relative Alice_ocamldep.Deps.t)) ->
-    let inputs = Path.Relative.Set.of_list (source_path :: deps.inputs) in
+  Path.Absolute.Map.to_list deps
+  |> List.map ~f:(fun (source_path, (deps : Alice_ocamldep.Deps.t)) ->
+    let deps_inputs = List.map deps.inputs ~f:(fun input -> out_dir / input) in
+    let inputs = Path.Absolute.Set.of_list (source_path :: deps_inputs) in
     let outputs =
-      Path.Relative.Set.of_list
-        (deps.output
-         ::
-         (if Path.has_extension source_path ~ext:".ml"
-          then [ Path.replace_extension source_path ~ext:".o" ]
-          else []))
+      (out_dir / deps.output)
+      ::
+      (if Path.has_extension source_path ~ext:".ml"
+       then [ Path.replace_extension source_path ~ext:".o" ]
+       else [])
+      |> List.map ~f:(path_mv ~dst:out_dir)
+      |> Path.Absolute.Set.of_list
+    in
+    let command_out_path =
+      (* Passing the output cm[xi] path to ocamlopt causes other output files to
+         be generated in the same directory. *)
+      let ext = if Path.has_extension source_path ~ext:".mli" then ".cmi" else ".cmx" in
+      Path.replace_extension source_path ~ext |> path_mv ~dst:out_dir
     in
     { Origin.Build.inputs
     ; outputs
     ; commands =
-        [ Profile.ocamlopt_command profile ~args:[ "-c"; Path.to_filename source_path ] ]
+        [ Profile.ocamlopt_command
+            profile
+            ~args:
+              [ "-c"
+              ; "-I"
+              ; Path.to_filename out_dir
+              ; "-o"
+              ; Path.to_filename command_out_path
+              ; Path.to_filename source_path
+              ]
+        ]
     })
 ;;
 
@@ -114,16 +135,16 @@ let source_builds profile dir ~out_dir ~package =
    and a list of rules for compiling ocaml source files, computes an order of
    cmx(a) files from the output of given rules such that all dependencies of a
    file preceed that file. *)
-let cmx_file_order ~root_ml source_builds =
+let cmx_file_order ~root_ml ~out_dir source_builds =
   let ext = ".cmx" in
-  let root_cmx = Path.replace_extension root_ml ~ext in
+  let root_cmx = Path.replace_extension root_ml ~ext |> path_mv ~dst:out_dir in
   let plan = Build_graph.create source_builds ~outputs:[ root_cmx ] in
   let rec loop acc traverse =
     let module Traverse = Build_graph.Traverse in
     let cmx_outputs =
       Traverse.outputs traverse
-      |> Path.Relative.Set.filter ~f:(Path.has_extension ~ext)
-      |> Path.Relative.Set.to_list
+      |> Path.Absolute.Set.filter ~f:(Path.has_extension ~ext)
+      |> Path.Absolute.Set.to_list
     in
     let acc =
       match cmx_outputs with
@@ -147,14 +168,14 @@ let cmx_file_order ~root_ml source_builds =
    the ocaml compiler must be passed the cmx files in order such that for each
    file, all of its dependencies preceed it. The [cmx_deps_in_order] argument
    must be a list of paths to .cmx files in such an order. *)
-let link_rule profile ~name ~cmx_deps_in_order kind =
+let link_rule profile ~out_path ~cmx_deps_in_order kind =
   let o_paths = List.map cmx_deps_in_order ~f:(Path.replace_extension ~ext:".o") in
-  let inputs = Path.Relative.Set.of_list (cmx_deps_in_order @ o_paths) in
+  let inputs = Path.Absolute.Set.of_list (cmx_deps_in_order @ o_paths) in
   let outputs =
     match kind with
-    | `Exe -> Path.Relative.Set.singleton name
+    | `Exe -> Path.Absolute.Set.singleton out_path
     | `Lib ->
-      (match Path.Relative.extension name with
+      (match Path.Absolute.extension out_path with
        | ".cmxa" -> ()
        | other ->
          Alice_error.panic
@@ -162,7 +183,8 @@ let link_rule profile ~name ~cmx_deps_in_order kind =
                "Unexpected extension for library filename. Expected .cmxa, got %s."
                other
            ]);
-      Path.Relative.Set.of_list [ name; Path.Relative.replace_extension name ~ext:".a" ]
+      Path.Absolute.Set.of_list
+        [ out_path; Path.Absolute.replace_extension out_path ~ext:".a" ]
   in
   let extra_flags =
     match kind with
@@ -176,15 +198,15 @@ let link_rule profile ~name ~cmx_deps_in_order kind =
           profile
           ~args:
             (extra_flags
-             @ [ "-o"; Path.Relative.to_filename name ]
-             @ List.map cmx_deps_in_order ~f:Path.Relative.to_filename)
+             @ [ "-o"; Path.Absolute.to_filename out_path ]
+             @ List.map cmx_deps_in_order ~f:Path.Absolute.to_filename)
       ]
   }
 ;;
 
-let rules profile ~name ~root_ml ~source_builds kind =
-  let cmx_deps_in_order = cmx_file_order ~root_ml source_builds in
-  link_rule profile ~name ~cmx_deps_in_order kind :: source_builds
+let rules profile ~out_path ~root_ml ~source_builds ~out_dir kind =
+  let cmx_deps_in_order = cmx_file_order ~root_ml ~out_dir source_builds in
+  link_rule profile ~out_path ~cmx_deps_in_order kind :: source_builds
 ;;
 
 module Package_build_planner = struct
@@ -193,8 +215,8 @@ module Package_build_planner = struct
   type ('exe, 'lib) t =
     { package_typed : ('exe, 'lib) Package.Typed.t
     ; build_graph : Build_graph.t
-    ; exe_name : Path.Relative.t
-    ; lib_name_cmxa : Path.Relative.t
+    ; exe_path : Path.Absolute.t
+    ; lib_cmxa_path : Path.Absolute.t
     }
 
   let create
@@ -203,44 +225,57 @@ module Package_build_planner = struct
     =
     fun profile package_typed ~out_dir ->
     let package = Package.Typed.package package_typed in
-    let name = Package.name package |> Package_name.to_string |> Path.relative in
+    let name_str = Package.name package |> Package_name.to_string in
+    let out_path_base = out_dir / Path.relative name_str in
     let src_dir = Package.src_dir_exn package in
-    let exe_name = if Sys.win32 then Path.add_extension name ~ext:".exe" else name in
-    let lib_name_cmxa = Path.add_extension name ~ext:".cmxa" in
+    let exe_path =
+      if Sys.win32 then Path.add_extension out_path_base ~ext:".exe" else out_path_base
+    in
+    let lib_cmxa_path = Path.add_extension out_path_base ~ext:".cmxa" in
     let source_builds =
       source_builds profile src_dir ~out_dir ~package:(Package.id package)
     in
     let lib_rules ~lib_root_ml =
-      rules profile ~name:lib_name_cmxa ~root_ml:lib_root_ml ~source_builds `Lib
+      rules
+        profile
+        ~out_path:lib_cmxa_path
+        ~root_ml:lib_root_ml
+        ~source_builds
+        ~out_dir
+        `Lib
     in
     let exe_rules ~exe_root_ml =
-      rules profile ~name:exe_name ~root_ml:exe_root_ml ~source_builds `Exe
+      rules profile ~out_path:exe_path ~root_ml:exe_root_ml ~source_builds ~out_dir `Exe
     in
     let outputs, builds =
       match Package.Typed.type_ package_typed with
       | Exe_only ->
-        [ exe_name ], exe_rules ~exe_root_ml:(Package.Typed.exe_root_ml package_typed)
+        ( [ exe_path ]
+        , exe_rules ~exe_root_ml:(src_dir.path / Package.Typed.exe_root_ml package_typed)
+        )
       | Lib_only ->
-        ( [ lib_name_cmxa ]
-        , lib_rules ~lib_root_ml:(Package.Typed.lib_root_ml package_typed) )
+        ( [ lib_cmxa_path ]
+        , lib_rules ~lib_root_ml:(src_dir.path / Package.Typed.lib_root_ml package_typed)
+        )
       | Exe_and_lib ->
-        ( [ exe_name; lib_name_cmxa ]
-        , lib_rules ~lib_root_ml:(Package.Typed.lib_root_ml package_typed)
-          @ exe_rules ~exe_root_ml:(Package.Typed.exe_root_ml package_typed) )
+        ( [ exe_path; lib_cmxa_path ]
+        , lib_rules ~lib_root_ml:(src_dir.path / Package.Typed.lib_root_ml package_typed)
+          @ exe_rules ~exe_root_ml:(src_dir.path / Package.Typed.exe_root_ml package_typed)
+        )
     in
     { package_typed
     ; build_graph = Build_graph.create builds ~outputs
-    ; exe_name
-    ; lib_name_cmxa
+    ; exe_path
+    ; lib_cmxa_path
     }
   ;;
 
-  let plan_exe ({ build_graph; exe_name; _ } : (true_t, _) t) =
-    Build_graph.traverse build_graph ~output:exe_name |> Option.get
+  let plan_exe ({ build_graph; exe_path; _ } : (true_t, _) t) =
+    Build_graph.traverse build_graph ~output:exe_path |> Option.get
   ;;
 
-  let plan_lib ({ build_graph; lib_name_cmxa; _ } : (_, true_t) t) =
-    Build_graph.traverse build_graph ~output:lib_name_cmxa |> Option.get
+  let plan_lib ({ build_graph; lib_cmxa_path; _ } : (_, true_t) t) =
+    Build_graph.traverse build_graph ~output:lib_cmxa_path |> Option.get
   ;;
 
   let all_plans : type exe lib. (exe, lib) t -> build_plan list =

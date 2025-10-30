@@ -86,6 +86,7 @@ module Path : sig
   val remove_extension : 'a t -> 'a t
 
   val dirname : 'a t -> 'a t
+  val basename : 'a t -> relative t
   val match_ : 'a t -> absolute:(absolute t -> 'b) -> relative:(relative t -> 'b) -> 'b
   val to_either : 'a t -> Either.t
   val compare : 'a t -> 'a t -> int

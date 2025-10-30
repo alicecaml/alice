@@ -13,7 +13,7 @@ val origin : t -> Origin.t
 
 (** The paths to the files that will be produced by this build plan, excluding
     files that would be produced by the build plan's dependencies. *)
-val outputs : t -> Path.Relative.Set.t
+val outputs : t -> Path.Absolute.Set.t
 
 (** The build plans that must be evaluated before this build plan. *)
 val deps : t -> t list

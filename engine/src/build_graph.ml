@@ -2,21 +2,21 @@ open! Alice_stdlib
 open Alice_hierarchy
 
 module Artifact_with_origin = struct
-  module Name = Path.Relative
+  module Name = Path.Absolute
 
   (** A build artifact along with its origin. *)
   type t =
-    { artifact : Path.Relative.t
+    { artifact : Path.Absolute.t
     ; origin : Origin.t
     }
 
   let to_dyn { origin; artifact } =
     Dyn.record
-      [ "artifact", Path.Relative.to_dyn artifact; "origin", Origin.to_dyn origin ]
+      [ "artifact", Path.Absolute.to_dyn artifact; "origin", Origin.to_dyn origin ]
   ;;
 
   let equal t { artifact; origin } =
-    Path.Relative.equal t.artifact artifact && Origin.equal t.origin origin
+    Path.Absolute.equal t.artifact artifact && Origin.equal t.origin origin
   ;;
 
   let name t = t.artifact
@@ -39,7 +39,7 @@ module Staging = struct
   include Staging
 
   let add_origin t origin =
-    Path.Relative.Set.fold (Origin.outputs origin) ~init:t ~f:(fun output t ->
+    Path.Absolute.Set.fold (Origin.outputs origin) ~init:t ~f:(fun output t ->
       let artifact_with_origin = { Artifact_with_origin.artifact = output; origin } in
       match add t output artifact_with_origin with
       | Ok t -> t
@@ -67,7 +67,7 @@ let dot t = to_string_graph t |> Alice_graphviz.dot_src_of_string_graph
 let create builds ~outputs =
   let find_for_output_file_opt ~output =
     List.find_opt builds ~f:(fun (build : Origin.Build.t) ->
-      Path.Relative.Set.mem output build.outputs)
+      Path.Absolute.Set.mem output build.outputs)
   in
   let rec loop output acc =
     let origin =
@@ -76,7 +76,7 @@ let create builds ~outputs =
       | Some build -> Origin.Build build
     in
     let acc = Staging.add_origin acc origin in
-    Origin.inputs origin |> Path.Relative.Set.fold ~init:acc ~f:loop
+    Origin.inputs origin |> Path.Absolute.Set.fold ~init:acc ~f:loop
   in
   let staged =
     List.fold_left outputs ~init:Staging.empty ~f:(fun acc output -> loop output acc)

@@ -6,55 +6,41 @@ module File_ops = Alice_io.File_ops
 module Log = Alice_log
 
 module Sequential = struct
-  (* Determines which files need to be (re)built. A file will be built if it is
-   absent from [out_dir], or if it is present but it or one of its source
-   dependencies has an older mtime than their counterpart in [src_dir]. *)
-  let files_to_build ~src_dir ~out_dir build_plan =
-    let rec loop build_plan ~ancestors ~acc_files_to_build =
+  (* Determines which files need to be (re)built. A file needs to be rebuilt if
+     any of its dependencies need to be rebuilt, or if its mtime is earlier than
+     any of its source dependencies. *)
+  let files_to_build build_plan =
+    let rec loop build_plan =
       match Build_plan.origin build_plan with
-      | Source path ->
-        let src_path = Path.concat src_dir path in
-        let out_path = Path.concat out_dir path in
-        let rebuild_ancestors =
-          match File_ops.exists out_path with
-          | false ->
-            (* Source file is missing from output, so assume all ancestors need
-             to be (re)built after it gets copied. *)
-            true
-          | true ->
-            (* Source file already exists in the output, but it may have changed
-             since it was last copied to the output, in which case all
-             ancestors need to be rebuilt. *)
-            let src_mtime = File_ops.mtime src_path in
-            let out_mtime = File_ops.mtime out_path in
-            src_mtime > out_mtime
-        in
-        if rebuild_ancestors
-        then
-          Path.Relative.Set.union
-            acc_files_to_build
-            (Path.Relative.Set.add path ancestors)
-        else acc_files_to_build
+      | Source source ->
+        (* Source files are not built. *)
+        File_ops.mtime source, Path.Absolute.Set.empty
       | Build build ->
-        let non_existant_build_outputs =
-          Path.Relative.Set.filter build.outputs ~f:(fun output ->
-            let output_path_in_out_dir = Path.concat out_dir output in
-            not (File_ops.exists output_path_in_out_dir))
+        let deps = Build_plan.deps build_plan in
+        let latest_mtime, to_rebuild =
+          List.fold_left
+            deps
+            ~init:(Float.neg_infinity, Path.Absolute.Set.empty)
+            ~f:(fun (acc_latest_mtime, acc_to_rebuild) dep ->
+              let latest_mtime, to_rebuild = loop dep in
+              ( Float.max latest_mtime acc_latest_mtime
+              , Path.Absolute.Set.union to_rebuild acc_to_rebuild ))
         in
-        let acc_files_to_build =
-          (* Any build outputs that are missing from the output dir will be built. *)
-          Path.Relative.Set.union acc_files_to_build non_existant_build_outputs
+        let to_rebuild =
+          match Path.Absolute.Set.is_empty to_rebuild with
+          | false ->
+            (* If any dependencies need rebuilding, all our out outputs need rebuilding too. *)
+            Path.Absolute.Set.union build.outputs to_rebuild
+          | true ->
+            (* Rebuild all the outputs which either don't exist, or whose mtime
+               is earlier than the latest mtime among source files which the
+               output depends on. *)
+            Path.Absolute.Set.filter build.outputs ~f:(fun output ->
+              (not (File_ops.exists output)) || File_ops.mtime output < latest_mtime)
         in
-        let ancestors = Path.Relative.Set.union build.outputs ancestors in
-        List.fold_left
-          (Build_plan.deps build_plan)
-          ~init:acc_files_to_build
-          ~f:(fun acc_files_to_build dep -> loop dep ~ancestors ~acc_files_to_build)
+        latest_mtime, to_rebuild
     in
-    loop
-      build_plan
-      ~ancestors:Path.Relative.Set.empty
-      ~acc_files_to_build:Path.Relative.Set.empty
+    loop build_plan |> snd
   ;;
 
   let eval_build_plan build_plan package ~out_dir =
@@ -78,29 +64,25 @@ module Sequential = struct
       in
       let need_to_build =
         not
-          (Path.Relative.Set.is_empty
-             (Path.Relative.Set.inter acc_files_to_build (Build_plan.outputs build_plan)))
+          (Path.Absolute.Set.is_empty
+             (Path.Absolute.Set.inter acc_files_to_build (Build_plan.outputs build_plan)))
       in
       match need_to_build with
       | false -> acc_files_to_build
       | true ->
-        print_compiling_message ();
         (match Build_plan.origin build_plan with
-         | Source path ->
-           Log.info
-             ~package:(Package.id package)
-             [ Pp.textf "Copying source file: %s" (path_to_string path) ];
-           File_ops.cp_f ~src:(Path.concat src_dir path) ~dst:Path.current_dir
+         | Source _ -> ()
          | Build (build : Origin.Build.t) ->
+           print_compiling_message ();
            Log.info
              ~package:(Package.id package)
              [ Pp.textf
                  "Building targets: %s"
-                 (Path.Relative.Set.to_list build.outputs
+                 (Path.Absolute.Set.to_list build.outputs
                   |> List.map ~f:path_to_string
                   |> String.concat ~sep:", ")
              ];
-           Path.Relative.Set.iter build.inputs ~f:(fun path ->
+           Path.Absolute.Set.iter build.inputs ~f:(fun path ->
              if not (File_ops.exists path)
              then
                Alice_error.panic
@@ -119,20 +101,17 @@ module Sequential = struct
                Alice_error.panic
                  (Pp.textf "Command failed: %s\n" (Command.to_string command)
                   :: panic_context ())));
-        Path.Relative.Set.diff acc_files_to_build (Build_plan.outputs build_plan)
+        Path.Absolute.Set.diff acc_files_to_build (Build_plan.outputs build_plan)
     in
     File_ops.mkdir_p out_dir;
-    let files_to_build = files_to_build ~src_dir ~out_dir build_plan in
-    let remaining_files_to_build =
-      File_ops.with_working_dir out_dir ~f:(fun () ->
-        loop ~acc_files_to_build:files_to_build build_plan)
-    in
-    if not (Path.Relative.Set.is_empty remaining_files_to_build)
+    let files_to_build = files_to_build build_plan in
+    let remaining_files_to_build = loop ~acc_files_to_build:files_to_build build_plan in
+    if not (Path.Absolute.Set.is_empty remaining_files_to_build)
     then
       Alice_error.panic
         (Pp.textf
            "Not all files were built. Missing files: %s"
-           (Path.Relative.Set.to_dyn remaining_files_to_build |> Dyn.to_string)
+           (Path.Absolute.Set.to_dyn remaining_files_to_build |> Dyn.to_string)
          :: panic_context ())
   ;;
 end

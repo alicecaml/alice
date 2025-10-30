@@ -9,7 +9,7 @@ module Traverse : sig
   type t
 
   val origin : t -> Origin.t
-  val outputs : t -> Path.Relative.Set.t
+  val outputs : t -> Path.Absolute.Set.t
 
   (** The list of nodes whose outputs are the inputs to the current node. *)
   val deps : t -> t list
@@ -23,9 +23,9 @@ val to_dyn : t -> Dyn.t
 
 (** [traverse t ~output] returns a traversal of [t] that produces the file
     [output] if the DAG [t] knows how to produce such a file, otherwise [None]. *)
-val traverse : t -> output:Path.Relative.t -> Traverse.t option
+val traverse : t -> output:Path.Absolute.t -> Traverse.t option
 
 (** Returns the graphviz source code for rendering the build graph *)
 val dot : t -> string
 
-val create : Origin.Build.t list -> outputs:Path.Relative.t list -> t
+val create : Origin.Build.t list -> outputs:Path.Absolute.t list -> t

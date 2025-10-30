@@ -113,14 +113,6 @@ let cp_f ~src ~dst =
   Fileutils.cp ~recurse:false ~force:Force [ Path.to_filename src ] (Path.to_filename dst)
 ;;
 
-let with_working_dir path ~f =
-  let original = Sys.getcwd () in
-  Sys.chdir (Path.to_filename path);
-  let ret = f () in
-  Sys.chdir original;
-  ret
-;;
-
 let exists path = Sys.file_exists (Path.to_filename path)
 let is_directory path = Sys.is_directory (Path.to_filename path)
 
