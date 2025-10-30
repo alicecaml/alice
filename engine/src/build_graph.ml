@@ -63,3 +63,23 @@ module Staging = struct
 end
 
 let dot t = to_string_graph t |> Alice_graphviz.dot_src_of_string_graph
+
+let create builds ~outputs =
+  let find_for_output_file_opt ~output =
+    List.find_opt builds ~f:(fun (build : Origin.Build.t) ->
+      Path.Relative.Set.mem output build.outputs)
+  in
+  let rec loop output acc =
+    let origin =
+      match find_for_output_file_opt ~output with
+      | None -> Origin.Source output
+      | Some build -> Origin.Build build
+    in
+    let acc = Staging.add_origin acc origin in
+    Origin.inputs origin |> Path.Relative.Set.fold ~init:acc ~f:loop
+  in
+  let staged =
+    List.fold_left outputs ~init:Staging.empty ~f:(fun acc output -> loop output acc)
+  in
+  Staging.finalize staged
+;;

@@ -28,16 +28,4 @@ val traverse : t -> output:Path.Relative.t -> Traverse.t option
 (** Returns the graphviz source code for rendering the build graph *)
 val dot : t -> string
 
-module Staging : sig
-  type build_plan := t
-  type t
-
-  val to_dyn : t -> Dyn.t
-  val add_origin : t -> Origin.t -> t
-  val empty : t
-
-  (** [finalize t] ensures that [t] contains no cycles and all input files have
-      a corresponding node in the build graph, returning the validated build
-      plan. *)
-  val finalize : t -> build_plan
-end
+val create : Origin.Build.t list -> outputs:Path.Relative.t list -> t

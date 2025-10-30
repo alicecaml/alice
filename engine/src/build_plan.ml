@@ -76,7 +76,7 @@ module Ocamldep_cache = struct
   ;;
 end
 
-let compile_source_rules profile dir ~out_dir ~package =
+let source_builds profile dir ~out_dir ~package =
   let ocamldep_cache = Ocamldep_cache.load ~out_dir ~package in
   let deps =
     File_ops.with_working_dir (Dir.path dir) ~f:(fun () ->
@@ -106,29 +106,25 @@ let compile_source_rules profile dir ~out_dir ~package =
           then [ Path.replace_extension source_path ~ext:".o" ]
           else []))
     in
-    Build_rule.static
-      { inputs
-      ; outputs
-      ; commands =
-          [ Profile.ocamlopt_command profile ~args:[ "-c"; Path.to_filename source_path ]
-          ]
-      })
+    { Origin.Build.inputs
+    ; outputs
+    ; commands =
+        [ Profile.ocamlopt_command profile ~args:[ "-c"; Path.to_filename source_path ] ]
+    })
 ;;
 
 (* Given the path to the source file which will be the module root [root_ml]
    and a list of rules for compiling ocaml source files, computes an order of
    cmx(a) files from the output of given rules such that all dependencies of a
    file preceed that file. *)
-let cmx_file_order ~root_ml source_rules_db kind =
+let cmx_file_order ~root_ml source_builds kind =
   let ext =
     match kind with
     | `Exe -> ".cmx"
     | `Lib -> ".cmx"
   in
   let root_cmx = Path.replace_extension root_ml ~ext in
-  let plan =
-    Build_rule.Database.create_build_graph source_rules_db ~outputs:[ root_cmx ]
-  in
+  let plan = Build_graph.create source_builds ~outputs:[ root_cmx ] in
   let rec loop acc traverse =
     let module Traverse = Build_graph.Traverse in
     let cmx_outputs =
@@ -180,23 +176,22 @@ let link_rule profile ~name ~cmx_deps_in_order kind =
     | `Exe -> []
     | `Lib -> [ "-a" ]
   in
-  Build_rule.static
-    { inputs
-    ; outputs
-    ; commands =
-        [ Profile.ocamlopt_command
-            profile
-            ~args:
-              (extra_flags
-               @ [ "-o"; Path.Relative.to_filename name ]
-               @ List.map cmx_deps_in_order ~f:Path.Relative.to_filename)
-        ]
-    }
+  { Origin.Build.inputs
+  ; outputs
+  ; commands =
+      [ Profile.ocamlopt_command
+          profile
+          ~args:
+            (extra_flags
+             @ [ "-o"; Path.Relative.to_filename name ]
+             @ List.map cmx_deps_in_order ~f:Path.Relative.to_filename)
+      ]
+  }
 ;;
 
-let rules profile ~name ~root_ml ~source_rules_db kind =
-  let cmx_deps_in_order = cmx_file_order ~root_ml source_rules_db kind in
-  link_rule profile ~name ~cmx_deps_in_order kind :: source_rules_db
+let rules profile ~name ~root_ml ~source_builds kind =
+  let cmx_deps_in_order = cmx_file_order ~root_ml source_builds kind in
+  link_rule profile ~name ~cmx_deps_in_order kind :: source_builds
 ;;
 
 module Package_build_planner = struct
@@ -219,16 +214,16 @@ module Package_build_planner = struct
     let src_dir = Package.src_dir_exn package in
     let exe_name = if Sys.win32 then Path.add_extension name ~ext:".exe" else name in
     let lib_name_cmxa = Path.add_extension name ~ext:".cmxa" in
-    let source_rules_db =
-      compile_source_rules profile src_dir ~out_dir ~package:(Package.id package)
+    let source_builds =
+      source_builds profile src_dir ~out_dir ~package:(Package.id package)
     in
     let lib_rules ~lib_root_ml =
-      rules profile ~name:lib_name_cmxa ~root_ml:lib_root_ml ~source_rules_db `Lib
+      rules profile ~name:lib_name_cmxa ~root_ml:lib_root_ml ~source_builds `Lib
     in
     let exe_rules ~exe_root_ml =
-      rules profile ~name:exe_name ~root_ml:exe_root_ml ~source_rules_db `Exe
+      rules profile ~name:exe_name ~root_ml:exe_root_ml ~source_builds `Exe
     in
-    let outputs, rules =
+    let outputs, builds =
       match Package.Typed.type_ package_typed with
       | Exe_only ->
         [ exe_name ], exe_rules ~exe_root_ml:(Package.Typed.exe_root_ml package_typed)
@@ -241,7 +236,7 @@ module Package_build_planner = struct
           @ exe_rules ~exe_root_ml:(Package.Typed.exe_root_ml package_typed) )
     in
     { package_typed
-    ; build_graph = Build_rule.Database.create_build_graph rules ~outputs
+    ; build_graph = Build_graph.create builds ~outputs
     ; exe_name
     ; lib_name_cmxa
     }
