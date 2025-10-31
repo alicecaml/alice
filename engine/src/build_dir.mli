@@ -7,10 +7,11 @@ type t
 val of_path : Path.Absolute.t -> t
 val path : t -> Path.Absolute.t
 val package_ocamldeps_cache_file : t -> Package_id.t -> Path.Absolute.t
-val package_artifacts_dir : t -> Package_id.t -> Profile.t -> Path.Absolute.t
+val package_base_dir : t -> Package_id.t -> Profile.t -> Path.Absolute.t
 val package_internal_dir : t -> Package_id.t -> Profile.t -> Path.Absolute.t
 val package_lib_dir : t -> Package_id.t -> Profile.t -> Path.Absolute.t
 val package_exe_dir : t -> Package_id.t -> Profile.t -> Path.Absolute.t
+val package_dirs : t -> Package_id.t -> Profile.t -> Path.Absolute.t list
 
 val package_role_dir
   :  t

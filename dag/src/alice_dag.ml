@@ -129,4 +129,6 @@ module Make (Node : Node) = struct
          | None -> Ok t)
     ;;
   end
+
+  let restage t = t
 end

@@ -21,7 +21,8 @@ module Build_node = struct
   ;;
 
   let equal t { artifact; op } = Name.equal t.artifact artifact && Typed_op.equal t.op op
-  let name t = t.artifact
+  let name { artifact; _ } = artifact
+  let op { op; _ } = op
 
   let dep_names t =
     Typed_op.compiled_inputs t.op
@@ -146,8 +147,8 @@ let compilation_ops dir package_id build_dir =
             (Path.replace_extension source_file ~ext:".cmi"
              |> File.Compiled.cmi_infer_role_from_name)
       in
-      `Compile_source
-        { Compile_source.direct_input
+      Compile_source
+        { direct_input
         ; indirect_inputs
         ; direct_output
         ; indirect_output
@@ -180,26 +181,57 @@ let compilation_ops dir package_id build_dir =
         |> Path.replace_extension ~ext:".cmi"
         |> File.Compiled.cmi_infer_role_from_name
       in
-      `Compile_interface
-        { Compile_interface.direct_input; indirect_inputs; direct_output })
-;;
-
-let cmx_files_of_compilation_ops =
-  List.filter_map ~f:(function
-    | `Compile_source { Typed_op.Compile_source.direct_output; _ } -> Some direct_output
-    | _ -> None)
+      Compile_interface { direct_input; indirect_inputs; direct_output })
 ;;
 
 type ('exe, 'lib) t =
   { build_dag : Build_dag.t
   ; exe_file : Typed_op.File_type.exe Typed_op.File.Linked.t
+  ; package_typed : ('exe, 'lib) Package.Typed.t
   }
 
-let to_dyn { build_dag; exe_file } =
+let to_dyn { build_dag; exe_file; package_typed } =
   Dyn.record
     [ "build_dag", Build_dag.to_dyn build_dag
     ; "exe_file", Typed_op.File.Linked.to_dyn exe_file
+    ; "package_typed", Package.Typed.to_dyn package_typed
     ]
+;;
+
+let cmx_files_in_build_order build_dag_compilation_only =
+  let open Typed_op in
+  let rec loop to_visit seen acc =
+    match to_visit with
+    | [] -> acc
+    | x :: xs ->
+      (match Build_plan.op x with
+       | Compile_source { direct_output; _ } ->
+         let deps = Build_plan.deps x in
+         let to_visit = xs @ deps in
+         let generated_file = File.Compiled.generated_file direct_output in
+         if Generated_file.Set.mem generated_file seen
+         then loop to_visit seen acc
+         else (
+           let acc = direct_output :: acc in
+           let seen = Generated_file.Set.add generated_file seen in
+           loop to_visit seen acc)
+       | _ -> loop xs seen acc)
+  in
+  let root_traverses =
+    Build_dag.roots build_dag_compilation_only
+    |> List.filter_map ~f:(fun root ->
+      match
+        Build_node.name root |> Generated_file.path |> Path.has_extension ~ext:".cmx"
+      with
+      | false -> None
+      | true ->
+        let traverse =
+          Build_dag.traverse build_dag_compilation_only ~output:(Build_node.name root)
+          |> Option.get
+        in
+        Some traverse)
+  in
+  loop root_traverses Generated_file.Set.empty []
 ;;
 
 let create : type exe lib. (exe, lib) Package.Typed.t -> Build_dir.t -> (exe, lib) t =
@@ -208,7 +240,8 @@ let create : type exe lib. (exe, lib) Package.Typed.t -> Build_dir.t -> (exe, li
   let package = Package.Typed.package package_typed in
   let src_dir = Package.src_dir_exn package in
   let compilation_ops = compilation_ops src_dir (Package.id package) build_dir in
-  let cmx_files = cmx_files_of_compilation_ops compilation_ops in
+  let build_dag_compilation_only = Build_dag.of_ops compilation_ops in
+  let cmx_files = cmx_files_in_build_order build_dag_compilation_only in
   let link_library () = Link_library (Link_library.of_inputs cmx_files) in
   let exe_file =
     let exe_name =
@@ -226,17 +259,17 @@ let create : type exe lib. (exe, lib) Package.Typed.t -> Build_dir.t -> (exe, li
     | Lib_only -> [ link_library () ]
     | Exe_and_lib -> [ link_library (); link_executable () ]
   in
-  let ops =
-    link_ops
-    @ List.map compilation_ops ~f:(function
-      | `Compile_source x -> Compile_source x
-      | `Compile_interface x -> Compile_interface x)
+  let build_dag =
+    List.fold_left
+      link_ops
+      ~init:(Build_dag.restage build_dag_compilation_only)
+      ~f:Build_dag.Staging.add_op
+    |> Build_dag.Staging.finalize
   in
-  let build_dag = Build_dag.of_ops ops in
-  { build_dag; exe_file }
+  { build_dag; exe_file; package_typed }
 ;;
 
-let plan_exe ({ build_dag; exe_file } : (Type_bool.true_t, _) t) =
+let plan_exe ({ build_dag; exe_file; _ } : (Type_bool.true_t, _) t) =
   Build_dag.traverse build_dag ~output:(Typed_op.File.Linked.generated_file exe_file)
   |> Option.get
 ;;
@@ -248,4 +281,22 @@ let plan_lib ({ build_dag; _ } : (_, Type_bool.true_t) t) =
 
 let create_exe_plan package_typed build_dir = create package_typed build_dir |> plan_exe
 let create_lib_plan package_typed build_dir = create package_typed build_dir |> plan_lib
-let dot t = ""
+
+let dot t =
+  let package = Package.Typed.package t.package_typed in
+  List.fold_left
+    (Build_dag.nodes t.build_dag)
+    ~init:(Build_dag.to_string_graph t.build_dag)
+    ~f:(fun string_graph node ->
+      match Typed_op.source_input (Build_node.op node) with
+      | None -> string_graph
+      | Some source_path_abs ->
+        let source_path_rel_to_package =
+          Path.chop_prefix source_path_abs ~prefix:(Package.root package)
+        in
+        let source_path_string = Path.to_filename source_path_rel_to_package in
+        String.Map.update string_graph ~key:(Build_node.show node) ~f:(function
+          | None -> Some (String.Set.singleton source_path_string)
+          | Some existing -> Some (String.Set.add source_path_string existing)))
+  |> Alice_graphviz.dot_src_of_string_graph
+;;

@@ -23,12 +23,14 @@ let build_single_package_typed
   fun t package_typed profile ->
   let package = Package.Typed.package package_typed in
   let build_graph = Build_graph.create package_typed t.build_dir in
-  match Package.Typed.type_ package_typed with
-  | Exe_only ->
-    let build_plan = Build_graph.plan_exe build_graph in
-    Scheduler.Sequential.eval_build_plan build_plan package profile t.build_dir
-  | Lib_only -> ()
-  | Exe_and_lib -> ()
+  let build_plans =
+    match Package.Typed.type_ package_typed with
+    | Exe_only -> [ Build_graph.plan_exe build_graph ]
+    | Lib_only -> [ Build_graph.plan_lib build_graph ]
+    | Exe_and_lib ->
+      [ Build_graph.plan_lib build_graph; Build_graph.plan_exe build_graph ]
+  in
+  Scheduler.Sequential.eval_build_plan build_plans package profile t.build_dir
 ;;
 
 let build_dependency_graph t dependency_graph profile =
@@ -55,7 +57,17 @@ let build_package t package profile =
     package
 ;;
 
-let build t profile = build_package t t.package profile
+let build t profile =
+  let open Alice_ui in
+  build_package t t.package profile;
+  println
+    (verb_message
+       `Finished
+       (sprintf
+          "%s build of package: '%s'"
+          (Profile.name profile)
+          (Package_id.name_v_version_string (Package.id t.package))))
+;;
 
 let run t profile ~args =
   let open Alice_ui in
@@ -70,7 +82,9 @@ let run t profile ~args =
     let exe_name = Package.name t.package |> Package_name.to_string |> Path.relative in
     if Sys.win32 then Path.add_extension exe_name ~ext:".exe" else exe_name
   in
-  let exe_path = Build_dir.package_exe_dir t.build_dir (Package.id t.package) profile in
+  let exe_path =
+    Build_dir.package_exe_dir t.build_dir (Package.id t.package) profile / exe_name
+  in
   let args = Path.to_filename exe_name :: args in
   let exe_filename = Path.to_filename exe_path in
   println (verb_message `Running (path_to_string exe_path));

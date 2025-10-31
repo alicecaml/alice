@@ -66,4 +66,6 @@ module Make (Node : Node) : sig
       :  t
       -> (dag, [ `Dangling of Node.Name.t | `Cycle of Node.Name.t list ]) result
   end
+
+  val restage : t -> Staging.t
 end

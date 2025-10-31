@@ -14,6 +14,7 @@ let op_command op package profile build_dir =
     Build_dir.package_generated_file build_dir package_id profile
   in
   let internal_dir = Build_dir.package_internal_dir build_dir package_id profile in
+  let lib_dir = Build_dir.package_lib_dir build_dir package_id profile in
   let compile_source_or_interface direct_input direct_output =
     Profile.ocamlopt_command
       profile
@@ -33,7 +34,41 @@ let op_command op package profile build_dir =
     compile_source_or_interface direct_input direct_output
   | Compile_interface { direct_input; direct_output; _ } ->
     compile_source_or_interface direct_input direct_output
-  | _ -> failwith "todo"
+  | Link_library { direct_inputs; direct_output; _ } ->
+    Profile.ocamlopt_command
+      profile
+      ~args:
+        ([ "-a"
+         ; "-I"
+         ; internal_dir |> Path.Absolute.to_filename
+         ; "-I"
+         ; lib_dir |> Path.Absolute.to_filename
+         ; "-o"
+         ; Linked.generated_file direct_output
+           |> abs_path_of_gen_file
+           |> Path.Absolute.to_filename
+         ]
+         @ List.map direct_inputs ~f:(fun compiled ->
+           Compiled.generated_file compiled
+           |> abs_path_of_gen_file
+           |> Path.Absolute.to_filename))
+  | Link_executable { direct_inputs; direct_output } ->
+    Profile.ocamlopt_command
+      profile
+      ~args:
+        ([ "-I"
+         ; internal_dir |> Path.Absolute.to_filename
+         ; "-I"
+         ; lib_dir |> Path.Absolute.to_filename (* so exe can depend on library *)
+         ; "-o"
+         ; Linked.generated_file direct_output
+           |> abs_path_of_gen_file
+           |> Path.Absolute.to_filename
+         ]
+         @ List.map direct_inputs ~f:(fun compiled ->
+           Compiled.generated_file compiled
+           |> abs_path_of_gen_file
+           |> Path.Absolute.to_filename))
 ;;
 
 module Sequential = struct
@@ -43,43 +78,46 @@ module Sequential = struct
   let files_to_build build_plan abs_path_of_gen_file =
     let rec loop build_plan =
       let deps = Build_plan.deps build_plan in
-      let latest_mtime, to_rebuild =
-        List.fold_left
-          deps
-          ~init:(Float.neg_infinity, Generated_file.Set.empty)
-          ~f:(fun (acc_latest_mtime, acc_to_rebuild) dep ->
-            let latest_mtime, to_rebuild = loop dep in
-            ( Float.max latest_mtime acc_latest_mtime
-            , Generated_file.Set.union to_rebuild acc_to_rebuild ))
-      in
       let to_rebuild =
-        match Generated_file.Set.is_empty to_rebuild with
-        | false ->
-          (* If any dependencies need rebuilding, all our out outputs need rebuilding too. *)
-          Generated_file.Set.union (Build_plan.outputs build_plan) to_rebuild
-        | true ->
-          (* Rebuild all the outputs which either don't exist, or whose mtime
-             is earlier than the latest mtime among source files which the
-             output depends on. *)
-          Generated_file.Set.filter (Build_plan.outputs build_plan) ~f:(fun output ->
-            let output_abs = abs_path_of_gen_file output in
-            (not (File_ops.exists output_abs)) || File_ops.mtime output_abs < latest_mtime)
+        List.fold_left deps ~init:Generated_file.Set.empty ~f:(fun acc_to_rebuild dep ->
+          let to_rebuild = loop dep in
+          Generated_file.Set.union to_rebuild acc_to_rebuild)
       in
-      latest_mtime, to_rebuild
+      match Generated_file.Set.is_empty to_rebuild with
+      | false ->
+        (* If any dependencies need rebuilding, all our out outputs need rebuilding too. *)
+        Generated_file.Set.union (Build_plan.outputs build_plan) to_rebuild
+      | true ->
+        (* Rebuild all the outputs which either don't exist, or whose mtime
+           is earlier than the latest mtime among source files which the
+           output depends on. *)
+        Generated_file.Set.filter (Build_plan.outputs build_plan) ~f:(fun output ->
+          let output_abs = abs_path_of_gen_file output in
+          match File_ops.exists output_abs with
+          | false ->
+            (* File doesn't exist. Build it! *)
+            true
+          | true ->
+            (* File exists. If it has a source file, compare the source
+                 file's mtime with this file's mtime. *)
+            (match Build_plan.source_input build_plan with
+             | None ->
+               (* No source dependency, so no need ot rebuild. *)
+               false
+             | Some source -> File_ops.mtime output_abs < File_ops.mtime source))
     in
-    loop build_plan |> snd
+    loop build_plan
   ;;
 
-  let eval_build_plan build_plan package profile build_dir =
+  let eval_build_plan build_plans package profile build_dir =
     let open Alice_ui in
     let abs_path_of_gen_file =
       Build_dir.package_generated_file build_dir (Package.id package) profile
     in
     let src_dir = Package.src_dir_path package in
     let panic_context () =
-      let out_dir =
-        Build_dir.package_artifacts_dir build_dir (Package.id package) profile
-      in
+      (* Information to help debug package build failures. *)
+      let out_dir = Build_dir.package_base_dir build_dir (Package.id package) profile in
       [ Pp.textf "src_dir: %s\n" (path_to_string src_dir)
       ; Pp.textf "out_dir: %s\n" (path_to_string out_dir)
       ]
@@ -146,8 +184,18 @@ module Sequential = struct
               :: panic_context ()));
         Generated_file.Set.diff acc_files_to_build (Build_plan.outputs build_plan)
     in
-    let files_to_build = files_to_build build_plan abs_path_of_gen_file in
-    let remaining_files_to_build = loop ~acc_files_to_build:files_to_build build_plan in
+    Build_dir.package_dirs build_dir (Package.id package) profile
+    |> List.iter ~f:File_ops.mkdir_p;
+    let files_to_build =
+      List.fold_left build_plans ~init:Generated_file.Set.empty ~f:(fun acc build_plan ->
+        files_to_build build_plan abs_path_of_gen_file |> Generated_file.Set.union acc)
+    in
+    let remaining_files_to_build =
+      List.fold_left
+        build_plans
+        ~init:files_to_build
+        ~f:(fun acc_files_to_build build_plan -> loop ~acc_files_to_build build_plan)
+    in
     if not (Generated_file.Set.is_empty remaining_files_to_build)
     then
       Alice_error.panic

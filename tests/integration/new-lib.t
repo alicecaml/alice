@@ -7,3 +7,4 @@ Exercise initializing a new library project.
 
   $ alice build --normalize-paths
    Compiling hello v0.1.0
+    Finished debug build of package: 'hello v0.1.0'

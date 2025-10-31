@@ -17,20 +17,27 @@ let package_ocamldeps_cache_file t package_id =
   package_dir t package_id / Path.relative "ocamldeps_cache.marshal"
 ;;
 
-let package_artifacts_dir t package_id profile =
+let package_base_dir t package_id profile =
   package_dir t package_id / Path.relative (Profile.name profile)
 ;;
 
 let package_internal_dir t package_id profile =
-  package_artifacts_dir t package_id profile / Path.relative "internal"
+  package_base_dir t package_id profile / Path.relative "internal"
 ;;
 
 let package_lib_dir t package_id profile =
-  package_artifacts_dir t package_id profile / Path.relative "lib"
+  package_base_dir t package_id profile / Path.relative "lib"
 ;;
 
 let package_exe_dir t package_id profile =
-  package_artifacts_dir t package_id profile / Path.relative "exe"
+  package_base_dir t package_id profile / Path.relative "exe"
+;;
+
+let package_dirs t package_id profile =
+  [ package_internal_dir t package_id profile
+  ; package_lib_dir t package_id profile
+  ; package_exe_dir t package_id profile
+  ]
 ;;
 
 let package_role_dir t package_id profile role =

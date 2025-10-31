@@ -58,6 +58,7 @@ type verb =
   | `Running
   | `Creating
   | `Removing
+  | `Finished
   ]
 
 let verb_to_string_padded = function
@@ -67,6 +68,7 @@ let verb_to_string_padded = function
   | `Running -> "   Running"
   | `Creating -> "  Creating"
   | `Removing -> "  Removing"
+  | `Finished -> "  Finished"
 ;;
 
 let verb_message ?(verb_style = default_verb_style) verb object_ =

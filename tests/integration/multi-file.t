@@ -36,23 +36,25 @@ Create a multi-file project:
 Print the dependency graph of the project:
   $ alice dot artifacts --normalize-paths
   digraph {
-    "build/debug/packages/foo-0.1.0/bar.cmx" -> {"src/bar.ml"}
-    "build/debug/packages/foo-0.1.0/bar.o" -> {"src/bar.ml"}
-    "build/debug/packages/foo-0.1.0/foo" -> {"build/debug/packages/foo-0.1.0/bar.cmx", "build/debug/packages/foo-0.1.0/bar.o", "build/debug/packages/foo-0.1.0/foo.cmx", "build/debug/packages/foo-0.1.0/foo.o", "build/debug/packages/foo-0.1.0/foo_dep.cmx", "build/debug/packages/foo-0.1.0/foo_dep.o", "build/debug/packages/foo-0.1.0/main.cmx", "build/debug/packages/foo-0.1.0/main.o"}
-    "build/debug/packages/foo-0.1.0/foo.cmi" -> {"src/foo.mli"}
-    "build/debug/packages/foo-0.1.0/foo.cmx" -> {"build/debug/packages/foo-0.1.0/foo.cmi", "build/debug/packages/foo-0.1.0/foo_dep.cmx", "src/foo.ml"}
-    "build/debug/packages/foo-0.1.0/foo.o" -> {"build/debug/packages/foo-0.1.0/foo.cmi", "build/debug/packages/foo-0.1.0/foo_dep.cmx", "src/foo.ml"}
-    "build/debug/packages/foo-0.1.0/foo_dep.cmi" -> {"src/foo_dep.mli"}
-    "build/debug/packages/foo-0.1.0/foo_dep.cmx" -> {"build/debug/packages/foo-0.1.0/foo_dep.cmi", "src/foo_dep.ml"}
-    "build/debug/packages/foo-0.1.0/foo_dep.o" -> {"build/debug/packages/foo-0.1.0/foo_dep.cmi", "src/foo_dep.ml"}
-    "build/debug/packages/foo-0.1.0/main.cmx" -> {"build/debug/packages/foo-0.1.0/bar.cmx", "build/debug/packages/foo-0.1.0/foo.cmx", "src/main.ml"}
-    "build/debug/packages/foo-0.1.0/main.o" -> {"build/debug/packages/foo-0.1.0/bar.cmx", "build/debug/packages/foo-0.1.0/foo.cmx", "src/main.ml"}
+    "bar.cmi" -> {"src/bar.ml"}
+    "bar.cmx" -> {"src/bar.ml"}
+    "bar.o" -> {"src/bar.ml"}
+    "foo" -> {"bar.cmx", "foo.cmx", "foo_dep.cmx", "main.cmx"}
+    "foo.cmi" -> {"src/foo.mli"}
+    "foo.cmx" -> {"foo.cmi", "foo_dep.cmx", "src/foo.ml"}
+    "foo.o" -> {"foo.cmi", "foo_dep.cmx", "src/foo.ml"}
+    "foo_dep.cmi" -> {"src/foo_dep.mli"}
+    "foo_dep.cmx" -> {"foo_dep.cmi", "src/foo_dep.ml"}
+    "foo_dep.o" -> {"foo_dep.cmi", "src/foo_dep.ml"}
+    "main.cmi" -> {"bar.cmx", "foo.cmx", "src/main.ml"}
+    "main.cmx" -> {"bar.cmx", "foo.cmx", "src/main.ml"}
+    "main.o" -> {"bar.cmx", "foo.cmx", "src/main.ml"}
   }
 
 Test that the project can be built an run:
   $ alice run --normalize-paths
    Compiling foo v0.1.0
-     Running build/debug/packages/foo-0.1.0/foo
+     Running build/packages/foo-0.1.0/debug/exe/foo
   
   Hello, World!
 
@@ -71,13 +73,14 @@ Initial build:
    [INFO] [foo v0.1.0] Analyzing dependencies of file: src/foo_dep.mli
    [INFO] [foo v0.1.0] Analyzing dependencies of file: src/main.ml
    Compiling foo v0.1.0
-   [INFO] [foo v0.1.0] Building targets: build/debug/packages/foo-0.1.0/bar.cmx, build/debug/packages/foo-0.1.0/bar.o
-   [INFO] [foo v0.1.0] Building targets: build/debug/packages/foo-0.1.0/foo.cmi
-   [INFO] [foo v0.1.0] Building targets: build/debug/packages/foo-0.1.0/foo_dep.cmi
-   [INFO] [foo v0.1.0] Building targets: build/debug/packages/foo-0.1.0/foo_dep.cmx, build/debug/packages/foo-0.1.0/foo_dep.o
-   [INFO] [foo v0.1.0] Building targets: build/debug/packages/foo-0.1.0/foo.cmx, build/debug/packages/foo-0.1.0/foo.o
-   [INFO] [foo v0.1.0] Building targets: build/debug/packages/foo-0.1.0/main.cmx, build/debug/packages/foo-0.1.0/main.o
-   [INFO] [foo v0.1.0] Building targets: build/debug/packages/foo-0.1.0/foo
+   [INFO] [foo v0.1.0] Building targets: bar.cmi, bar.cmx, bar.o
+   [INFO] [foo v0.1.0] Building targets: foo.cmi
+   [INFO] [foo v0.1.0] Building targets: foo_dep.cmi
+   [INFO] [foo v0.1.0] Building targets: foo_dep.cmx, foo_dep.o
+   [INFO] [foo v0.1.0] Building targets: foo.cmx, foo.o
+   [INFO] [foo v0.1.0] Building targets: main.cmi, main.cmx, main.o
+   [INFO] [foo v0.1.0] Building targets: foo
+    Finished debug build of package: 'foo v0.1.0'
 
 Change a file deep in the dependency graph and rebuild. Only the path through
 the dependency graph from this file to the output should be rebuilt:
@@ -86,13 +89,14 @@ the dependency graph from this file to the output should be rebuilt:
   > EOF
 
   $ alice build --normalize-paths --verbose
-   [INFO] [foo v0.1.0] Loading ocamldeps cache from: ocamldeps_cache.marshal
+   [INFO] [foo v0.1.0] Loading ocamldeps cache from: build/packages/foo-0.1.0/ocamldeps_cache.marshal
    [INFO] [foo v0.1.0] Analyzing dependencies of file: src/foo_dep.ml
    Compiling foo v0.1.0
-   [INFO] [foo v0.1.0] Building targets: build/debug/packages/foo-0.1.0/foo_dep.cmx, build/debug/packages/foo-0.1.0/foo_dep.o
-   [INFO] [foo v0.1.0] Building targets: build/debug/packages/foo-0.1.0/foo.cmx, build/debug/packages/foo-0.1.0/foo.o
-   [INFO] [foo v0.1.0] Building targets: build/debug/packages/foo-0.1.0/main.cmx, build/debug/packages/foo-0.1.0/main.o
-   [INFO] [foo v0.1.0] Building targets: build/debug/packages/foo-0.1.0/foo
+   [INFO] [foo v0.1.0] Building targets: foo_dep.cmx, foo_dep.o
+   [INFO] [foo v0.1.0] Building targets: foo.cmx, foo.o
+   [INFO] [foo v0.1.0] Building targets: main.cmi, main.cmx, main.o
+   [INFO] [foo v0.1.0] Building targets: foo
+    Finished debug build of package: 'foo v0.1.0'
 
 Change a shallow dependency and rebuild. Only the final build steps should run:
   $ cat > src/main.ml <<EOF
@@ -100,11 +104,12 @@ Change a shallow dependency and rebuild. Only the final build steps should run:
   > EOF
 
   $ alice build --normalize-paths --verbose
-   [INFO] [foo v0.1.0] Loading ocamldeps cache from: ocamldeps_cache.marshal
+   [INFO] [foo v0.1.0] Loading ocamldeps cache from: build/packages/foo-0.1.0/ocamldeps_cache.marshal
    [INFO] [foo v0.1.0] Analyzing dependencies of file: src/main.ml
    Compiling foo v0.1.0
-   [INFO] [foo v0.1.0] Building targets: build/debug/packages/foo-0.1.0/main.cmx, build/debug/packages/foo-0.1.0/main.o
-   [INFO] [foo v0.1.0] Building targets: build/debug/packages/foo-0.1.0/foo
+   [INFO] [foo v0.1.0] Building targets: main.cmi, main.cmx, main.o
+   [INFO] [foo v0.1.0] Building targets: foo
+    Finished debug build of package: 'foo v0.1.0'
 
 Change an interface and rebuild:
   $ cat > src/foo.mli <<EOF
@@ -113,10 +118,11 @@ Change an interface and rebuild:
   > EOF
 
   $ alice build --normalize-paths --verbose
-   [INFO] [foo v0.1.0] Loading ocamldeps cache from: ocamldeps_cache.marshal
+   [INFO] [foo v0.1.0] Loading ocamldeps cache from: build/packages/foo-0.1.0/ocamldeps_cache.marshal
    [INFO] [foo v0.1.0] Analyzing dependencies of file: src/foo.mli
    Compiling foo v0.1.0
-   [INFO] [foo v0.1.0] Building targets: build/debug/packages/foo-0.1.0/foo.cmi
-   [INFO] [foo v0.1.0] Building targets: build/debug/packages/foo-0.1.0/foo.cmx, build/debug/packages/foo-0.1.0/foo.o
-   [INFO] [foo v0.1.0] Building targets: build/debug/packages/foo-0.1.0/main.cmx, build/debug/packages/foo-0.1.0/main.o
-   [INFO] [foo v0.1.0] Building targets: build/debug/packages/foo-0.1.0/foo
+   [INFO] [foo v0.1.0] Building targets: foo.cmi
+   [INFO] [foo v0.1.0] Building targets: foo.cmx, foo.o
+   [INFO] [foo v0.1.0] Building targets: main.cmi, main.cmx, main.o
+   [INFO] [foo v0.1.0] Building targets: foo
+    Finished debug build of package: 'foo v0.1.0'
