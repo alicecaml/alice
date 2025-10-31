@@ -106,15 +106,10 @@ module Path = struct
   let remove_extension t = map_filename t ~f:Filename.remove_extension
   let dirname t = map_filename t ~f:Filename.dirname
 
-  let basename : type a. a t -> relative t = function
-    | Absolute filename ->
-      let basename = Filename.basename filename in
-      if Filename.equal basename filename
-      then
-        (* The filename must be the root in this case. *)
-        current_dir
-      else Relative basename
-    | Relative filename -> Relative (Filename.basename filename)
+  let basename t =
+    match chop_prefix_opt t ~prefix:(dirname t) with
+    | Some x -> x
+    | None -> current_dir
   ;;
 
   let match_
