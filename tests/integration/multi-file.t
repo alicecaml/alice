@@ -36,19 +36,19 @@ Create a multi-file project:
 Print the dependency graph of the project:
   $ alice dot artifacts --normalize-paths
   digraph {
-    "bar.cmi" -> {"src/bar.ml"}
-    "bar.cmx" -> {"src/bar.ml"}
-    "bar.o" -> {"src/bar.ml"}
+    "bar.cmi" -> {"bar.ml"}
+    "bar.cmx" -> {"bar.ml"}
+    "bar.o" -> {"bar.ml"}
     "foo" -> {"bar.cmx", "foo.cmx", "foo_dep.cmx", "main.cmx"}
-    "foo.cmi" -> {"src/foo.mli"}
-    "foo.cmx" -> {"foo.cmi", "foo_dep.cmx", "src/foo.ml"}
-    "foo.o" -> {"foo.cmi", "foo_dep.cmx", "src/foo.ml"}
-    "foo_dep.cmi" -> {"src/foo_dep.mli"}
-    "foo_dep.cmx" -> {"foo_dep.cmi", "src/foo_dep.ml"}
-    "foo_dep.o" -> {"foo_dep.cmi", "src/foo_dep.ml"}
-    "main.cmi" -> {"bar.cmx", "foo.cmx", "src/main.ml"}
-    "main.cmx" -> {"bar.cmx", "foo.cmx", "src/main.ml"}
-    "main.o" -> {"bar.cmx", "foo.cmx", "src/main.ml"}
+    "foo.cmi" -> {"foo.mli"}
+    "foo.cmx" -> {"foo.cmi", "foo.ml", "foo_dep.cmx"}
+    "foo.o" -> {"foo.cmi", "foo.ml", "foo_dep.cmx"}
+    "foo_dep.cmi" -> {"foo_dep.mli"}
+    "foo_dep.cmx" -> {"foo_dep.cmi", "foo_dep.ml"}
+    "foo_dep.o" -> {"foo_dep.cmi", "foo_dep.ml"}
+    "main.cmi" -> {"bar.cmx", "foo.cmx", "main.ml"}
+    "main.cmx" -> {"bar.cmx", "foo.cmx", "main.ml"}
+    "main.o" -> {"bar.cmx", "foo.cmx", "main.ml"}
   }
 
 Test that the project can be built an run:

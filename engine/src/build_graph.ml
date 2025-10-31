@@ -292,7 +292,7 @@ let dot t =
       | None -> string_graph
       | Some source_path_abs ->
         let source_path_rel_to_package =
-          Path.chop_prefix source_path_abs ~prefix:(Package.root package)
+          Path.chop_prefix source_path_abs ~prefix:(Package.src_dir_path package)
         in
         let source_path_string = Alice_ui.path_to_string source_path_rel_to_package in
         String.Map.update string_graph ~key:(Build_node.show node) ~f:(function
