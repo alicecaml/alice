@@ -145,7 +145,7 @@ module Ocamldep_cache = struct
   ;;
 end
 
-let source_builds dir build_dir package_id =
+let compilation_ops dir build_dir package_id =
   let ocamldep_cache = Ocamldep_cache_.load build_dir package_id in
   let deps =
     Dir.contents dir
@@ -168,7 +168,7 @@ let source_builds dir build_dir package_id =
   |> List.map ~f:(fun (source_path, (deps : Alice_ocamldep.Deps.t)) ->
     let open Typed_op in
     let open Alice_error in
-    match File.source_by_extension source_path with
+    match File.Source.of_path_by_extension source_path with
     | Error (`Unknown_extension _) ->
       panic
         [ Pp.textf
@@ -178,7 +178,7 @@ let source_builds dir build_dir package_id =
     | Ok (`Ml direct_input) ->
       let indirect_inputs =
         List.map deps.inputs ~f:(fun dep ->
-          match File.compiled_by_extension dep with
+          match File.Compiled.of_path_by_extension_infer_role_from_name dep with
           | Ok (`Cmx cmx) -> `Cmx cmx
           | Ok (`Cmi cmi) -> `Cmi cmi
           | Ok _ ->
@@ -198,21 +198,35 @@ let source_builds dir build_dir package_id =
                   (Alice_ui.path_to_string dep)
               ])
       in
+      let source_file = Path.chop_prefix source_path ~prefix:(Dir.path dir) in
       let direct_output =
-        Path.chop_prefix source_path ~prefix:(Dir.path dir)
-        |> Path.replace_extension ~ext:".cmx"
-        |> File.compiled_cmx
+        Path.replace_extension source_file ~ext:".cmx"
+        |> File.Compiled.cmx_infer_role_from_name
       in
       let indirect_output =
-        Path.chop_prefix source_path ~prefix:(Dir.path dir)
-        |> Path.replace_extension ~ext:".o"
-        |> File.compiled_o
+        Path.replace_extension source_file ~ext:".o"
+        |> File.Compiled.o_infer_role_from_name
       in
-      Compile_source { direct_input; indirect_inputs; direct_output; indirect_output }
+      let matching_mli_file = Path.replace_extension source_path ~ext:".mli" in
+      let interface_output_if_no_matching_mli_is_present =
+        if File_ops.exists matching_mli_file
+        then None
+        else
+          Some
+            (Path.replace_extension source_file ~ext:".cmi"
+             |> File.Compiled.cmi_infer_role_from_name)
+      in
+      `Compile_source
+        { Compile_source.direct_input
+        ; indirect_inputs
+        ; direct_output
+        ; indirect_output
+        ; interface_output_if_no_matching_mli_is_present
+        }
     | Ok (`Mli direct_input) ->
       let indirect_inputs =
         List.map deps.inputs ~f:(fun dep ->
-          match File.compiled_by_extension dep with
+          match File.Compiled.of_path_by_extension_infer_role_from_name dep with
           | Ok (`Cmi cmi) -> cmi
           | Ok _ ->
             panic
@@ -234,9 +248,10 @@ let source_builds dir build_dir package_id =
       let direct_output =
         Path.chop_prefix source_path ~prefix:(Dir.path dir)
         |> Path.replace_extension ~ext:".cmi"
-        |> File.compiled_cmi
+        |> File.Compiled.cmi_infer_role_from_name
       in
-      Compile_interface { direct_input; indirect_inputs; direct_output })
+      `Compile_interface
+        { Compile_interface.direct_input; indirect_inputs; direct_output })
 ;;
 
 let path_mv path ~dst =
@@ -413,18 +428,13 @@ module Package_build_planner = struct
     let outputs, builds =
       match Package.Typed.type_ package_typed with
       | Exe_only ->
-        ( [ exe_path ]
-        , exe_rules ~exe_root_ml:(src_dir.path / Package.Typed.exe_root_ml package_typed)
-        )
+        [ exe_path ], exe_rules ~exe_root_ml:(src_dir.path / Package.exe_root_ml)
       | Lib_only ->
-        ( [ lib_cmxa_path ]
-        , lib_rules ~lib_root_ml:(src_dir.path / Package.Typed.lib_root_ml package_typed)
-        )
+        [ lib_cmxa_path ], lib_rules ~lib_root_ml:(src_dir.path / Package.lib_root_ml)
       | Exe_and_lib ->
         ( [ exe_path; lib_cmxa_path ]
-        , lib_rules ~lib_root_ml:(src_dir.path / Package.Typed.lib_root_ml package_typed)
-          @ exe_rules ~exe_root_ml:(src_dir.path / Package.Typed.exe_root_ml package_typed)
-        )
+        , lib_rules ~lib_root_ml:(src_dir.path / Package.lib_root_ml)
+          @ exe_rules ~exe_root_ml:(src_dir.path / Package.exe_root_ml) )
     in
     { package_typed
     ; build_graph = Build_graph.create builds ~outputs

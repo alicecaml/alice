@@ -15,55 +15,70 @@ end
 open File_type
 
 module File : sig
-  type 'a source
-  type 'a generated
+  module Source : sig
+    type 'a t
 
-  val compiled_cmx : Path.Relative.t -> cmx generated
-  val compiled_cmi : Path.Relative.t -> cmi generated
-  val compiled_o : Path.Relative.t -> o generated
+    val of_path_by_extension
+      :  Path.Absolute.t
+      -> ([ `Ml of ml t | `Mli of mli t ], [ `Unknown_extension of string ]) result
+  end
 
-  val source_by_extension
-    :  Path.Absolute.t
-    -> ( [ `Ml of ml source | `Mli of mli source ]
-         , [ `Unknown_extension of string ] )
-         result
+  module Compiled : sig
+    type 'a t
 
-  val compiled_by_extension
-    :  Path.Relative.t
-    -> ( [ `Cmx of cmx generated | `Cmi of cmi generated | `O of o generated ]
-         , [ `Unknown_extension of string ] )
-         result
+    val cmx_infer_role_from_name : Path.Relative.t -> cmx t
+    val cmi_infer_role_from_name : Path.Relative.t -> cmi t
+    val o_infer_role_from_name : Path.Relative.t -> o t
+
+    val of_path_by_extension_infer_role_from_name
+      :  Path.Relative.t
+      -> ( [ `Cmx of cmx t | `Cmi of cmi t | `O of o t ]
+           , [ `Unknown_extension of string ] )
+           result
+  end
+
+  module Linked : sig
+    type 'a t
+
+    val lib_cmxa : cmxa t
+    val lib_a : a t
+    val exe : Path.Relative.t -> exe t
+    val path : _ t -> Path.Relative.t
+  end
 end
 
 module Compile_source : sig
   type t =
-    { direct_input : ml File.source
-    ; indirect_inputs : [ `Cmx of cmx File.generated | `Cmi of cmi File.generated ] list
-    ; direct_output : cmx File.generated
-    ; indirect_output : o File.generated
+    { direct_input : ml File.Source.t
+    ; indirect_inputs : [ `Cmx of cmx File.Compiled.t | `Cmi of cmi File.Compiled.t ] list
+    ; direct_output : cmx File.Compiled.t
+    ; indirect_output : o File.Compiled.t
+    ; interface_output_if_no_matching_mli_is_present : cmi File.Compiled.t option
     }
 end
 
 module Compile_interface : sig
   type t =
-    { direct_input : mli File.source
-    ; indirect_inputs : cmi File.generated list
-    ; direct_output : cmi File.generated
+    { direct_input : mli File.Source.t
+    ; indirect_inputs : cmi File.Compiled.t list
+    ; direct_output : cmi File.Compiled.t
     }
 end
 
 module Link_library : sig
   type t =
-    { direct_inputs : cmx File.generated list
-    ; direct_output : cmxa File.generated
-    ; indirect_output : a File.generated
+    { direct_inputs : cmx File.Compiled.t list
+    ; direct_output : cmxa File.Linked.t
+    ; indirect_output : a File.Linked.t
     }
+
+  val of_inputs : cmx File.Compiled.t list -> t
 end
 
 module Link_executable : sig
   type t =
-    { direct_inputs : cmx File.generated list
-    ; direct_output : exe File.generated
+    { direct_inputs : cmx File.Compiled.t list
+    ; direct_output : exe File.Linked.t
     }
 end
 

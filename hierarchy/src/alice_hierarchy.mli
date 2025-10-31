@@ -130,6 +130,7 @@ module Dir : sig
   val to_relative : _ t -> Path.relative t
   val path : 'a t -> 'a Path.t
   val contents : 'a t -> 'a File.t list
+  val contains : 'a t -> 'a Path.t -> bool
 end
 
 (** Infix [Path.concat] operator *)

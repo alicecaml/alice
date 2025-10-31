@@ -32,13 +32,13 @@ let id { meta; _ } = Package_meta.id meta
 let name { meta; _ } = Package_meta.name meta
 let version { meta; _ } = Package_meta.version meta
 let dependencies { meta; _ } = Package_meta.dependencies meta
-let default_exe_root_ml = Path.relative "main.ml"
-let default_lib_root_ml = Path.relative "lib.ml"
+let exe_root_ml = Path.relative "main.ml"
+let lib_root_ml = Path.relative "lib.ml"
 let default_src = Path.relative "src"
 let src_dir_path t = root t / default_src
 let src_dir_exn t = src_dir_path t |> read_dir_exn
-let contains_exe t = File_ops.exists (src_dir_path t / default_exe_root_ml)
-let contains_lib t = File_ops.exists (src_dir_path t / default_lib_root_ml)
+let contains_exe t = File_ops.exists (src_dir_path t / exe_root_ml)
+let contains_lib t = File_ops.exists (src_dir_path t / lib_root_ml)
 
 module Typed = struct
   type ('exe, 'lib) type_ =
@@ -78,8 +78,6 @@ module Typed = struct
 
   let package { package; _ } = package
   let type_ { type_; _ } = type_
-  let exe_root_ml _ = default_exe_root_ml
-  let lib_root_ml _ = default_lib_root_ml
 end
 
 let typed t =

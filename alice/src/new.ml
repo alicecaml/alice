@@ -52,11 +52,11 @@ let make_project name path kind =
   match kind with
   | `Exe ->
     File_ops.write_text_file
-      (path / src / Package.default_exe_root_ml)
+      (path / src / Package.exe_root_ml)
       "let () = print_endline \"Hello, World!\""
   | `Lib ->
     File_ops.write_text_file
-      (path / src / Package.default_lib_root_ml)
+      (path / src / Package.lib_root_ml)
       "let add lhs rhs = lhs + rhs"
 ;;
 

@@ -351,6 +351,10 @@ module Dir = struct
 
   let path { path; _ } = path
   let contents { contents; _ } = contents
+
+  let contains t path =
+    List.exists (contents t) ~f:(fun file -> Path.equal (File.path file) path)
+  ;;
 end
 
 let ( / ) = Path.concat
