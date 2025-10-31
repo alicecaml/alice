@@ -1,5 +1,4 @@
 open! Alice_stdlib
-open Alice_hierarchy
 open Alice_package
 
 module Sequential : sig
