@@ -14,6 +14,9 @@ let equal t { name; version } =
   Package_name.equal t.name name && Semantic_version.equal t.version version
 ;;
 
+let name { name; _ } = name
+let version { version; _ } = version
+
 let name_dash_version_string { name; version } =
   String.concat
     ~sep:"-"

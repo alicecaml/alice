@@ -2,6 +2,144 @@ open! Alice_stdlib
 open Alice_hierarchy
 open Alice_error
 
+module Role = struct
+  type t =
+    | Internal
+    | Lib
+    | Exe
+
+  let to_dyn t =
+    let tag =
+      match t with
+      | Internal -> "Internal"
+      | Lib -> "Lib"
+      | Exe -> "Exe"
+    in
+    Dyn.variant tag []
+  ;;
+
+  let equal a b =
+    match a, b with
+    | Internal, Internal -> true
+    | Internal, _ -> false
+    | Lib, Lib -> true
+    | Lib, _ -> false
+    | Exe, Exe -> true
+    | Exe, _ -> false
+  ;;
+
+  let compare a b =
+    let to_int = function
+      | Internal -> 0
+      | Lib -> 1
+      | Exe -> 2
+    in
+    Int.compare (to_int a) (to_int b)
+  ;;
+end
+
+module Generated_file = struct
+  module Compiled = struct
+    type t =
+      { path : Path.Relative.t
+      ; role : Role.t
+      }
+
+    let to_dyn { path; role } =
+      Dyn.record [ "path", Path.Relative.to_dyn path; "role", Role.to_dyn role ]
+    ;;
+
+    let equal t { path; role } = Path.Relative.equal t.path path && Role.equal t.role role
+
+    let compare t { path; role } =
+      match Path.compare t.path path with
+      | 0 -> Role.compare t.role role
+      | other -> other
+    ;;
+
+    let path { path; _ } = path
+    let role { role; _ } = role
+  end
+
+  module Linked_library = struct
+    type t =
+      | Cmxa
+      | A
+
+    let to_dyn = function
+      | Cmxa -> Dyn.variant "Cmxa" []
+      | A -> Dyn.variant "A" []
+    ;;
+
+    let equal a b =
+      match a, b with
+      | Cmxa, Cmxa -> true
+      | Cmxa, _ -> false
+      | A, A -> true
+      | A, _ -> false
+    ;;
+
+    let compare a b =
+      let to_int = function
+        | Cmxa -> 0
+        | A -> 1
+      in
+      Int.compare (to_int a) (to_int b)
+    ;;
+
+    let path = function
+      | Cmxa -> Path.relative "lib.cmxa"
+      | A -> Path.relative "lib.a"
+    ;;
+  end
+
+  module T = struct
+    type t =
+      | Compiled of Compiled.t
+      | Linked_library of Linked_library.t
+      | Linked_executable of Path.Relative.t
+
+    let to_dyn = function
+      | Compiled compiled -> Dyn.variant "Compiled" [ Compiled.to_dyn compiled ]
+      | Linked_library linked_library ->
+        Dyn.variant "Linked_library" [ Linked_library.to_dyn linked_library ]
+      | Linked_executable path ->
+        Dyn.variant "Linked_executable" [ Path.Relative.to_dyn path ]
+    ;;
+
+    let equal a b =
+      match a, b with
+      | Compiled a, Compiled b -> Compiled.equal a b
+      | Compiled _, _ -> false
+      | Linked_library a, Linked_library b -> Linked_library.equal a b
+      | Linked_library _, _ -> false
+      | Linked_executable a, Linked_executable b -> Path.Relative.equal a b
+      | Linked_executable _, _ -> false
+    ;;
+
+    let compare a b =
+      match a, b with
+      | Compiled a, Compiled b -> Compiled.compare a b
+      | Compiled _, (Linked_library _ | Linked_executable _) -> -1
+      | Linked_library a, Linked_library b -> Linked_library.compare a b
+      | Linked_library _, Compiled _ -> 1
+      | Linked_library _, Linked_executable _ -> -1
+      | Linked_executable a, Linked_executable b -> Path.compare a b
+      | Linked_executable _, (Compiled _ | Linked_library _) -> 1
+    ;;
+  end
+
+  include T
+  module Map = Map.Make (T)
+  module Set = Set.Make (T)
+
+  let path = function
+    | Compiled compiled -> Compiled.path compiled
+    | Linked_library linked_library -> Linked_library.path linked_library
+    | Linked_executable path -> path
+  ;;
+end
+
 module File_type = struct
   type ml = |
   type mli = |
@@ -69,6 +207,7 @@ module File = struct
       Path.Absolute.equal t.path path && File_type.equal t.type_ type_
     ;;
 
+    let path { path; _ } = path
     let ml path = { path; type_ = Ml }
     let mli path = { path; type_ = Mli }
 
@@ -81,33 +220,6 @@ module File = struct
   end
 
   module Compiled = struct
-    module Role = struct
-      type t =
-        | Internal
-        | Lib
-        | Exe
-
-      let to_dyn t =
-        let tag =
-          match t with
-          | Internal -> "Internal"
-          | Lib -> "Lib"
-          | Exe -> "Exe"
-        in
-        Dyn.variant tag []
-      ;;
-
-      let equal a b =
-        match a, b with
-        | Internal, Internal -> true
-        | Internal, _ -> false
-        | Lib, Lib -> true
-        | Lib, _ -> false
-        | Exe, Exe -> true
-        | Exe, _ -> false
-      ;;
-    end
-
     type 'type_ t =
       { path : Path.Relative.t
       ; type_ : 'type_ File_type.t
@@ -171,6 +283,9 @@ module File = struct
     ;;
 
     let path { path; _ } = path
+    let role { role; _ } = role
+    let generated_file_compiled { path; role; _ } = { Generated_file.Compiled.path; role }
+    let generated_file t = Generated_file.Compiled (generated_file_compiled t)
   end
 
   module Linked = struct
@@ -200,11 +315,13 @@ module File = struct
       | Exe _, _ -> false
     ;;
 
-    let path : type a. a t -> Path.Relative.t = function
-      | Lib_cmxa -> Path.relative "lib.cmxa"
-      | Lib_a -> Path.relative "lib.a"
-      | Exe name -> name
+    let generated_file : type a. a t -> Generated_file.t = function
+      | Lib_cmxa -> Generated_file.Linked_library Cmxa
+      | Lib_a -> Generated_file.Linked_library A
+      | Exe name -> Generated_file.Linked_executable name
     ;;
+
+    let path t = generated_file t |> Generated_file.path
   end
 end
 
@@ -361,15 +478,24 @@ let to_dyn = function
     Dyn.variant "Link_executable" [ Link_executable.to_dyn link_executable ]
 ;;
 
-let generated_inputs = function
+let source_input = function
+  | Compile_source { direct_input; _ } -> Some (File.Source.path direct_input)
+  | Compile_interface { direct_input; _ } -> Some (File.Source.path direct_input)
+  | Link_library _ -> None
+  | Link_executable _ -> None
+;;
+
+let compiled_inputs = function
   | Compile_source { indirect_inputs; _ } ->
     List.map indirect_inputs ~f:(function
-      | `Cmx file -> File.Compiled.path file
-      | `Cmi file -> File.Compiled.path file)
+      | `Cmx file -> File.Compiled.generated_file_compiled file
+      | `Cmi file -> File.Compiled.generated_file_compiled file)
   | Compile_interface { indirect_inputs; _ } ->
-    List.map indirect_inputs ~f:File.Compiled.path
-  | Link_library { direct_inputs; _ } -> List.map direct_inputs ~f:File.Compiled.path
-  | Link_executable { direct_inputs; _ } -> List.map direct_inputs ~f:File.Compiled.path
+    List.map indirect_inputs ~f:File.Compiled.generated_file_compiled
+  | Link_library { direct_inputs; _ } ->
+    List.map direct_inputs ~f:File.Compiled.generated_file_compiled
+  | Link_executable { direct_inputs; _ } ->
+    List.map direct_inputs ~f:File.Compiled.generated_file_compiled
 ;;
 
 let outputs = function
@@ -379,11 +505,18 @@ let outputs = function
       ; interface_output_if_no_matching_mli_is_present
       ; _
       } ->
-    [ File.Compiled.path direct_output; File.Compiled.path indirect_output ]
-    @ (Option.map interface_output_if_no_matching_mli_is_present ~f:File.Compiled.path
+    [ File.Compiled.generated_file direct_output
+    ; File.Compiled.generated_file indirect_output
+    ]
+    @ (Option.map
+         interface_output_if_no_matching_mli_is_present
+         ~f:File.Compiled.generated_file
        |> Option.to_list)
-  | Compile_interface { direct_output; _ } -> [ File.Compiled.path direct_output ]
+  | Compile_interface { direct_output; _ } ->
+    [ File.Compiled.generated_file direct_output ]
   | Link_library { direct_output; indirect_output; _ } ->
-    [ File.Linked.path direct_output; File.Linked.path indirect_output ]
-  | Link_executable { direct_output; _ } -> [ File.Linked.path direct_output ]
+    [ File.Linked.generated_file direct_output
+    ; File.Linked.generated_file indirect_output
+    ]
+  | Link_executable { direct_output; _ } -> [ File.Linked.generated_file direct_output ]
 ;;

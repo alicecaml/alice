@@ -1,6 +1,43 @@
 open! Alice_stdlib
 open Alice_hierarchy
 
+module Role : sig
+  type t =
+    | Internal
+    | Lib
+    | Exe
+end
+
+module Generated_file : sig
+  module Compiled : sig
+    type t =
+      { path : Path.Relative.t
+      ; role : Role.t
+      }
+  end
+
+  module Linked_library : sig
+    type t =
+      | Cmxa
+      | A
+
+    val path : t -> Path.Relative.t
+  end
+
+  type t =
+    | Compiled of Compiled.t
+    | Linked_library of Linked_library.t
+    | Linked_executable of Path.Relative.t
+
+  val to_dyn : t -> Dyn.t
+  val equal : t -> t -> bool
+
+  module Set : Set.S with type elt = t
+  module Map : Map.S with type key = t
+
+  val path : t -> Path.Relative.t
+end
+
 module File_type : sig
   type ml
   type mli
@@ -18,6 +55,8 @@ module File : sig
   module Source : sig
     type 'a t
 
+    val path : _ t -> Path.Absolute.t
+
     val of_path_by_extension
       :  Path.Absolute.t
       -> ([ `Ml of ml t | `Mli of mli t ], [ `Unknown_extension of string ]) result
@@ -26,6 +65,8 @@ module File : sig
   module Compiled : sig
     type 'a t
 
+    val path : _ t -> Path.Relative.t
+    val role : _ t -> Role.t
     val cmx_infer_role_from_name : Path.Relative.t -> cmx t
     val cmi_infer_role_from_name : Path.Relative.t -> cmi t
     val o_infer_role_from_name : Path.Relative.t -> o t
@@ -35,14 +76,18 @@ module File : sig
       -> ( [ `Cmx of cmx t | `Cmi of cmi t | `O of o t ]
            , [ `Unknown_extension of string ] )
            result
+
+    val generated_file : _ t -> Generated_file.t
   end
 
   module Linked : sig
     type 'a t
 
+    val to_dyn : _ t -> Dyn.t
     val lib_cmxa : cmxa t
     val lib_a : a t
     val exe : Path.Relative.t -> exe t
+    val generated_file : _ t -> Generated_file.t
     val path : _ t -> Path.Relative.t
   end
 end
@@ -90,5 +135,6 @@ type t =
 
 val equal : t -> t -> bool
 val to_dyn : t -> Dyn.t
-val generated_inputs : t -> Path.Relative.t list
-val outputs : t -> Path.Relative.t list
+val source_input : t -> Path.Absolute.t option
+val compiled_inputs : t -> Generated_file.Compiled.t list
+val outputs : t -> Generated_file.t list

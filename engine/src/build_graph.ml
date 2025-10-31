@@ -3,24 +3,34 @@ open Alice_hierarchy
 open Alice_package
 
 module Build_node = struct
-  module Name = Path.Relative
+  module Name = Typed_op.Generated_file
 
+  (* For the sake of simplicity, each node in the build graph corresponds to a
+     single file. Most build operations produce multiple files, so the same
+     operation may be associated with multiple nodes in the graph. When
+     evaluating the build graph, care should be taken to not run the same
+     operation multiple times. *)
   type t =
-    { artifact : Path.Relative.t
+    { artifact : Name.t (** A single file produced by the associated operation. *)
     ; op : Typed_op.t
+      (** An operation which creates [artifact], but which may also create other files. *)
     }
 
   let to_dyn { artifact; op } =
-    Dyn.record [ "artifact", Path.Relative.to_dyn artifact; "op", Typed_op.to_dyn op ]
+    Dyn.record [ "artifact", Name.to_dyn artifact; "op", Typed_op.to_dyn op ]
   ;;
 
-  let equal t { artifact; op } =
-    Path.Relative.equal t.artifact artifact && Typed_op.equal t.op op
-  ;;
-
+  let equal t { artifact; op } = Name.equal t.artifact artifact && Typed_op.equal t.op op
   let name t = t.artifact
-  let dep_names t = Name.Set.of_list @@ Typed_op.generated_inputs t.op
-  let show t = Alice_ui.path_to_string t.artifact
+
+  let dep_names t =
+    Typed_op.compiled_inputs t.op
+    |> List.map ~f:(fun compiled -> Typed_op.Generated_file.Compiled compiled)
+    |> Name.Set.of_list
+  ;;
+
+  let show_name name = Alice_ui.path_to_string (Name.path name)
+  let show t = show_name t.artifact
 end
 
 module Build_dag = struct
@@ -36,9 +46,7 @@ module Build_dag = struct
         | Ok t -> t
         | Error (`Conflict _) ->
           Alice_error.panic
-            [ Pp.textf
-                "Conflicting origins for file: %s"
-                (Alice_ui.path_to_string artifact)
+            [ Pp.textf "Conflicting origins for file: %s" (Build_node.show_name artifact)
             ])
     ;;
 
@@ -47,12 +55,12 @@ module Build_dag = struct
       | Ok t -> t
       | Error (`Dangling dangling) ->
         Alice_error.panic
-          [ Pp.textf "No rule to build: %s" (Alice_ui.path_to_string dangling) ]
+          [ Pp.textf "No rule to build: %s" (Build_node.show_name dangling) ]
       | Error (`Cycle cycle) ->
         Alice_error.panic
           ([ Pp.text "Dependency cycle:"; Pp.newline ]
            @ List.concat_map cycle ~f:(fun file ->
-             [ Pp.textf " - %s" (Alice_ui.path_to_string file); Pp.newline ]))
+             [ Pp.textf " - %s" (Build_node.show_name file); Pp.newline ]))
     ;;
   end
 
@@ -63,88 +71,14 @@ module Build_dag = struct
   let traverse t ~output = traverse t ~name:output
 end
 
-module Artifact_with_origin = struct
-  module Name = Path.Absolute
+module Build_plan = struct
+  include Build_dag.Traverse
 
-  (** A build artifact along with its origin. *)
-  type t =
-    { artifact : Path.Absolute.t
-    ; origin : Origin.t
-    }
-
-  let to_dyn { origin; artifact } =
-    Dyn.record
-      [ "artifact", Path.Absolute.to_dyn artifact; "origin", Origin.to_dyn origin ]
-  ;;
-
-  let equal t { artifact; origin } =
-    Path.Absolute.equal t.artifact artifact && Origin.equal t.origin origin
-  ;;
-
-  let name t = t.artifact
-  let dep_names t = Origin.inputs t.origin
-  let show t = Alice_ui.path_to_string t.artifact
+  let op t = (node t).op
+  let source_input t = Typed_op.source_input (op t)
+  let compiled_inputs t = Typed_op.compiled_inputs (op t)
+  let outputs t = Typed_op.outputs (op t) |> Typed_op.Generated_file.Set.of_list
 end
-
-include Alice_dag.Make (Artifact_with_origin)
-
-module Traverse = struct
-  include Traverse
-
-  let origin t = (node t).origin
-  let outputs t = Origin.outputs (origin t)
-end
-
-let traverse t ~output = traverse t ~name:output
-
-module Staging = struct
-  include Staging
-
-  let add_origin t origin =
-    Path.Absolute.Set.fold (Origin.outputs origin) ~init:t ~f:(fun output t ->
-      let artifact_with_origin = { Artifact_with_origin.artifact = output; origin } in
-      match add t output artifact_with_origin with
-      | Ok t -> t
-      | Error (`Conflict _) ->
-        Alice_error.panic
-          [ Pp.textf "Conflicting origins for file: %s" (Alice_ui.path_to_string output) ])
-  ;;
-
-  let finalize t =
-    match finalize t with
-    | Ok t -> t
-    | Error (`Dangling dangling) ->
-      Alice_error.panic
-        [ Pp.textf "No rule to build: %s" (Alice_ui.path_to_string dangling) ]
-    | Error (`Cycle cycle) ->
-      Alice_error.panic
-        ([ Pp.text "Dependency cycle:"; Pp.newline ]
-         @ List.concat_map cycle ~f:(fun file ->
-           [ Pp.textf " - %s" (Alice_ui.path_to_string file); Pp.newline ]))
-  ;;
-end
-
-let dot t = to_string_graph t |> Alice_graphviz.dot_src_of_string_graph
-
-let create builds ~outputs =
-  let find_for_output_file_opt ~output =
-    List.find_opt builds ~f:(fun (build : Origin.Build.t) ->
-      Path.Absolute.Set.mem output build.outputs)
-  in
-  let rec loop output acc =
-    let origin =
-      match find_for_output_file_opt ~output with
-      | None -> Origin.Source output
-      | Some build -> Origin.Build build
-    in
-    let acc = Staging.add_origin acc origin in
-    Origin.inputs origin |> Path.Absolute.Set.fold ~init:acc ~f:loop
-  in
-  let staged =
-    List.fold_left outputs ~init:Staging.empty ~f:(fun acc output -> loop output acc)
-  in
-  Staging.finalize staged
-;;
 
 let compilation_ops dir package_id build_dir =
   let ocamldep_cache = Ocamldep_cache.load build_dir package_id in
@@ -256,58 +190,62 @@ let cmx_files_of_compilation_ops =
     | _ -> None)
 ;;
 
-module X = struct
-  type ('exe, 'lib) t =
-    { build_dag : Build_dag.t
-    ; exe_file : Typed_op.File_type.exe Typed_op.File.Linked.t
-    }
+type ('exe, 'lib) t =
+  { build_dag : Build_dag.t
+  ; exe_file : Typed_op.File_type.exe Typed_op.File.Linked.t
+  }
 
-  let create : type exe lib. (exe, lib) Package.Typed.t -> Build_dir.t -> (exe, lib) t =
-    fun package_typed build_dir ->
-    let open Typed_op in
-    let package = Package.Typed.package package_typed in
-    let src_dir = Package.src_dir_exn package in
-    let compilation_ops = compilation_ops src_dir (Package.id package) build_dir in
-    let cmx_files = cmx_files_of_compilation_ops compilation_ops in
-    let link_library () = Link_library (Link_library.of_inputs cmx_files) in
-    let exe_file =
-      let exe_name =
-        let base = Path.relative (Package.name package |> Package_name.to_string) in
-        if Sys.win32 then Path.add_extension base ~ext:".exe" else base
-      in
-      File.Linked.exe exe_name
-    in
-    let link_executable () =
-      Link_executable { direct_output = exe_file; direct_inputs = cmx_files }
-    in
-    let link_ops =
-      match Package.Typed.type_ package_typed with
-      | Exe_only -> [ link_executable () ]
-      | Lib_only -> [ link_library () ]
-      | Exe_and_lib -> [ link_library (); link_executable () ]
-    in
-    let ops =
-      link_ops
-      @ List.map compilation_ops ~f:(function
-        | `Compile_source x -> Compile_source x
-        | `Compile_interface x -> Compile_interface x)
-    in
-    let build_dag = Build_dag.of_ops ops in
-    { build_dag; exe_file }
-  ;;
+let to_dyn { build_dag; exe_file } =
+  Dyn.record
+    [ "build_dag", Build_dag.to_dyn build_dag
+    ; "exe_file", Typed_op.File.Linked.to_dyn exe_file
+    ]
+;;
 
-  let plan_exe ({ build_dag; exe_file } : (Type_bool.true_t, _) t) =
-    Build_dag.traverse build_dag ~output:(Typed_op.File.Linked.path exe_file)
-    |> Option.get
-  ;;
+let create : type exe lib. (exe, lib) Package.Typed.t -> Build_dir.t -> (exe, lib) t =
+  fun package_typed build_dir ->
+  let open Typed_op in
+  let package = Package.Typed.package package_typed in
+  let src_dir = Package.src_dir_exn package in
+  let compilation_ops = compilation_ops src_dir (Package.id package) build_dir in
+  let cmx_files = cmx_files_of_compilation_ops compilation_ops in
+  let link_library () = Link_library (Link_library.of_inputs cmx_files) in
+  let exe_file =
+    let exe_name =
+      let base = Path.relative (Package.name package |> Package_name.to_string) in
+      if Sys.win32 then Path.add_extension base ~ext:".exe" else base
+    in
+    File.Linked.exe exe_name
+  in
+  let link_executable () =
+    Link_executable { direct_output = exe_file; direct_inputs = cmx_files }
+  in
+  let link_ops =
+    match Package.Typed.type_ package_typed with
+    | Exe_only -> [ link_executable () ]
+    | Lib_only -> [ link_library () ]
+    | Exe_and_lib -> [ link_library (); link_executable () ]
+  in
+  let ops =
+    link_ops
+    @ List.map compilation_ops ~f:(function
+      | `Compile_source x -> Compile_source x
+      | `Compile_interface x -> Compile_interface x)
+  in
+  let build_dag = Build_dag.of_ops ops in
+  { build_dag; exe_file }
+;;
 
-  let plan_lib ({ build_dag; _ } : (_, Type_bool.true_t) t) =
-    Build_dag.traverse
-      build_dag
-      ~output:(Typed_op.File.Linked.path Typed_op.File.Linked.lib_cmxa)
-    |> Option.get
-  ;;
-end
+let plan_exe ({ build_dag; exe_file } : (Type_bool.true_t, _) t) =
+  Build_dag.traverse build_dag ~output:(Typed_op.File.Linked.generated_file exe_file)
+  |> Option.get
+;;
 
-let plan_exe package_typed build_dir = X.create package_typed build_dir |> X.plan_exe
-let plan_lib package_typed build_dir = X.create package_typed build_dir |> X.plan_lib
+let plan_lib ({ build_dag; _ } : (_, Type_bool.true_t) t) =
+  Build_dag.traverse build_dag ~output:(Typed_op.Generated_file.Linked_library Cmxa)
+  |> Option.get
+;;
+
+let create_exe_plan package_typed build_dir = create package_typed build_dir |> plan_exe
+let create_lib_plan package_typed build_dir = create package_typed build_dir |> plan_lib
+let dot t = ""
