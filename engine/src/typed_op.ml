@@ -58,7 +58,6 @@ module Generated_file = struct
     ;;
 
     let path { path; _ } = path
-    let role { role; _ } = role
   end
 
   module Linked_library = struct
@@ -156,9 +155,6 @@ module File_type = struct
     | Cmx : cmx t
     | Cmi : cmi t
     | O : o t
-    | Exe : exe t
-    | A : a t
-    | Cmxa : cmxa t
 
   let to_dyn : type a. a t -> Dyn.t =
     fun t ->
@@ -169,9 +165,6 @@ module File_type = struct
       | Cmx -> "Cmx"
       | Cmi -> "Cmi"
       | O -> "O"
-      | Exe -> "Exe"
-      | A -> "A"
-      | Cmxa -> "Cmxa"
     in
     Dyn.variant tag []
   ;;
@@ -184,9 +177,6 @@ module File_type = struct
     | Cmx, Cmx -> true
     | Cmi, Cmi -> true
     | O, O -> true
-    | Exe, Exe -> true
-    | A, A -> true
-    | Cmxa, Cmxa -> true
   ;;
 end
 
