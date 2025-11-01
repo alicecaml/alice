@@ -7,8 +7,27 @@ module Log = Alice_log
 module Build_plan = Build_graph.Build_plan
 module Generated_file = Typed_op.Generated_file
 
-let op_command op package profile build_dir =
+let op_command op package profile build_dir ~dep_libs =
   let open Typed_op.File in
+  let lib_include_args =
+    List.concat_map dep_libs ~f:(fun dep_lib ->
+      let package_id = Package.Typed.package dep_lib |> Package.id in
+      let dep_lib_dir = Build_dir.package_lib_dir build_dir package_id profile in
+      let dep_internal_dir =
+        Build_dir.package_internal_dir build_dir package_id profile
+      in
+      [ "-I"
+      ; Path.Absolute.to_filename dep_lib_dir
+      ; "-I"
+      ; Path.Absolute.to_filename dep_internal_dir
+      ])
+  in
+  let lib_cmxa_files =
+    List.map dep_libs ~f:(fun dep_lib ->
+      let package_id = Package.Typed.package dep_lib |> Package.id in
+      let dep_lib_dir = Build_dir.package_lib_dir build_dir package_id profile in
+      dep_lib_dir / Linked.path Linked.lib_cmxa |> Path.to_filename)
+  in
   let package_id = Package.id package in
   let abs_path_of_gen_file =
     Build_dir.package_generated_file build_dir package_id profile
@@ -19,15 +38,16 @@ let op_command op package profile build_dir =
     Profile.ocamlopt_command
       profile
       ~args:
-        [ "-c"
-        ; "-I"
-        ; internal_dir |> Path.Absolute.to_filename
-        ; "-o"
-        ; Compiled.generated_file direct_output
-          |> abs_path_of_gen_file
-          |> Path.Absolute.to_filename
-        ; Source.path direct_input |> Path.Absolute.to_filename
-        ]
+        (lib_include_args
+         @ [ "-I"
+           ; internal_dir |> Path.Absolute.to_filename
+           ; "-c"
+           ; "-o"
+           ; Compiled.generated_file direct_output
+             |> abs_path_of_gen_file
+             |> Path.Absolute.to_filename
+           ; Source.path direct_input |> Path.Absolute.to_filename
+           ])
   in
   match (op : Typed_op.t) with
   | Compile_source { direct_input; direct_output; _ } ->
@@ -38,16 +58,18 @@ let op_command op package profile build_dir =
     Profile.ocamlopt_command
       profile
       ~args:
-        ([ "-a"
-         ; "-I"
-         ; internal_dir |> Path.Absolute.to_filename
-         ; "-I"
-         ; lib_dir |> Path.Absolute.to_filename
-         ; "-o"
-         ; Linked.generated_file direct_output
-           |> abs_path_of_gen_file
-           |> Path.Absolute.to_filename
-         ]
+        (lib_include_args
+         @ [ "-I"
+           ; internal_dir |> Path.Absolute.to_filename
+           ; "-I"
+           ; lib_dir |> Path.Absolute.to_filename
+           ; "-a"
+           ; "-o"
+           ; Linked.generated_file direct_output
+             |> abs_path_of_gen_file
+             |> Path.Absolute.to_filename
+           ]
+         @ lib_cmxa_files
          @ List.map direct_inputs ~f:(fun compiled ->
            Compiled.generated_file compiled
            |> abs_path_of_gen_file
@@ -56,15 +78,17 @@ let op_command op package profile build_dir =
     Profile.ocamlopt_command
       profile
       ~args:
-        ([ "-I"
-         ; internal_dir |> Path.Absolute.to_filename
-         ; "-I"
-         ; lib_dir |> Path.Absolute.to_filename (* so exe can depend on library *)
-         ; "-o"
-         ; Linked.generated_file direct_output
-           |> abs_path_of_gen_file
-           |> Path.Absolute.to_filename
-         ]
+        (lib_include_args
+         @ [ "-I"
+           ; internal_dir |> Path.Absolute.to_filename
+           ; "-I"
+           ; lib_dir |> Path.Absolute.to_filename (* so exe can depend on library *)
+           ; "-o"
+           ; Linked.generated_file direct_output
+             |> abs_path_of_gen_file
+             |> Path.Absolute.to_filename
+           ]
+         @ lib_cmxa_files
          @ List.map direct_inputs ~f:(fun compiled ->
            Compiled.generated_file compiled
            |> abs_path_of_gen_file
@@ -109,7 +133,7 @@ module Sequential = struct
     loop build_plan
   ;;
 
-  let eval_build_plan build_plans package profile build_dir =
+  let eval_build_plan build_plans package profile build_dir ~dep_libs =
     let open Alice_ui in
     let abs_path_of_gen_file =
       Build_dir.package_generated_file build_dir (Package.id package) profile
@@ -169,7 +193,9 @@ module Sequential = struct
                  "Missing file which should have been compiled by this point: %s\n"
                  (path_to_string compiled_path)
                :: panic_context ()));
-        let command = op_command (Build_plan.op build_plan) package profile build_dir in
+        let command =
+          op_command (Build_plan.op build_plan) package profile build_dir ~dep_libs
+        in
         (let status =
            match Alice_io.Process.Blocking.run_command command with
            | Ok status -> status

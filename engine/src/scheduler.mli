@@ -7,5 +7,6 @@ module Sequential : sig
     -> Package.t
     -> Profile.t
     -> Build_dir.t
+    -> dep_libs:Package.Typed.lib_only_t list
     -> unit
 end

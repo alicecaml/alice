@@ -18,9 +18,14 @@ let of_package package =
 ;;
 
 let build_single_package_typed
-  : type exe lib. t -> (exe, lib) Package.Typed.t -> Profile.t -> unit
+  : type exe lib.
+    t
+    -> (exe, lib) Package.Typed.t
+    -> Profile.t
+    -> dep_libs:Package.Typed.lib_only_t list
+    -> unit
   =
-  fun t package_typed profile ->
+  fun t package_typed profile ~dep_libs ->
   let package = Package.Typed.package package_typed in
   let build_graph = Build_graph.create package_typed t.build_dir in
   let build_plans =
@@ -30,7 +35,7 @@ let build_single_package_typed
     | Exe_and_lib ->
       [ Build_graph.plan_lib build_graph; Build_graph.plan_exe build_graph ]
   in
-  Scheduler.Sequential.eval_build_plan build_plans package profile t.build_dir
+  Scheduler.Sequential.eval_build_plan build_plans package profile t.build_dir ~dep_libs
 ;;
 
 let build_dependency_graph t dependency_graph profile =
@@ -39,11 +44,14 @@ let build_dependency_graph t dependency_graph profile =
   and build_node node =
     let deps = Traverse_dependencies.deps node in
     build_deps deps;
+    let dep_libs = List.map deps ~f:Traverse_dependencies.package_typed in
     let pt = Traverse_dependencies.package_typed node in
-    build_single_package_typed t pt profile
+    build_single_package_typed t pt profile ~dep_libs
   in
-  traverse_dependencies dependency_graph |> build_deps;
-  build_single_package_typed t (root dependency_graph) profile
+  let deps = traverse_dependencies dependency_graph in
+  build_deps deps;
+  let dep_libs = List.map deps ~f:Traverse_dependencies.package_typed in
+  build_single_package_typed t (root dependency_graph) profile ~dep_libs
 ;;
 
 let build_package_typed t package_typed profile =
