@@ -2,15 +2,22 @@ open! Alice_stdlib
 open Alice_hierarchy
 open Alice_error
 
-let exe_name () = Alice_which.ocamldep ()
-let command args = Command.create (exe_name ()) ~args
+let ocamlopt_exe () = Alice_which.ocamlopt ()
+let command args = Command.create (ocamlopt_exe ()) ~args:("-depend" :: args)
 
 let run_lines args =
-  match Alice_io.Process.Blocking.run_command_capturing_stdout_lines (command args) with
+  let command = command args in
+  match Alice_io.Process.Blocking.run_command_capturing_stdout_lines command with
   | Ok (status, output) ->
     Alice_io.Process.Status.panic_unless_exit_0 status;
     output
-  | Error `Prog_not_available -> panic [ Pp.textf "Program %S not found!" (exe_name ()) ]
+  | Error `Prog_not_available ->
+    user_exn
+      [ Pp.textf
+          "Program %S not found while trynig to run command: %s"
+          (ocamlopt_exe ())
+          (Command.to_string command)
+      ]
 ;;
 
 module Deps = struct

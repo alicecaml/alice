@@ -67,6 +67,4 @@ let current_sys_exe_name exe_name_without_extension =
 ;;
 
 let ocamlopt_name = current_sys_exe_name "ocamlopt.opt"
-let ocamldep_name = current_sys_exe_name "ocamldep.opt"
 let ocamlopt () = try_which ocamlopt_name
-let ocamldep () = try_which ocamldep_name
