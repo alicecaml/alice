@@ -13,7 +13,7 @@ module Env : sig
 end
 
 module Path_variable : sig
-  type t = Path.Either.t list
+  type t = Path.Absolute.t list
 
   val to_dyn : t -> Dyn.t
   val get_or_empty : ?name:string -> Env.t -> t

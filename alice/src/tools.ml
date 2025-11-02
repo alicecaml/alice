@@ -504,7 +504,7 @@ let exec =
   let open Alice_env in
   let env = Env.current () in
   let path_variable = Path_variable.get_or_empty env in
-  let augmented_path_variable = `Absolute (Alice_root.current_bin ()) :: path_variable in
+  let augmented_path_variable = Alice_root.current_bin () :: path_variable in
   let augmented_env = Path_variable.set augmented_path_variable env in
   match Alice_io.Process.Blocking.run ~env:(`Env augmented_env) prog ~args with
   | Error `Prog_not_available ->

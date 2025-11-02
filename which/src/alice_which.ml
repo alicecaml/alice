@@ -3,17 +3,9 @@ open Alice_hierarchy
 open Alice_env
 
 let find_in_search_path exe_name search_paths =
-  List.find_map
-    search_paths
-    ~f:
-      (Path.Either.with_
-         { f =
-             (fun search_path ->
-               let exe_path = Path.concat search_path exe_name in
-               if Alice_io.File_ops.exists exe_path
-               then Some (Path.to_either exe_path)
-               else None)
-         })
+  List.find_map search_paths ~f:(fun search_path ->
+    let exe_path = Path.concat search_path exe_name in
+    if Alice_io.File_ops.exists exe_path then Some (Path.to_either exe_path) else None)
 ;;
 
 let which exe_name =
@@ -47,7 +39,7 @@ let which exe_name =
      if ocaml isn't installed by any other means and alice has installed
      ocaml tools then we'll still be able to build ocaml programs even if the
      tools are not in the user's PATH variable. *)
-  let search_paths = search_paths @ [ `Absolute (Alice_root.current_bin ()) ] in
+  let search_paths = search_paths @ [ Alice_root.current_bin () ] in
   find_in_search_path (Path.relative exe_name) search_paths
 ;;
 
