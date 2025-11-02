@@ -25,3 +25,5 @@ module Path_variable : sig
 
   val set : ?name:string -> t -> Env.t -> Env.t
 end
+
+val initial_cwd : Path.Absolute.t

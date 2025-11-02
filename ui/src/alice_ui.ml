@@ -43,7 +43,7 @@ let path_to_string path =
     (match Path.to_either path with
      | `Relative _ -> normalize_filename filename
      | `Absolute path ->
-       let path = Path.chop_prefix path ~prefix:(Path.absolute (Sys.getcwd ())) in
+       let path = Path.chop_prefix path ~prefix:Alice_env.initial_cwd in
        let filename = Path.to_filename path in
        normalize_filename filename)
 ;;

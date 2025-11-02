@@ -5,8 +5,6 @@ open Alice_engine
 module File_ops = Alice_io.File_ops
 open Climate
 
-let cwd () = Path.absolute (Sys.getcwd ())
-
 let parse_manifest_path_opt =
   let open Arg_parser in
   named_opt
@@ -24,7 +22,7 @@ let parse_absolute_path ?doc names =
   Option.map path ~f:(fun path_str ->
     match Path.of_filename path_str with
     | `Absolute p -> p
-    | `Relative p -> Path.concat (cwd ()) p)
+    | `Relative p -> Path.concat Alice_env.initial_cwd p)
 ;;
 
 let parse_manifest_path_and_validate =
@@ -35,7 +33,7 @@ let parse_manifest_path_and_validate =
     let absolute_path =
       match Path.of_filename manifest_path_str with
       | `Absolute p -> p
-      | `Relative p -> Path.concat (cwd ()) p
+      | `Relative p -> Path.concat Alice_env.initial_cwd p
     in
     (match File_ops.exists absolute_path with
      | true -> absolute_path
@@ -45,7 +43,9 @@ let parse_manifest_path_and_validate =
          ; Pp.textf "%S does not exist." (Path.to_filename absolute_path)
          ])
   | None ->
-    let path = Path.concat (cwd ()) (Path.relative Alice_manifest.manifest_name) in
+    let path =
+      Path.concat Alice_env.initial_cwd (Path.relative Alice_manifest.manifest_name)
+    in
     (match File_ops.exists path with
      | true -> path
      | false ->

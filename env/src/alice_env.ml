@@ -76,3 +76,5 @@ module Path_variable = struct
 
   let set ?(name = name) t env = Env.set env ~name ~value:(to_raw t)
 end
+
+let initial_cwd = Path.absolute (Sys.getcwd ())

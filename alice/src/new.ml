@@ -75,7 +75,7 @@ let new_ =
   let path =
     match path with
     | Some path -> path
-    | None -> Path.concat (Path.absolute (Sys.getcwd ())) (Path.relative name)
+    | None -> Path.concat Alice_env.initial_cwd (Path.relative name)
   in
   let kind =
     match exe, lib with
