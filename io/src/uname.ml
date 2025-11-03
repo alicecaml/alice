@@ -1,7 +1,7 @@
 open! Alice_stdlib
 open Alice_error
 
-let run_uname args ~env =
+let run_uname env args =
   let command = Command.create "uname" ~args in
   match Process.Blocking.run_command_capturing_stdout_lines command ~env with
   | Ok (Process.Status.Exited 0, [ output ]) -> output
@@ -16,8 +16,8 @@ let run_uname args ~env =
   | _ -> panic [ Pp.textf "Failed to run %s" (Command.to_string_backticks command) ]
 ;;
 
-let uname arg ~env =
+let uname env arg =
   match arg with
-  | `M -> run_uname [ "-m" ] ~env
-  | `S -> run_uname [ "-s" ] ~env
+  | `M -> run_uname env [ "-m" ]
+  | `S -> run_uname env [ "-s" ]
 ;;

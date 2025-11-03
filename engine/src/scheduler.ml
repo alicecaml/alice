@@ -136,7 +136,7 @@ module Sequential = struct
     loop build_plan
   ;;
 
-  let eval_build_plans build_plans package profile build_dir ~dep_libs ~env ~ocamlopt =
+  let eval_build_plans build_plans package env profile build_dir ~dep_libs ~ocamlopt =
     let open Alice_ui in
     let abs_path_of_gen_file =
       Build_dir.package_generated_file build_dir (Package.id package) profile

@@ -3,6 +3,47 @@ open Alice_hierarchy
 
 let initial_cwd = Absolute_path.of_filename (Sys.getcwd ())
 
+module Os_type = struct
+  type t =
+    | Windows
+    | Unix
+
+  let current () = if Sys.win32 then Windows else Unix
+
+  let is_windows = function
+    | Windows -> true
+    | Unix -> false
+  ;;
+
+  let filename_add_exe_extension_on_windows t filename_without_extension =
+    if Filename.has_extension filename_without_extension ~ext:".exe"
+    then
+      Alice_error.panic
+        [ Pp.textf "File %S already has .exe extension" filename_without_extension ];
+    match t with
+    | Windows -> Filename.add_extension filename_without_extension ~ext:".exe"
+    | Unix -> filename_without_extension
+  ;;
+
+  let basename_add_exe_extension_on_windows t basename_without_extension =
+    if Basename.has_extension basename_without_extension ~ext:".exe"
+    then
+      Alice_error.panic
+        [ Pp.textf
+            "File %S already has .exe extension"
+            (Basename.to_filename basename_without_extension)
+        ];
+    match t with
+    | Windows -> Basename.add_extension basename_without_extension ~ext:".exe"
+    | Unix -> basename_without_extension
+  ;;
+
+  let path_delimiter = function
+    | Windows -> ';'
+    | Unix -> ':'
+  ;;
+end
+
 module Variable = struct
   type t =
     { name : string
@@ -56,10 +97,9 @@ module Path_variable = struct
 
   let to_dyn = Dyn.list Absolute_path.Root_or_non_root.to_dyn
   let name = "PATH"
-  let delimiter = if Sys.win32 then ';' else ':'
 
-  let of_raw raw =
-    String.split_on_char ~sep:delimiter raw
+  let of_raw os_type raw =
+    String.split_on_char ~sep:(Os_type.path_delimiter os_type) raw
     |> List.filter ~f:(Fun.negate String.is_empty)
     |> List.map ~f:(fun filename ->
       if Filename.is_relative filename
@@ -71,19 +111,33 @@ module Path_variable = struct
       else Absolute_path.of_filename filename)
   ;;
 
-  let to_raw t =
+  let to_raw os_type t =
     List.map t ~f:Absolute_path.Root_or_non_root.to_filename
-    |> String.concat ~sep:(String.make 1 delimiter)
+    |> String.concat ~sep:(String.make 1 (Os_type.path_delimiter os_type))
   ;;
 
-  let get_opt ?(name = name) env = Env.get_opt env ~name |> Option.map ~f:of_raw
-  let get_or_empty ?(name = name) env = get_opt ~name env |> Option.value ~default:[]
+  let get_opt ?(name = name) os_type env =
+    Env.get_opt env ~name |> Option.map ~f:(of_raw os_type)
+  ;;
 
-  let get_result ?(name = name) env =
-    match get_opt ~name env with
+  let get_or_empty ?(name = name) os_type env =
+    get_opt ~name os_type env |> Option.value ~default:[]
+  ;;
+
+  let get_result ?(name = name) os_type env =
+    match get_opt ~name os_type env with
     | None -> Error (`Variable_not_defined name)
     | Some t -> Ok t
   ;;
 
-  let set ?(name = name) t env = Env.set env ~name ~value:(to_raw t)
+  let set ?(name = name) t os_type env = Env.set env ~name ~value:(to_raw os_type t)
+end
+
+module Xdg = struct
+  include Alice_stdlib.Xdg
+
+  let create os_type env =
+    let env name = Env.get_opt env ~name in
+    create ~win32:(Os_type.is_windows os_type) ~env ()
+  ;;
 end

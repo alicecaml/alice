@@ -8,17 +8,25 @@ open Alice_hierarchy
 type t
 
 val of_package : Package.t -> t
-val build : t -> Profile.t -> Alice_which.Ocamlopt.t -> env:Alice_env.Env.t -> unit
+
+val build
+  :  t
+  -> Alice_env.Env.t
+  -> Profile.t
+  -> Alice_env.Os_type.t
+  -> Alice_which.Ocamlopt.t
+  -> unit
 
 val run
   :  t
+  -> Alice_env.Env.t
   -> Profile.t
+  -> Alice_env.Os_type.t
   -> Alice_which.Ocamlopt.t
   -> args:string list
-  -> env:Alice_env.Env.t
   -> unit
 
 val clean : t -> unit
-val dot_build_artifacts : t -> Alice_which.Ocamlopt.t -> string
+val dot_build_artifacts : t -> Alice_env.Os_type.t -> Alice_which.Ocamlopt.t -> string
 val dot_dependencies : t -> string
 val build_dir_path_relative_to_project_root : Basename.t

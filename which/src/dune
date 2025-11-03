@@ -5,5 +5,5 @@
   alice_hierarchy
   alice_io
   alice_log
-  alice_root
+  alice_install_dir
   alice_env))

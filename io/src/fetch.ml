@@ -20,7 +20,7 @@ let wget ~url ~output_file =
   Command.create "wget" ~args
 ;;
 
-let fetch ~url ~output_file ~env =
+let fetch env ~url ~output_file =
   Log.info [ Pp.textf "Downloading %s to %s" url (Absolute_path.to_filename output_file) ];
   match curl ~url ~output_file |> Process.Blocking.run_command ~env with
   | Ok (Process.Status.Exited 0) ->

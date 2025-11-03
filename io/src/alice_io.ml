@@ -6,4 +6,3 @@ module Process = Process
 module Read_hierarchy = Read_hierarchy
 module Temp_dir = Temp_dir
 module Uname = Uname
-module Xdg = Xdg

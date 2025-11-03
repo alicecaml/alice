@@ -8,8 +8,9 @@ let build =
   and+ project = Common.parse_project
   and+ profile = Common.parse_profile in
   let env = Alice_env.Env.current () in
-  let ocamlopt = Alice_which.ocamlopt env in
-  Project.build project profile ocamlopt ~env
+  let os_type = Alice_env.Os_type.current () in
+  let ocamlopt = Alice_which.ocamlopt os_type env in
+  Project.build project env profile os_type ocamlopt
 ;;
 
 let subcommand =

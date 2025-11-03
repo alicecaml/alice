@@ -14,9 +14,9 @@ let find_in_search_path exe_name search_paths =
     if Alice_io.File_ops.exists exe_path then Some exe_path else None)
 ;;
 
-let which env exe_name =
+let which os_type env exe_name =
   let exe_name =
-    if Sys.win32 && not (Filename.has_extension exe_name ~ext:".exe")
+    if Os_type.is_windows os_type && not (Filename.has_extension exe_name ~ext:".exe")
     then (
       let exe_name_with_extension = Filename.add_extension exe_name ~ext:".exe" in
       Alice_log.warn
@@ -30,7 +30,7 @@ let which env exe_name =
     else exe_name
   in
   let search_paths =
-    match Path_variable.get_result env with
+    match Path_variable.get_result os_type env with
     | Ok search_paths -> search_paths
     | Error (`Variable_not_defined name) ->
       Alice_log.warn
@@ -45,12 +45,16 @@ let which env exe_name =
      if ocaml isn't installed by any other means and alice has installed
      ocaml tools then we'll still be able to build ocaml programs even if the
      tools are not in the user's PATH variable. *)
-  let search_paths = search_paths @ [ `Non_root (Alice_root.current_bin ()) ] in
+  let search_paths =
+    search_paths
+    @ [ `Non_root (Alice_install_dir.create os_type env |> Alice_install_dir.current_bin)
+      ]
+  in
   find_in_search_path (Basename.of_filename exe_name) search_paths
 ;;
 
-let try_which env exe_name =
-  match which env exe_name with
+let try_which os_type env exe_name =
+  match which os_type env exe_name with
   | Some path -> Absolute_path.to_filename path
   | None ->
     (* Couldn't find the executable in PATH, so just return its name just in
@@ -58,11 +62,11 @@ let try_which env exe_name =
     exe_name
 ;;
 
-let current_sys_exe_name exe_name_without_extension =
-  if Sys.win32
-  then Filename.add_extension exe_name_without_extension ~ext:".exe"
-  else exe_name_without_extension
+let current_sys_exe_name os_type exe_name_without_extension =
+  Alice_env.Os_type.filename_add_exe_extension_on_windows
+    os_type
+    exe_name_without_extension
 ;;
 
-let ocamlopt_name = current_sys_exe_name "ocamlopt.opt"
-let ocamlopt env = try_which env ocamlopt_name
+let ocamlopt_name os_type = current_sys_exe_name os_type "ocamlopt.opt"
+let ocamlopt os_type env = try_which os_type env (ocamlopt_name os_type)

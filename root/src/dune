@@ -1,3 +1,0 @@
-(library
- (public_name alice_root)
- (libraries alice_stdlib alice_hierarchy alice_io xdg))

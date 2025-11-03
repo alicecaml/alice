@@ -26,15 +26,16 @@ let build_single_package_typed
   : type exe lib.
     t
     -> (exe, lib) Package.Typed.t
+    -> Alice_env.Env.t
     -> Profile.t
+    -> Alice_env.Os_type.t
     -> Alice_which.Ocamlopt.t
     -> dep_libs:Package.Typed.lib_only_t list
-    -> env:Alice_env.Env.t
     -> unit
   =
-  fun t package_typed profile ocamlopt ~dep_libs ~env ->
+  fun t package_typed env profile os_type ocamlopt ~dep_libs ->
   let package = Package.Typed.package package_typed in
-  let build_graph = Build_graph.create package_typed t.build_dir ocamlopt in
+  let build_graph = Build_graph.create package_typed t.build_dir os_type ocamlopt in
   let build_plans =
     match Package.Typed.type_ package_typed with
     | Exe_only -> [ Build_graph.plan_exe build_graph ]
@@ -45,14 +46,14 @@ let build_single_package_typed
   Scheduler.Sequential.eval_build_plans
     build_plans
     package
+    env
     profile
     t.build_dir
     ~dep_libs
-    ~env
     ~ocamlopt
 ;;
 
-let build_dependency_graph t dependency_graph profile ocamlopt ~env =
+let build_dependency_graph t dependency_graph env profile os_type ocamlopt =
   let open Dependency_graph in
   let rec build_deps nodes = List.iter nodes ~f:build_node
   and build_node node =
@@ -60,29 +61,36 @@ let build_dependency_graph t dependency_graph profile ocamlopt ~env =
     build_deps deps;
     let dep_libs = List.map deps ~f:Traverse_dependencies.package_typed in
     let pt = Traverse_dependencies.package_typed node in
-    build_single_package_typed t pt profile ocamlopt ~dep_libs ~env
+    build_single_package_typed t pt env profile os_type ocamlopt ~dep_libs
   in
   let deps = traverse_dependencies dependency_graph in
   build_deps deps;
   let dep_libs = List.map deps ~f:Traverse_dependencies.package_typed in
-  build_single_package_typed t (root dependency_graph) profile ocamlopt ~dep_libs ~env
+  build_single_package_typed
+    t
+    (root dependency_graph)
+    env
+    profile
+    os_type
+    ocamlopt
+    ~dep_libs
 ;;
 
-let build_package_typed t package_typed profile ocamlopt ~env =
+let build_package_typed t package_typed env profile ocamlopt =
   let dependency_graph = Dependency_graph.compute package_typed in
-  build_dependency_graph t dependency_graph profile ocamlopt ~env
+  build_dependency_graph t dependency_graph env profile ocamlopt
 ;;
 
-let build_package t package profile ocamlopt ~env =
+let build_package t package env profile ocamlopt =
   Package.with_typed
-    { f = (fun package_typed -> build_package_typed t package_typed profile ocamlopt ~env)
+    { f = (fun package_typed -> build_package_typed t package_typed env profile ocamlopt)
     }
     package
 ;;
 
-let build t profile ocamlopt ~env =
+let build t env profile os_type ocamlopt =
   let open Alice_ui in
-  build_package t t.package profile ocamlopt ~env;
+  build_package t t.package env profile os_type ocamlopt;
   println
     (verb_message
        `Finished
@@ -92,7 +100,7 @@ let build t profile ocamlopt ~env =
           (Package_id.name_v_version_string (Package.id t.package))))
 ;;
 
-let run t profile ocamlopt ~args ~env =
+let run t env profile os_type ocamlopt ~args =
   let open Alice_ui in
   let package_typed =
     match Package.typed t.package with
@@ -100,12 +108,12 @@ let run t profile ocamlopt ~args ~env =
     | `Exe_only pt -> pt
     | `Exe_and_lib pt -> Package.Typed.limit_to_exe_only pt
   in
-  build_package_typed t package_typed profile ocamlopt ~env;
+  build_package_typed t package_typed env profile os_type ocamlopt;
   let exe_name =
-    let exe_name =
-      Package.name t.package |> Package_name.to_string |> Basename.of_filename
-    in
-    if Sys.win32 then Basename.add_extension exe_name ~ext:".exe" else exe_name
+    Package.name t.package
+    |> Package_name.to_string
+    |> Basename.of_filename
+    |> Alice_env.Os_type.basename_add_exe_extension_on_windows os_type
   in
   let exe_path =
     Build_dir.package_exe_dir t.build_dir (Package.id t.package) profile / exe_name
@@ -137,9 +145,11 @@ let clean t =
   File_ops.rm_rf to_remove
 ;;
 
-let dot_package_build_artifacts t package ocamlopt =
+let dot_package_build_artifacts t package os_type ocamlopt =
   Package.with_typed
-    { f = (fun pt -> Build_graph.create pt t.build_dir ocamlopt |> Build_graph.dot) }
+    { f =
+        (fun pt -> Build_graph.create pt t.build_dir os_type ocamlopt |> Build_graph.dot)
+    }
     package
 ;;
 

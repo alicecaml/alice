@@ -62,13 +62,8 @@
  (depends ocaml))
 
 (package
- (name alice_root)
- (depends
-  ocaml
-  (xdg
-   (and
-    (>= 3)
-    (< 4)))))
+ (name alice_install_dir)
+ (depends ocaml))
 
 (package
  (name alice_which)

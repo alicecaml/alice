@@ -38,16 +38,16 @@ module Remote_tarball = struct
     }
   ;;
 
-  let get { name; version; url_base; url_file; top_level_dir; sha256 } ~dst ~env =
+  let get { name; version; url_base; url_file; top_level_dir; sha256 } env ~dst =
     let url = String.cat url_base url_file in
     let open Alice_ui in
     Temp_dir.with_ ~prefix:"alice." ~suffix:".tools" ~f:(fun dir ->
       let tarball_file = dir / Basename.of_filename (sprintf "%s.tar.gz" name) in
       println (verb_message `Fetching (sprintf "%s.%s (%s)..." name version url_file));
-      Fetch.fetch ~url ~output_file:tarball_file ~env;
+      Fetch.fetch env ~url ~output_file:tarball_file;
       panic_if_hashes_don't_match tarball_file sha256;
       println (verb_message `Unpacking (sprintf "%s.%s..." name version));
-      Extract.extract ~tarball_file ~output_dir:dir ~env;
+      Extract.extract env ~tarball_file ~output_dir:dir;
       File_ops.recursive_move_between_dirs ~src:(dir / top_level_dir) ~dst;
       print_newline ();
       println
@@ -300,11 +300,8 @@ module Remote_tarballs = struct
     }
   ;;
 
-  let get_all t ~dst ~env =
-    List.iter (all t) ~f:(fun rt -> Remote_tarball.get rt ~dst ~env)
-  ;;
-
-  let get_compiler { compiler; _ } ~dst ~env = Remote_tarball.get compiler ~dst ~env
+  let get_all t env ~dst = List.iter (all t) ~f:(fun rt -> Remote_tarball.get rt env ~dst)
+  let get_compiler { compiler; _ } env ~dst = Remote_tarball.get compiler env ~dst
 end
 
 module Root = struct
@@ -351,33 +348,33 @@ module Root = struct
         ]
   ;;
 
-  let dir { name; _ } = Alice_root.roots_dir () / name
+  let dir { name; _ } install_dir = Alice_install_dir.roots_dir install_dir / name
 
-  let install t ~target ~compiler_only ~global =
+  let install t env install_dir ~target ~compiler_only ~global =
     let install_to dst =
       Alice_io.File_ops.mkdir_p dst;
       let remote_tarballs = choose_remote_tarballs t ~target in
       if compiler_only
-      then Remote_tarballs.get_compiler remote_tarballs ~dst
-      else Remote_tarballs.get_all remote_tarballs ~dst
+      then Remote_tarballs.get_compiler remote_tarballs env ~dst
+      else Remote_tarballs.get_all remote_tarballs env ~dst
     in
     match (global : Absolute_path.Root_or_non_root.t option) with
     | Some (`Non_root dst) -> install_to dst
     | Some (`Root dst) -> install_to dst
-    | None -> install_to (dir t)
+    | None -> install_to (dir t install_dir)
   ;;
 
-  let make_current t =
-    let current_path = Alice_root.current () in
+  let make_current t install_dir os_type =
+    let current_path = Alice_install_dir.current install_dir in
     if File_ops.exists current_path then File_ops.rm_rf current_path;
-    let src = dir t in
+    let src = dir t install_dir in
     let dst = current_path in
-    match Sys.win32 with
+    match Alice_env.Os_type.is_windows os_type with
     | true -> File_ops.cp_rf ~src ~dst
     | false -> File_ops.symlink ~src ~dst
   ;;
 
-  let is_installed t = File_ops.exists (dir t)
+  let is_installed t install_dir = File_ops.exists (dir t install_dir)
   let latest = root_5_3_1
 
   let conv =
@@ -406,11 +403,11 @@ module Shell = struct
     enum ~eq:equal ~default_value_name:"SHELL" [ "bash", Bash; "zsh", Zsh; "fish", Fish ]
   ;;
 
-  let update_path t ~root =
+  let update_path t install_dir ~root =
     let bin_dir =
       match root with
-      | None -> Alice_root.current_bin ()
-      | Some root -> Root.dir root / Basename.of_filename "bin"
+      | None -> Alice_install_dir.current_bin install_dir
+      | Some root -> Root.dir root install_dir / Basename.of_filename "bin"
     in
     match t with
     | Bash | Zsh -> sprintf "export PATH=\"%s:$PATH\"" (Absolute_path.to_filename bin_dir)
@@ -437,8 +434,11 @@ let install =
       [ "g"; "global" ]
       ~doc:"Install tools to this directory rather than '~/.alice'."
   and+ target = Target.arg_parser in
-  Root.install root ~target ~compiler_only ~global ~env:(Alice_env.Env.current ());
-  if not (Alice_io.File_ops.exists (Alice_root.current ()))
+  let env = Alice_env.Env.current () in
+  let os_type = Alice_env.Os_type.current () in
+  let install_dir = Alice_install_dir.create os_type env in
+  Root.install root env install_dir ~target ~compiler_only ~global;
+  if not (Alice_io.File_ops.exists (Alice_install_dir.current install_dir))
   then (
     let open Alice_ui in
     println
@@ -446,7 +446,7 @@ let install =
          (sprintf
             "No current root was found so making %s the current root."
             (Basename.to_filename root.name)));
-    Root.make_current root)
+    Root.make_current root install_dir os_type)
 ;;
 
 let env =
@@ -465,15 +465,21 @@ let env =
     | Some shell -> shell
     | None -> Bash
   in
-  print_endline (Shell.update_path shell ~root)
+  let env = Alice_env.Env.current () in
+  let os_type = Alice_env.Os_type.current () in
+  let install_dir = Alice_install_dir.create os_type env in
+  print_endline (Shell.update_path shell install_dir ~root)
 ;;
 
 let change =
   let open Arg_parser in
   let+ () = Common.set_globals_from_flags
   and+ root = pos_req 0 Root.conv in
-  if Root.is_installed root
-  then Root.make_current root
+  let env = Alice_env.Env.current () in
+  let os_type = Alice_env.Os_type.current () in
+  let install_dir = Alice_install_dir.create os_type env in
+  if Root.is_installed root install_dir
+  then Root.make_current root install_dir os_type
   else
     Alice_error.panic
       [ Pp.textf
@@ -493,9 +499,13 @@ let exec =
   let open Alice_ui in
   let open Alice_env in
   let env = Env.current () in
-  let path_variable = Path_variable.get_or_empty env in
-  let augmented_path_variable = `Non_root (Alice_root.current_bin ()) :: path_variable in
-  let augmented_env = Path_variable.set augmented_path_variable env in
+  let os_type = Os_type.current () in
+  let path_variable = Path_variable.get_or_empty os_type env in
+  let install_dir = Alice_install_dir.create os_type env in
+  let augmented_path_variable =
+    `Non_root (Alice_install_dir.current_bin install_dir) :: path_variable
+  in
+  let augmented_env = Path_variable.set augmented_path_variable os_type env in
   match Alice_io.Process.Blocking.run ~env:augmented_env prog ~args with
   | Error `Prog_not_available ->
     Alice_error.panic [ Pp.textf "The executable %s does not exist." prog ]

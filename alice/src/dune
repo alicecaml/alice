@@ -9,7 +9,7 @@
   alice_package_meta
   alice_hierarchy
   alice_log
-  alice_root
+  alice_install_dir
   alice_env
   climate
   sha))

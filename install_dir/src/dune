@@ -1,0 +1,3 @@
+(library
+ (public_name alice_install_dir)
+ (libraries alice_stdlib alice_hierarchy alice_env))

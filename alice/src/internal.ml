@@ -65,12 +65,12 @@ if ! contains "$HOME/.alice/current/bin" $PATH; and [ -d "$HOME/.alice/current/b
 end|}
   ;;
 
-  let make_all () =
+  let make_all install_dir =
     let module File_ops = Alice_io.File_ops in
-    File_ops.mkdir_p (Alice_root.env_dir ());
+    File_ops.mkdir_p (Alice_install_dir.env_dir install_dir);
     let make_env_file filename text =
       File_ops.write_text_file
-        (Alice_root.env_dir () / Basename.of_filename filename)
+        (Alice_install_dir.env_dir install_dir / Basename.of_filename filename)
         text
     in
     make_env_file "env.bash" bash_src;
@@ -81,7 +81,7 @@ end|}
       (raw_message
          (sprintf
             "Installed env scripts to '%s'."
-            (Absolute_path.to_filename (Alice_root.env_dir ()))))
+            (Absolute_path.to_filename (Alice_install_dir.env_dir install_dir))))
   ;;
 end
 
@@ -105,12 +105,12 @@ module Completion_script = struct
       command
   ;;
 
-  let make_all () =
+  let make_all install_dir =
     let module File_ops = Alice_io.File_ops in
-    File_ops.mkdir_p (Alice_root.completions_dir ());
+    File_ops.mkdir_p (Alice_install_dir.completions_dir install_dir);
     let make_completion_file filename text =
       File_ops.write_text_file
-        (Alice_root.completions_dir () / Basename.of_filename filename)
+        (Alice_install_dir.completions_dir install_dir / Basename.of_filename filename)
         text
     in
     make_completion_file "bash.sh" (bash_src ());
@@ -118,15 +118,18 @@ module Completion_script = struct
       (raw_message
          (sprintf
             "Installed completion scripts to '%s'."
-            (Absolute_path.to_filename (Alice_root.completions_dir ()))))
+            (Absolute_path.to_filename (Alice_install_dir.completions_dir install_dir))))
   ;;
 end
 
 let setup =
   let open Arg_parser in
   let+ () = Common.set_globals_from_flags in
-  Env_script.make_all ();
-  Completion_script.make_all ()
+  let env = Alice_env.Env.current () in
+  let os_dir = Alice_env.Os_type.current () in
+  let install_dir = Alice_install_dir.create os_dir env in
+  Env_script.make_all install_dir;
+  Completion_script.make_all install_dir
 ;;
 
 let subcommand =
