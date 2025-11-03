@@ -7,7 +7,9 @@ let build =
   let+ () = Common.set_globals_from_flags
   and+ project = Common.parse_project
   and+ profile = Common.parse_profile in
-  Project.build project profile ~env:(Alice_env.Env.current ())
+  let env = Alice_env.Env.current () in
+  let ocamlopt = Alice_which.ocamlopt env in
+  Project.build project profile ocamlopt ~env
 ;;
 
 let subcommand =

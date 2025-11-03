@@ -9,5 +9,6 @@ module Sequential : sig
     -> Build_dir.t
     -> dep_libs:Package.Typed.lib_only_t list
     -> env:Alice_env.Env.t
+    -> ocamlopt:Alice_which.Ocamlopt.t
     -> unit
 end

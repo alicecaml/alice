@@ -7,7 +7,7 @@ module Log = Alice_log
 module Build_plan = Build_graph.Build_plan
 module Generated_file = Typed_op.Generated_file
 
-let op_command op package profile build_dir ~dep_libs =
+let op_command op package profile build_dir ~dep_libs ~ocamlopt =
   let open Typed_op.File in
   let lib_include_args =
     List.concat_map dep_libs ~f:(fun dep_lib ->
@@ -37,6 +37,7 @@ let op_command op package profile build_dir ~dep_libs =
   let compile_source_or_interface direct_input direct_output =
     Profile.ocamlopt_command
       profile
+      ~ocamlopt
       ~args:
         (lib_include_args
          @ [ "-I"
@@ -57,6 +58,7 @@ let op_command op package profile build_dir ~dep_libs =
   | Link_library { direct_inputs; direct_output; _ } ->
     Profile.ocamlopt_command
       profile
+      ~ocamlopt
       ~args:
         (lib_include_args
          @ [ "-I"
@@ -77,6 +79,7 @@ let op_command op package profile build_dir ~dep_libs =
   | Link_executable { direct_inputs; direct_output } ->
     Profile.ocamlopt_command
       profile
+      ~ocamlopt
       ~args:
         (lib_include_args
          @ [ "-I"
@@ -133,7 +136,7 @@ module Sequential = struct
     loop build_plan
   ;;
 
-  let eval_build_plans build_plans package profile build_dir ~dep_libs ~env =
+  let eval_build_plans build_plans package profile build_dir ~dep_libs ~env ~ocamlopt =
     let open Alice_ui in
     let abs_path_of_gen_file =
       Build_dir.package_generated_file build_dir (Package.id package) profile
@@ -196,7 +199,13 @@ module Sequential = struct
                  (absolute_path_to_string compiled_path)
                :: panic_context ()));
         let command =
-          op_command (Build_plan.op build_plan) package profile build_dir ~dep_libs
+          op_command
+            (Build_plan.op build_plan)
+            package
+            profile
+            build_dir
+            ~dep_libs
+            ~ocamlopt
         in
         (let status =
            match Alice_io.Process.Blocking.run_command command ~env with

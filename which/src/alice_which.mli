@@ -1,3 +1,9 @@
 open! Alice_stdlib
 
-val ocamlopt : unit -> Filename.t
+module Ocamlopt : sig
+  type t
+
+  val to_filename : t -> Filename.t
+end
+
+val ocamlopt : Alice_env.Env.t -> Ocamlopt.t

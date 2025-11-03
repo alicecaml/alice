@@ -2,13 +2,19 @@ open! Alice_stdlib
 open Alice_hierarchy
 open Alice_env
 
+module Ocamlopt = struct
+  type t = Filename.t
+
+  let to_filename t = t
+end
+
 let find_in_search_path exe_name search_paths =
   List.find_map search_paths ~f:(fun search_path ->
     let exe_path = Absolute_path.Root_or_non_root.concat_basename search_path exe_name in
     if Alice_io.File_ops.exists exe_path then Some exe_path else None)
 ;;
 
-let which exe_name =
+let which env exe_name =
   let exe_name =
     if Sys.win32 && not (Filename.has_extension exe_name ~ext:".exe")
     then (
@@ -24,7 +30,7 @@ let which exe_name =
     else exe_name
   in
   let search_paths =
-    match Path_variable.get_result (Env.current ()) with
+    match Path_variable.get_result env with
     | Ok search_paths -> search_paths
     | Error (`Variable_not_defined name) ->
       Alice_log.warn
@@ -43,8 +49,8 @@ let which exe_name =
   find_in_search_path (Basename.of_filename exe_name) search_paths
 ;;
 
-let try_which exe_name =
-  match which exe_name with
+let try_which env exe_name =
+  match which env exe_name with
   | Some path -> Absolute_path.to_filename path
   | None ->
     (* Couldn't find the executable in PATH, so just return its name just in
@@ -59,4 +65,4 @@ let current_sys_exe_name exe_name_without_extension =
 ;;
 
 let ocamlopt_name = current_sys_exe_name "ocamlopt.opt"
-let ocamlopt () = try_which ocamlopt_name
+let ocamlopt env = try_which env ocamlopt_name

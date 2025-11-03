@@ -18,4 +18,8 @@ val store : t -> dep_table -> unit
 
 (** Look up the deps of a given source file. The ocamldep executable will be
     run in the event of a cache miss. *)
-val get_deps : t -> source_path:Absolute_path.non_root_t -> Alice_ocamldep.Deps.t
+val get_deps
+  :  t
+  -> Alice_which.Ocamlopt.t
+  -> source_path:Absolute_path.non_root_t
+  -> Alice_ocamldep.Deps.t
