@@ -105,6 +105,7 @@ module Absolute_path = struct
 
   let remove_extension (Non_root filename) = Non_root (Filename.remove_extension filename)
   let parent (Non_root filename) = of_filename (Filename.dirname filename)
+  let basename (Non_root filename) = Basename.of_filename (Filename.basename filename)
 end
 
 module Path = struct
@@ -357,6 +358,98 @@ module Path = struct
     match a, b with
     | Absolute a, Absolute b -> Filename.compare a b
     | Relative a, Relative b -> Filename.compare a b
+  ;;
+end
+
+module File_non_root = struct
+  type kind =
+    | Regular
+    | Link
+    | Dir of t list
+    | Unknown
+
+  and t =
+    { path : Absolute_path.non_root_t
+    ; kind : kind
+    }
+
+  let path { path; _ } = path
+  let kind { kind; _ } = kind
+
+  let rec to_dyn { path; kind } =
+    Dyn.record [ "path", Absolute_path.to_dyn path; "kind", kind_to_dyn kind ]
+
+  and kind_to_dyn = function
+    | Regular -> Dyn.variant "Regular" []
+    | Link -> Dyn.variant "Link" []
+    | Dir contents -> Dyn.variant "Dir" [ Dyn.list to_dyn contents ]
+    | Unknown -> Dyn.variant "Unknown" []
+  ;;
+
+  type dir =
+    { path : Absolute_path.non_root_t
+    ; contents : t list
+    }
+
+  let dir_to_dyn { path; contents } =
+    Dyn.record [ "path", Absolute_path.to_dyn path; "contents", Dyn.list to_dyn contents ]
+  ;;
+
+  let as_dir { kind; path } =
+    match kind with
+    | Dir contents -> Some { path; contents }
+    | _ -> None
+  ;;
+
+  let is_dir t =
+    match t.kind with
+    | Dir _ -> true
+    | _ -> false
+  ;;
+
+  let is_regular_or_link t =
+    match t.kind with
+    | Regular | Link -> true
+    | _ -> false
+  ;;
+
+  let rec traverse_bottom_up t ~f =
+    match t.kind with
+    | Regular | Link -> f t
+    | Dir contents ->
+      List.iter contents ~f:(traverse_bottom_up ~f);
+      f t
+    | Unknown -> ()
+  ;;
+
+  let rec map_paths { path; kind } ~f =
+    let path = f path in
+    let kind =
+      match kind with
+      | Regular -> Regular
+      | Link -> Link
+      | Unknown -> Unknown
+      | Dir contents -> Dir (List.map contents ~f:(map_paths ~f))
+    in
+    { path; kind }
+  ;;
+
+  let compare_by_path a b = Absolute_path.compare (path a) (path b)
+end
+
+module Dir_non_root = struct
+  type t = File_non_root.dir =
+    { path : Absolute_path.non_root_t
+    ; contents : File_non_root.t list
+    }
+
+  let to_dyn = File_non_root.dir_to_dyn
+  let path { path; _ } = path
+  let contents { contents; _ } = contents
+
+  let contains t path =
+    List.exists (contents t) ~f:(fun file ->
+      Absolute_path.equal (File_non_root.path file) path)
   ;;
 end
 

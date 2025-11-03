@@ -44,6 +44,47 @@ module Absolute_path : sig
   val add_extension : non_root_t -> ext:string -> non_root_t
   val remove_extension : non_root_t -> non_root_t
   val parent : non_root_t -> either
+  val basename : non_root_t -> Basename.t
+end
+
+module File_non_root : sig
+  type kind =
+    | Regular
+    | Link
+    | Dir of t list
+    | Unknown
+
+  and t =
+    { path : Absolute_path.non_root_t
+    ; kind : kind
+    }
+
+  type dir =
+    { path : Absolute_path.non_root_t
+    ; contents : t list
+    }
+
+  val path : t -> Absolute_path.non_root_t
+  val kind : t -> kind
+  val to_dyn : t -> Dyn.t
+  val as_dir : t -> dir option
+  val is_dir : t -> bool
+  val is_regular_or_link : t -> bool
+  val traverse_bottom_up : t -> f:(t -> unit) -> unit
+  val map_paths : t -> f:(Absolute_path.non_root_t -> Absolute_path.non_root_t) -> t
+  val compare_by_path : t -> t -> int
+end
+
+module Dir_non_root : sig
+  type t = File_non_root.dir =
+    { path : Absolute_path.non_root_t
+    ; contents : File_non_root.t list
+    }
+
+  val to_dyn : t -> Dyn.t
+  val path : t -> Absolute_path.non_root_t
+  val contents : t -> File_non_root.t list
+  val contains : t -> Absolute_path.non_root_t -> bool
 end
 
 module Path : sig
