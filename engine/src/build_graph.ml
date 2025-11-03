@@ -30,7 +30,7 @@ module Build_node = struct
     |> Name.Set.of_list
   ;;
 
-  let show_name name = Basename.to_filename (Name.path name)
+  let show_name name = Alice_ui.basename_to_string (Name.path name)
   let show t = show_name t.artifact
 end
 

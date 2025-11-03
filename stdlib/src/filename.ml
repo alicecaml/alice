@@ -16,8 +16,9 @@ let has_extension t ~ext = String.equal (extension t) ext
 
 let replace_extension t ~ext =
   assert (Char.equal (String.get ext 0) '.');
-  let without_extension = chop_extension t in
-  String.cat without_extension ext
+  match chop_extension t with
+  | without_extension -> Some (String.cat without_extension ext)
+  | exception Invalid_argument _ -> None
 ;;
 
 let add_extension t ~ext =

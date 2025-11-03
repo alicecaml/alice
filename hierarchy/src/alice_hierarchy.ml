@@ -38,8 +38,14 @@ module Basename = struct
   let compare = Filename.compare
   let extension t = Filename.extension t
   let has_extension t ~ext = Filename.has_extension t ~ext
-  let replace_extension t ~ext = Filename.replace_extension t ~ext
-  let add_extension t ~ext = Filename.replace_extension t ~ext
+
+  let replace_extension t ~ext =
+    match Filename.replace_extension t ~ext with
+    | Some filename -> filename
+    | None -> panic [ Pp.textf "Path %S has no extension to replace." t ]
+  ;;
+
+  let add_extension t ~ext = Filename.add_extension t ~ext
   let remove_extension t = Filename.remove_extension t
 end
 
@@ -125,11 +131,13 @@ module Absolute_path = struct
   let has_extension (Non_root filename) ~ext = Filename.has_extension filename ~ext
 
   let replace_extension (Non_root filename) ~ext =
-    Non_root (Filename.replace_extension filename ~ext)
+    match Filename.replace_extension filename ~ext with
+    | Some filename -> Non_root filename
+    | None -> panic [ Pp.textf "Path %S has no extension to replace." filename ]
   ;;
 
   let add_extension (Non_root filename) ~ext =
-    Non_root (Filename.replace_extension filename ~ext)
+    Non_root (Filename.add_extension filename ~ext)
   ;;
 
   let remove_extension (Non_root filename) = Non_root (Filename.remove_extension filename)

@@ -50,6 +50,18 @@ let path_to_string : type is_root. is_root Absolute_path.t -> string =
        if List.is_empty components then "." else String.concat ~sep:"/" components)
 ;;
 
+let basename_to_string basename =
+  match !path_style with
+  | `Native -> Basename.to_filename basename
+  | `Normalized ->
+    let basename =
+      if Basename.has_extension basename ~ext:".exe"
+      then Basename.remove_extension basename
+      else basename
+    in
+    Basename.to_filename basename
+;;
+
 let raw_message ?(style = Ansi_style.default) raw = [ Pp.text raw |> Pp.tag style ]
 let default_verb_style = Ansi_style.create ~bold:true ~color:`Green ()
 

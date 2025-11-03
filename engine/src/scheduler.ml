@@ -173,7 +173,7 @@ module Sequential = struct
               "Building targets: %s"
               (Generated_file.Set.to_list outputs
                |> List.map ~f:(fun gen_file ->
-                 Generated_file.path gen_file |> Basename.to_filename)
+                 Generated_file.path gen_file |> basename_to_string)
                |> String.concat ~sep:", ")
           ];
         (match Build_plan.source_input build_plan with

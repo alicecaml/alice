@@ -23,6 +23,7 @@ module Styles : sig
 end
 
 val path_to_string : _ Absolute_path.t -> string
+val basename_to_string : Basename.t -> string
 val raw_message : ?style:Ansi_style.t -> string -> message
 
 type verb =

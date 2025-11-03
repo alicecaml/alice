@@ -10,7 +10,10 @@ module Map : Map.S with type key = t
 val equal : t -> t -> bool
 val compare : t -> t -> int
 val has_extension : t -> ext:string -> bool
-val replace_extension : t -> ext:string -> t
+
+(** Returns [None] if the path doesn't have an extension. *)
+val replace_extension : t -> ext:string -> t option
+
 val add_extension : t -> ext:string -> t
 
 (** Split a path into the sequence of names that make it up. The sequence of
