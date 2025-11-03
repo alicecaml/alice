@@ -1,7 +1,7 @@
 open! Alice_stdlib
 open Alice_hierarchy
 
-let initial_cwd = Path.absolute (Sys.getcwd ())
+let initial_cwd = Absolute_path.of_filename (Sys.getcwd ())
 
 module Variable = struct
   type t =
@@ -51,9 +51,9 @@ module Env = struct
 end
 
 module Path_variable = struct
-  type t = Path.Absolute.t list
+  type t = Absolute_path.Root_or_non_root.t list
 
-  let to_dyn = Dyn.list Path.Absolute.to_dyn
+  let to_dyn = Dyn.list Absolute_path.Root_or_non_root.to_dyn
   let name = "PATH"
   let delimiter = if Sys.win32 then ';' else ':'
 
@@ -62,12 +62,17 @@ module Path_variable = struct
     |> List.filter ~f:(Fun.negate String.is_empty)
     |> List.map ~f:(fun filename ->
       if Filename.is_relative filename
-      then initial_cwd / Path.relative filename
-      else Path.absolute filename)
+      then
+        `Non_root
+          (Absolute_path.Root_or_non_root.concat_relative
+             initial_cwd
+             (Relative_path.of_filename filename))
+      else Absolute_path.of_filename filename)
   ;;
 
   let to_raw t =
-    List.map t ~f:Path.to_filename |> String.concat ~sep:(String.make 1 delimiter)
+    List.map t ~f:Absolute_path.Root_or_non_root.to_filename
+    |> String.concat ~sep:(String.make 1 delimiter)
   ;;
 
   let get_opt ?(name = name) env = Env.get_opt env ~name |> Option.map ~f:of_raw

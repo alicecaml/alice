@@ -13,4 +13,4 @@ val run : t -> Profile.t -> args:string list -> unit
 val clean : t -> unit
 val dot_build_artifacts : t -> string
 val dot_dependencies : t -> string
-val build_dir_path_relative_to_project_root : Path.Relative.t
+val build_dir_path_relative_to_project_root : Basename.t

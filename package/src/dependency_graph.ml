@@ -62,7 +62,11 @@ let transitive_dependency_closure package =
           let dep_root =
             match dir_path with
             | `Absolute root -> root
-            | `Relative rel_root -> Path.concat (Package.root package) rel_root
+            | `Relative rel_root ->
+              `Non_root
+                (Absolute_path.Root_or_non_root.concat_relative
+                   (Package.root package)
+                   rel_root)
           in
           Package.read_root dep_root)
     in

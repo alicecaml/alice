@@ -8,7 +8,7 @@ module Build_plan : sig
 
   val deps : t -> t list
   val op : t -> Typed_op.t
-  val source_input : t -> Path.Absolute.t option
+  val source_input : t -> Absolute_path.non_root_t option
   val compiled_inputs : t -> Typed_op.Generated_file.Compiled.t list
   val outputs : t -> Typed_op.Generated_file.Set.t
 end

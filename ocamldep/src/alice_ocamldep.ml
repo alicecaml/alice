@@ -22,12 +22,13 @@ let run_lines args =
 
 module Deps = struct
   type t =
-    { output : Path.Relative.t
-    ; inputs : Path.Relative.t list
+    { output : Basename.t
+    ; inputs : Basename.t list
     }
 
   let to_dyn { output; inputs } =
-    Dyn.record [ "output", Path.to_dyn output; "inputs", Dyn.list Path.to_dyn inputs ]
+    Dyn.record
+      [ "output", Basename.to_dyn output; "inputs", Dyn.list Basename.to_dyn inputs ]
   ;;
 
   let separator_pattern = lazy (Re.str " : " |> Re.compile)
@@ -46,13 +47,16 @@ module Deps = struct
         let right = String.trim right in
         left, right
     in
-    let output = Path.absolute left |> Path.basename in
+    let output =
+      Absolute_path.of_filename_assert_non_root left |> Absolute_path.basename
+    in
     let inputs =
       if String.is_empty right
       then []
       else
         String.split_on_char right ~sep:' '
-        |> List.map ~f:(fun filename -> Path.absolute filename |> Path.basename)
+        |> List.map ~f:(fun filename ->
+          Absolute_path.of_filename_assert_non_root filename |> Absolute_path.basename)
     in
     { output; inputs }
   ;;
@@ -66,8 +70,8 @@ let native_deps path =
       [ "-one-line"
       ; "-native"
       ; "-I"
-      ; Path.dirname path |> Path.to_filename
-      ; Path.to_filename path
+      ; Absolute_path.parent path |> Absolute_path.Root_or_non_root.to_filename
+      ; Absolute_path.to_filename path
       ]
   with
   | [ line ] -> Deps.of_line line

@@ -2,10 +2,10 @@ open! Alice_stdlib
 open Alice_hierarchy
 open Alice_error
 
-let manifest_name = "Alice.toml"
+let manifest_name = Basename.of_filename "Alice.toml"
 
 let read_table path =
-  let filename = Path.to_filename path in
+  let filename = Absolute_path.to_filename path in
   let channel = In_channel.open_text filename in
   let toml_result = Toml.Parser.parse (Lexing.from_channel channel) filename in
   In_channel.close channel;
@@ -21,7 +21,7 @@ let read_package_manifest ~manifest_path =
 ;;
 
 let read_package_dir ~dir_path =
-  read_package_manifest ~manifest_path:(dir_path / Path.relative manifest_name)
+  read_package_manifest ~manifest_path:(dir_path / manifest_name)
 ;;
 
 let write_package_manifest ~manifest_path package =

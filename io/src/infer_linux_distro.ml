@@ -3,7 +3,7 @@ open Alice_hierarchy
 module Log = Alice_log
 
 let read_etc_issue () =
-  let etc_issue = Path.absolute "/etc/issue" in
+  let etc_issue = Absolute_path.of_filename_assert_non_root "/etc/issue" in
   if File_ops.exists etc_issue then Some (File_ops.read_text_file etc_issue) else None
 ;;
 

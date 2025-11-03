@@ -30,7 +30,7 @@ module Build_node = struct
     |> Name.Set.of_list
   ;;
 
-  let show_name name = Alice_ui.path_to_string (Name.path name)
+  let show_name name = Basename.to_filename (Name.path name)
   let show t = show_name t.artifact
 end
 
@@ -84,18 +84,18 @@ end
 let compilation_ops dir package_id build_dir =
   let ocamldep_cache = Ocamldep_cache.load build_dir package_id in
   let deps =
-    Dir.contents dir
+    Dir_non_root.contents dir
     |> List.filter ~f:(fun file ->
-      File.is_regular_or_link file
-      && (Path.has_extension file.path ~ext:".ml"
-          || Path.has_extension file.path ~ext:".mli"))
-    |> List.sort ~cmp:File.compare_by_path
-    |> List.map ~f:(fun (file : _ File.t) ->
+      File_non_root.is_regular_or_link file
+      && (Absolute_path.has_extension file.path ~ext:".ml"
+          || Absolute_path.has_extension file.path ~ext:".mli"))
+    |> List.sort ~cmp:File_non_root.compare_by_path
+    |> List.map ~f:(fun (file : File_non_root.t) ->
       file.path, Ocamldep_cache.get_deps ocamldep_cache ~source_path:file.path)
-    |> Path.Absolute.Map.of_list_exn
+    |> Absolute_path.Non_root_map.of_list_exn
   in
   Ocamldep_cache.store ocamldep_cache deps;
-  Path.Absolute.Map.to_list deps
+  Absolute_path.Non_root_map.to_list deps
   |> List.map ~f:(fun (source_path, (deps : Alice_ocamldep.Deps.t)) ->
     let open Typed_op in
     let open Alice_error in
@@ -118,7 +118,7 @@ let compilation_ops dir package_id build_dir =
                   "Running ocamldep on %S produced build input %S whose extension is \
                    unexpected (expected either \".cmx\" or \".cmi\")."
                   (Alice_ui.path_to_string source_path)
-                  (Alice_ui.path_to_string dep)
+                  (Basename.to_filename dep)
               ]
           | Error (`Unknown_extension _) ->
             panic
@@ -126,25 +126,25 @@ let compilation_ops dir package_id build_dir =
                   "Running ocamldep on %S produced build input %S whose extension is \
                    unrecognized."
                   (Alice_ui.path_to_string source_path)
-                  (Alice_ui.path_to_string dep)
+                  (Basename.to_filename dep)
               ])
       in
-      let source_file = Path.chop_prefix source_path ~prefix:(Dir.path dir) in
+      let source_file = Absolute_path.basename source_path in
       let direct_output =
-        Path.replace_extension source_file ~ext:".cmx"
+        Basename.replace_extension source_file ~ext:".cmx"
         |> File.Compiled.cmx_infer_role_from_name
       in
       let indirect_output =
-        Path.replace_extension source_file ~ext:".o"
+        Basename.replace_extension source_file ~ext:".o"
         |> File.Compiled.o_infer_role_from_name
       in
-      let matching_mli_file = Path.replace_extension source_path ~ext:".mli" in
+      let matching_mli_file = Absolute_path.replace_extension source_path ~ext:".mli" in
       let interface_output_if_no_matching_mli_is_present =
-        if Dir.contains dir matching_mli_file
+        if Dir_non_root.contains dir matching_mli_file
         then None
         else
           Some
-            (Path.replace_extension source_file ~ext:".cmi"
+            (Basename.replace_extension source_file ~ext:".cmi"
              |> File.Compiled.cmi_infer_role_from_name)
       in
       Compile_source
@@ -165,7 +165,7 @@ let compilation_ops dir package_id build_dir =
                   "Running ocamldep on %S produced build input %S whose extension is \
                    unexpected (expected either \".cmi\")."
                   (Alice_ui.path_to_string source_path)
-                  (Alice_ui.path_to_string dep)
+                  (Basename.to_filename dep)
               ]
           | Error (`Unknown_extension _) ->
             panic
@@ -173,12 +173,12 @@ let compilation_ops dir package_id build_dir =
                   "Running ocamldep on %S produced build input %S whose extension is \
                    unrecognized."
                   (Alice_ui.path_to_string source_path)
-                  (Alice_ui.path_to_string dep)
+                  (Basename.to_filename dep)
               ])
       in
       let direct_output =
-        Path.chop_prefix source_path ~prefix:(Dir.path dir)
-        |> Path.replace_extension ~ext:".cmi"
+        Absolute_path.basename source_path
+        |> Basename.replace_extension ~ext:".cmi"
         |> File.Compiled.cmi_infer_role_from_name
       in
       Compile_interface { direct_input; indirect_inputs; direct_output })
@@ -221,7 +221,7 @@ let cmx_files_in_build_order build_dag_compilation_only =
     Build_dag.roots build_dag_compilation_only
     |> List.filter_map ~f:(fun root ->
       match
-        Build_node.name root |> Generated_file.path |> Path.has_extension ~ext:".cmx"
+        Build_node.name root |> Generated_file.path |> Basename.has_extension ~ext:".cmx"
       with
       | false -> None
       | true ->
@@ -245,8 +245,8 @@ let create : type exe lib. (exe, lib) Package.Typed.t -> Build_dir.t -> (exe, li
   let link_library () = Link_library (Link_library.of_inputs cmx_files) in
   let exe_file =
     let exe_name =
-      let base = Path.relative (Package.name package |> Package_name.to_string) in
-      if Sys.win32 then Path.add_extension base ~ext:".exe" else base
+      let base = Basename.of_filename (Package.name package |> Package_name.to_string) in
+      if Sys.win32 then Basename.add_extension base ~ext:".exe" else base
     in
     File.Linked.exe exe_name
   in
@@ -283,7 +283,6 @@ let create_exe_plan package_typed build_dir = create package_typed build_dir |> 
 let create_lib_plan package_typed build_dir = create package_typed build_dir |> plan_lib
 
 let dot t =
-  let package = Package.Typed.package t.package_typed in
   List.fold_left
     (Build_dag.nodes t.build_dag)
     ~init:(Build_dag.to_string_graph t.build_dag)
@@ -291,10 +290,8 @@ let dot t =
       match Typed_op.source_input (Build_node.op node) with
       | None -> string_graph
       | Some source_path_abs ->
-        let source_path_rel_to_package =
-          Path.chop_prefix source_path_abs ~prefix:(Package.src_dir_path package)
-        in
-        let source_path_string = Alice_ui.path_to_string source_path_rel_to_package in
+        let source_basename = Absolute_path.basename source_path_abs in
+        let source_path_string = Basename.to_filename source_basename in
         String.Map.update string_graph ~key:(Build_node.show node) ~f:(function
           | None -> Some (String.Set.singleton source_path_string)
           | Some existing -> Some (String.Set.add source_path_string existing)))

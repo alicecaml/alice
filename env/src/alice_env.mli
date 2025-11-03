@@ -1,6 +1,8 @@
 open! Alice_stdlib
 open Alice_hierarchy
 
+val initial_cwd : Absolute_path.Root_or_non_root.t
+
 module Env : sig
   type t
   type raw = string array
@@ -13,7 +15,7 @@ module Env : sig
 end
 
 module Path_variable : sig
-  type t = Path.Absolute.t list
+  type t = Absolute_path.Root_or_non_root.t list
 
   val to_dyn : t -> Dyn.t
   val get_or_empty : ?name:string -> Env.t -> t
@@ -25,5 +27,3 @@ module Path_variable : sig
 
   val set : ?name:string -> t -> Env.t -> Env.t
 end
-
-val initial_cwd : Path.Absolute.t

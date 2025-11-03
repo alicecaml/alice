@@ -4,8 +4,8 @@ open Alice_env
 
 let find_in_search_path exe_name search_paths =
   List.find_map search_paths ~f:(fun search_path ->
-    let exe_path = Path.concat search_path exe_name in
-    if Alice_io.File_ops.exists exe_path then Some (Path.to_either exe_path) else None)
+    let exe_path = Absolute_path.Root_or_non_root.concat_basename search_path exe_name in
+    if Alice_io.File_ops.exists exe_path then Some exe_path else None)
 ;;
 
 let which exe_name =
@@ -39,13 +39,13 @@ let which exe_name =
      if ocaml isn't installed by any other means and alice has installed
      ocaml tools then we'll still be able to build ocaml programs even if the
      tools are not in the user's PATH variable. *)
-  let search_paths = search_paths @ [ Alice_root.current_bin () ] in
-  find_in_search_path (Path.relative exe_name) search_paths
+  let search_paths = search_paths @ [ `Non_root (Alice_root.current_bin ()) ] in
+  find_in_search_path (Basename.of_filename exe_name) search_paths
 ;;
 
 let try_which exe_name =
   match which exe_name with
-  | Some path -> Path.Either.to_filename path
+  | Some path -> Absolute_path.to_filename path
   | None ->
     (* Couldn't find the executable in PATH, so just return its name just in
        case the OS has some tricks up its sleeve for finding executables. *)

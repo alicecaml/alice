@@ -27,25 +27,27 @@ module Styles = struct
   let success = Ansi_style.create ~bold:true ~color:`Green ()
 end
 
-let path_to_string path =
+let path_to_string : type is_root. is_root Absolute_path.t -> string =
+  fun path ->
   match !path_style with
-  | `Native -> Path.to_filename path
+  | `Native -> Absolute_path.to_filename path
   | `Normalized ->
-    let path =
-      if Path.has_extension path ~ext:".exe" then Path.remove_extension path else path
-    in
-    let filename = Path.to_filename path in
-    let normalize_filename filename =
-      (* The start of the path will always be a period. Skip it. *)
-      let (_current_dir :: components) = Filename.to_components filename in
-      if List.is_empty components then "." else String.concat ~sep:"/" components
-    in
-    (match Path.to_either path with
-     | `Relative _ -> normalize_filename filename
-     | `Absolute path ->
-       let path = Path.chop_prefix path ~prefix:Alice_env.initial_cwd in
-       let filename = Path.to_filename path in
-       normalize_filename filename)
+    (match Absolute_path.is_root path with
+     | True -> "/"
+     | False ->
+       let path =
+         if Absolute_path.has_extension path ~ext:".exe"
+         then Absolute_path.remove_extension path
+         else path
+       in
+       let filename =
+         Absolute_path.to_filename path
+         |> Filename.chop_prefix
+              ~prefix:(Absolute_path.Root_or_non_root.to_filename Alice_env.initial_cwd)
+       in
+       (* The start of the path will always be a period. Skip it. *)
+       let (_current_dir :: components) = Filename.to_components filename in
+       if List.is_empty components then "." else String.concat ~sep:"/" components)
 ;;
 
 let raw_message ?(style = Ansi_style.default) raw = [ Pp.text raw |> Pp.tag style ]

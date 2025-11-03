@@ -15,7 +15,7 @@ let of_toml ~manifest_path_for_messages toml =
         user_exn
           (Pp.textf
              "Error while parsing toml file %S:\n"
-             (Path.to_filename manifest_path_for_messages)
+             (Absolute_path.to_filename manifest_path_for_messages)
            :: pps)
     in
     Dependency.of_toml ~manifest_path_for_messages ~name:package_name value)

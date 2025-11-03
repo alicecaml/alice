@@ -7,22 +7,29 @@ open Alice_io.Read_hierarchy
 module File_ops = Alice_io.File_ops
 
 type t =
-  { root : Path.Absolute.t
+  { root : Absolute_path.Root_or_non_root.t
   ; meta : Package_meta.t
   }
 
 let to_dyn { root; meta } =
-  Dyn.record [ "root", Path.Absolute.to_dyn root; "meta", Package_meta.to_dyn meta ]
+  Dyn.record
+    [ "root", Absolute_path.Root_or_non_root.to_dyn root
+    ; "meta", Package_meta.to_dyn meta
+    ]
 ;;
 
 let equal t { root; meta } =
-  Path.Absolute.equal t.root root && Package_meta.equal t.meta meta
+  Absolute_path.Root_or_non_root.equal t.root root && Package_meta.equal t.meta meta
 ;;
 
 let create ~root ~meta = { root; meta }
 
 let read_root root =
-  let meta = Alice_manifest.read_package_dir ~dir_path:root in
+  let meta =
+    match root with
+    | `Root dir_path -> Alice_manifest.read_package_dir ~dir_path
+    | `Non_root dir_path -> Alice_manifest.read_package_dir ~dir_path
+  in
   create ~root ~meta
 ;;
 
@@ -32,10 +39,10 @@ let id { meta; _ } = Package_meta.id meta
 let name { meta; _ } = Package_meta.name meta
 let version { meta; _ } = Package_meta.version meta
 let dependencies { meta; _ } = Package_meta.dependencies meta
-let exe_root_ml = Path.relative "main.ml"
-let lib_root_ml = Path.relative "lib.ml"
-let default_src = Path.relative "src"
-let src_dir_path t = root t / default_src
+let exe_root_ml = Basename.of_filename "main.ml"
+let lib_root_ml = Basename.of_filename "lib.ml"
+let src = Basename.of_filename "src"
+let src_dir_path t = Absolute_path.Root_or_non_root.concat_basename (root t) src
 let src_dir_exn t = src_dir_path t |> read_dir_exn
 let contains_exe t = File_ops.exists (src_dir_path t / exe_root_ml)
 let contains_lib t = File_ops.exists (src_dir_path t / lib_root_ml)

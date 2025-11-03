@@ -8,7 +8,7 @@ open Climate
 val parse_absolute_path
   :  ?doc:string
   -> string list
-  -> Path.Absolute.t option Arg_parser.t
+  -> Absolute_path.Root_or_non_root.t option Arg_parser.t
 
 val parse_project : Project.t Arg_parser.t
 val parse_profile : Profile.t Arg_parser.t

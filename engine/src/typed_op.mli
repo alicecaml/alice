@@ -11,7 +11,7 @@ end
 module Generated_file : sig
   module Compiled : sig
     type t =
-      { path : Path.Relative.t
+      { path : Basename.t
       ; role : Role.t
       }
   end
@@ -21,13 +21,13 @@ module Generated_file : sig
       | Cmxa
       | A
 
-    val path : t -> Path.Relative.t
+    val path : t -> Basename.t
   end
 
   type t =
     | Compiled of Compiled.t
     | Linked_library of Linked_library.t
-    | Linked_executable of Path.Relative.t
+    | Linked_executable of Basename.t
 
   val to_dyn : t -> Dyn.t
   val equal : t -> t -> bool
@@ -35,7 +35,7 @@ module Generated_file : sig
   module Set : Set.S with type elt = t
   module Map : Map.S with type key = t
 
-  val path : t -> Path.Relative.t
+  val path : t -> Basename.t
 end
 
 module File_type : sig
@@ -55,24 +55,24 @@ module File : sig
   module Source : sig
     type 'a t
 
-    val path : _ t -> Path.Absolute.t
+    val path : _ t -> Absolute_path.non_root_t
 
     val of_path_by_extension
-      :  Path.Absolute.t
+      :  Absolute_path.non_root_t
       -> ([ `Ml of ml t | `Mli of mli t ], [ `Unknown_extension of string ]) result
   end
 
   module Compiled : sig
     type 'a t
 
-    val path : _ t -> Path.Relative.t
+    val path : _ t -> Basename.t
     val role : _ t -> Role.t
-    val cmx_infer_role_from_name : Path.Relative.t -> cmx t
-    val cmi_infer_role_from_name : Path.Relative.t -> cmi t
-    val o_infer_role_from_name : Path.Relative.t -> o t
+    val cmx_infer_role_from_name : Basename.t -> cmx t
+    val cmi_infer_role_from_name : Basename.t -> cmi t
+    val o_infer_role_from_name : Basename.t -> o t
 
     val of_path_by_extension_infer_role_from_name
-      :  Path.Relative.t
+      :  Basename.t
       -> ( [ `Cmx of cmx t | `Cmi of cmi t | `O of o t ]
            , [ `Unknown_extension of string ] )
            result
@@ -86,9 +86,9 @@ module File : sig
     val to_dyn : _ t -> Dyn.t
     val lib_cmxa : cmxa t
     val lib_a : a t
-    val exe : Path.Relative.t -> exe t
+    val exe : Basename.t -> exe t
     val generated_file : _ t -> Generated_file.t
-    val path : _ t -> Path.Relative.t
+    val path : _ t -> Basename.t
   end
 end
 
@@ -135,6 +135,6 @@ type t =
 
 val equal : t -> t -> bool
 val to_dyn : t -> Dyn.t
-val source_input : t -> Path.Absolute.t option
+val source_input : t -> Absolute_path.non_root_t option
 val compiled_inputs : t -> Generated_file.Compiled.t list
 val outputs : t -> Generated_file.t list

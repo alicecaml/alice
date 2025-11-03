@@ -13,16 +13,17 @@ let parse_manifest_path_opt =
     ~doc:
       (sprintf
          "Read project metadata from FILE instead of %s."
-         Alice_manifest.manifest_name)
+         (Basename.to_filename Alice_manifest.manifest_name))
 ;;
 
 let parse_absolute_path ?doc names =
   let open Arg_parser in
   let+ path = named_opt names file ?doc ~value_name:"PATH" in
   Option.map path ~f:(fun path_str ->
-    match Path.of_filename path_str with
+    match Either_path.of_filename path_str with
     | `Absolute p -> p
-    | `Relative p -> Path.concat Alice_env.initial_cwd p)
+    | `Relative p ->
+      `Non_root (Absolute_path.Root_or_non_root.concat_relative Alice_env.initial_cwd p))
 ;;
 
 let parse_manifest_path_and_validate =
@@ -31,20 +32,30 @@ let parse_manifest_path_and_validate =
   match manifest_path with
   | Some manifest_path_str ->
     let absolute_path =
-      match Path.of_filename manifest_path_str with
-      | `Absolute p -> p
-      | `Relative p -> Path.concat Alice_env.initial_cwd p
+      match Either_path.of_filename manifest_path_str with
+      | `Absolute (`Non_root p) -> p
+      | `Absolute (`Root p) ->
+        user_exn
+          [ Pp.textf
+              "The manifest path %S was specified, but this is a root directory which is \
+               not allowed."
+              (Absolute_path.to_filename p)
+          ]
+      | `Relative p ->
+        Absolute_path.Root_or_non_root.concat_relative Alice_env.initial_cwd p
     in
     (match File_ops.exists absolute_path with
      | true -> absolute_path
      | false ->
        user_exn
          [ Pp.text "Can't find file passed to --manifest-path.\n"
-         ; Pp.textf "%S does not exist." (Path.to_filename absolute_path)
+         ; Pp.textf "%S does not exist." (Absolute_path.to_filename absolute_path)
          ])
   | None ->
     let path =
-      Path.concat Alice_env.initial_cwd (Path.relative Alice_manifest.manifest_name)
+      Absolute_path.Root_or_non_root.concat_basename
+        Alice_env.initial_cwd
+        Alice_manifest.manifest_name
     in
     (match File_ops.exists path with
      | true -> path
@@ -52,8 +63,8 @@ let parse_manifest_path_and_validate =
        user_exn
          [ Pp.textf
              "This command must be run from a directory containing a file named %S.\n"
-             Alice_manifest.manifest_name
-         ; Pp.textf "The file %S does not exist.\n" (Path.to_filename path)
+             (Basename.to_filename Alice_manifest.manifest_name)
+         ; Pp.textf "The file %S does not exist.\n" (Alice_ui.path_to_string path)
          ; Pp.text
              "Alternatitvely, pass the location of a metadata file with --metadata-path."
          ])
@@ -62,7 +73,8 @@ let parse_manifest_path_and_validate =
 let parse_project =
   let open Arg_parser in
   let+ manifest_path = parse_manifest_path_and_validate in
-  Alice_package.Package.read_root (Path.dirname manifest_path) |> Project.of_package
+  Alice_package.Package.read_root (Absolute_path.parent manifest_path)
+  |> Project.of_package
 ;;
 
 let parse_profile =

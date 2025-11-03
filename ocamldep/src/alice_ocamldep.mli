@@ -3,8 +3,8 @@ open Alice_hierarchy
 
 module Deps : sig
   type t =
-    { output : Path.Relative.t (** The path to the compiled output of a file. *)
-    ; inputs : Path.Relative.t list
+    { output : Basename.t (** The path to the compiled output of a file. *)
+    ; inputs : Basename.t list
       (** The files which must be generated before compiling a file. *)
     }
 
@@ -16,4 +16,4 @@ end
     well as the files which must be generated before compiling the given file
     ([Deps.inputs]). Returned paths are relative to the directory containing
     [file]. *)
-val native_deps : Path.Absolute.t -> Deps.t
+val native_deps : Absolute_path.non_root_t -> Deps.t

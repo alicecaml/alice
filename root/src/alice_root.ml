@@ -4,12 +4,14 @@ open Alice_hierarchy
 let xdg () = Alice_io.Xdg.create ()
 
 let base_dir_lazy =
-  lazy (Path.concat (Xdg.home_dir (xdg ()) |> Path.absolute) (Path.relative ".alice"))
+  lazy
+    ((Xdg.home_dir (xdg ()) |> Absolute_path.of_filename_assert_non_root)
+     / Basename.of_filename ".alice")
 ;;
 
 let base_dir () = Lazy.force base_dir_lazy
-let roots_dir () = Path.concat (base_dir ()) (Path.relative "roots")
-let current () = Path.concat (base_dir ()) (Path.relative "current")
-let current_bin () = Path.concat (current ()) (Path.relative "bin")
-let completions_dir () = Path.concat (base_dir ()) (Path.relative "completions")
-let env_dir () = Path.concat (base_dir ()) (Path.relative "env")
+let roots_dir () = base_dir () / Basename.of_filename "roots"
+let current () = base_dir () / Basename.of_filename "current"
+let current_bin () = current () / Basename.of_filename "bin"
+let completions_dir () = base_dir () / Basename.of_filename "completions"
+let env_dir () = base_dir () / Basename.of_filename "env"

@@ -9,11 +9,16 @@ type t =
   ; package : Package.t
   }
 
-let build_dir_path_relative_to_project_root = Path.relative "build"
+let build_dir_path_relative_to_project_root = Basename.of_filename "build"
 
 let of_package package =
   let root = Package.root package in
-  let build_dir = Build_dir.of_path (root / build_dir_path_relative_to_project_root) in
+  let build_dir =
+    Build_dir.of_path
+      (Absolute_path.Root_or_non_root.concat_basename
+         root
+         build_dir_path_relative_to_project_root)
+  in
   { build_dir; package }
 ;;
 
@@ -87,14 +92,16 @@ let run t profile ~args =
   in
   build_package_typed t package_typed profile;
   let exe_name =
-    let exe_name = Package.name t.package |> Package_name.to_string |> Path.relative in
-    if Sys.win32 then Path.add_extension exe_name ~ext:".exe" else exe_name
+    let exe_name =
+      Package.name t.package |> Package_name.to_string |> Basename.of_filename
+    in
+    if Sys.win32 then Basename.add_extension exe_name ~ext:".exe" else exe_name
   in
   let exe_path =
     Build_dir.package_exe_dir t.build_dir (Package.id t.package) profile / exe_name
   in
-  let args = Path.to_filename exe_name :: args in
-  let exe_filename = Path.to_filename exe_path in
+  let args = Basename.to_filename exe_name :: args in
+  let exe_filename = Absolute_path.to_filename exe_path in
   println (verb_message `Running (path_to_string exe_path));
   print_newline ();
   match Alice_io.Process.Blocking.run exe_filename ~args with

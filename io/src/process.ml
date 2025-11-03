@@ -77,10 +77,10 @@ module Blocking = struct
         ~args
     =
     Temp_dir.with_ ~prefix:"alice." ~suffix:".stdout" ~f:(fun dir ->
-      let path = Path.concat dir (Path.relative "stdout") in
+      let path = dir / Basename.of_filename "stdout" in
       let perms = 0o755 in
       let output_file_desc =
-        Unix.openfile (Path.to_filename path) [ O_CREAT; O_RDWR ] perms
+        Unix.openfile (Absolute_path.to_filename path) [ O_CREAT; O_RDWR ] perms
       in
       let result = run ?env ~stdin ~stdout:output_file_desc ~stderr prog ~args in
       let result =

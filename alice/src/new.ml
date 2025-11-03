@@ -6,34 +6,37 @@ open Alice_error
 open Alice_package
 
 let make_project name path kind =
-  let src = Package.default_src in
-  let manifest_path = Path.relative Alice_manifest.manifest_name in
-  if File_ops.exists (path / manifest_path)
+  let src_path = Absolute_path.Root_or_non_root.concat_basename path Package.src in
+  let manifest_path =
+    Absolute_path.Root_or_non_root.concat_basename path Alice_manifest.manifest_name
+  in
+  if File_ops.exists manifest_path
   then
     user_exn
       [ Pp.textf
           "Refusing to create project because destination directory exists and contains \
            project manifest (%s).\n"
-          (Alice_ui.path_to_string (path / manifest_path))
+          (Alice_ui.path_to_string manifest_path)
       ; Pp.text "Delete this file before proceeding."
       ];
-  if File_ops.exists (path / src)
+  if File_ops.exists src_path
   then
-    if File_ops.is_directory (path / src)
+    if File_ops.is_directory src_path
     then
       user_exn
         [ Pp.textf
             "Refusing to create project because destination directory exists and \
              contains src directory (%s).\n"
-            (Alice_ui.path_to_string (path / src))
+            (Alice_ui.path_to_string src_path)
         ; Pp.text "Delete this directory before proceeding."
         ]
     else
       user_exn
         [ Pp.textf
             "Refusing to create project because destination directory exists and \
-             contains a file named \"src\" (%s).\n"
-            (Alice_ui.path_to_string (path / src))
+             contains a file named %S (%s).\n"
+            (Basename.to_filename Package.src)
+            (Alice_ui.path_to_string src_path)
         ; Pp.text "Delete this file before proceeding."
         ];
   let manifest =
@@ -44,19 +47,21 @@ let make_project name path kind =
         }
       ~dependencies:None
   in
-  File_ops.mkdir_p (path / src);
+  File_ops.mkdir_p src_path;
   File_ops.write_text_file
-    (path / Path.relative ".gitignore")
-    (Path.to_filename Alice_engine.Project.build_dir_path_relative_to_project_root);
-  Alice_manifest.write_package_manifest ~manifest_path:(path / manifest_path) manifest;
+    (Absolute_path.Root_or_non_root.concat_basename
+       path
+       (Basename.of_filename ".gitignore"))
+    (Basename.to_filename Alice_engine.Project.build_dir_path_relative_to_project_root);
+  Alice_manifest.write_package_manifest ~manifest_path manifest;
   match kind with
   | `Exe ->
     File_ops.write_text_file
-      (path / src / Package.exe_root_ml)
+      (src_path / Package.exe_root_ml)
       "let () = print_endline \"Hello, World!\""
   | `Lib ->
     File_ops.write_text_file
-      (path / src / Package.lib_root_ml)
+      (src_path / Package.lib_root_ml)
       "let add lhs rhs = lhs + rhs"
 ;;
 
@@ -75,7 +80,11 @@ let new_ =
   let path =
     match path with
     | Some path -> path
-    | None -> Path.concat Alice_env.initial_cwd (Path.relative name)
+    | None ->
+      `Non_root
+        (Absolute_path.Root_or_non_root.concat_basename
+           Alice_env.initial_cwd
+           (Basename.of_filename name))
   in
   let kind =
     match exe, lib with
@@ -89,10 +98,15 @@ let new_ =
     | `Lib -> "library"
   in
   let open Alice_ui in
+  let path_string =
+    match path with
+    | `Root p -> path_to_string p
+    | `Non_root p -> path_to_string p
+  in
   println
     (verb_message
        `Creating
-       (sprintf "new %s package %S in %s" kind_string name (Alice_ui.path_to_string path)));
+       (sprintf "new %s package %S in %s" kind_string name path_string));
   make_project package_name path kind;
   print_newline ()
 ;;

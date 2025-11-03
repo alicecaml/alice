@@ -17,16 +17,16 @@ let op_command op package profile build_dir ~dep_libs =
         Build_dir.package_internal_dir build_dir package_id profile
       in
       [ "-I"
-      ; Path.Absolute.to_filename dep_lib_dir
+      ; Absolute_path.to_filename dep_lib_dir
       ; "-I"
-      ; Path.Absolute.to_filename dep_internal_dir
+      ; Absolute_path.to_filename dep_internal_dir
       ])
   in
   let lib_cmxa_files =
     List.map dep_libs ~f:(fun dep_lib ->
       let package_id = Package.Typed.package dep_lib |> Package.id in
       let dep_lib_dir = Build_dir.package_lib_dir build_dir package_id profile in
-      dep_lib_dir / Linked.path Linked.lib_cmxa |> Path.to_filename)
+      dep_lib_dir / Linked.path Linked.lib_cmxa |> Absolute_path.to_filename)
   in
   let package_id = Package.id package in
   let abs_path_of_gen_file =
@@ -40,13 +40,13 @@ let op_command op package profile build_dir ~dep_libs =
       ~args:
         (lib_include_args
          @ [ "-I"
-           ; internal_dir |> Path.Absolute.to_filename
+           ; internal_dir |> Absolute_path.to_filename
            ; "-c"
            ; "-o"
            ; Compiled.generated_file direct_output
              |> abs_path_of_gen_file
-             |> Path.Absolute.to_filename
-           ; Source.path direct_input |> Path.Absolute.to_filename
+             |> Absolute_path.to_filename
+           ; Source.path direct_input |> Absolute_path.to_filename
            ])
   in
   match (op : Typed_op.t) with
@@ -60,39 +60,39 @@ let op_command op package profile build_dir ~dep_libs =
       ~args:
         (lib_include_args
          @ [ "-I"
-           ; internal_dir |> Path.Absolute.to_filename
+           ; internal_dir |> Absolute_path.to_filename
            ; "-I"
-           ; lib_dir |> Path.Absolute.to_filename
+           ; lib_dir |> Absolute_path.to_filename
            ; "-a"
            ; "-o"
            ; Linked.generated_file direct_output
              |> abs_path_of_gen_file
-             |> Path.Absolute.to_filename
+             |> Absolute_path.to_filename
            ]
          @ lib_cmxa_files
          @ List.map direct_inputs ~f:(fun compiled ->
            Compiled.generated_file compiled
            |> abs_path_of_gen_file
-           |> Path.Absolute.to_filename))
+           |> Absolute_path.to_filename))
   | Link_executable { direct_inputs; direct_output } ->
     Profile.ocamlopt_command
       profile
       ~args:
         (lib_include_args
          @ [ "-I"
-           ; internal_dir |> Path.Absolute.to_filename
+           ; internal_dir |> Absolute_path.to_filename
            ; "-I"
-           ; lib_dir |> Path.Absolute.to_filename (* so exe can depend on library *)
+           ; lib_dir |> Absolute_path.to_filename (* so exe can depend on library *)
            ; "-o"
            ; Linked.generated_file direct_output
              |> abs_path_of_gen_file
-             |> Path.Absolute.to_filename
+             |> Absolute_path.to_filename
            ]
          @ lib_cmxa_files
          @ List.map direct_inputs ~f:(fun compiled ->
            Compiled.generated_file compiled
            |> abs_path_of_gen_file
-           |> Path.Absolute.to_filename))
+           |> Absolute_path.to_filename))
 ;;
 
 module Sequential = struct
@@ -173,7 +173,7 @@ module Sequential = struct
               "Building targets: %s"
               (Generated_file.Set.to_list outputs
                |> List.map ~f:(fun gen_file ->
-                 Generated_file.path gen_file |> path_to_string)
+                 Generated_file.path gen_file |> Basename.to_filename)
                |> String.concat ~sep:", ")
           ];
         (match Build_plan.source_input build_plan with

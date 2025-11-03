@@ -2,35 +2,35 @@ open! Alice_stdlib
 open Alice_hierarchy
 open Alice_package
 
-type t = { path : Path.Absolute.t }
+type t = { path : Absolute_path.non_root_t }
 
 let of_path path = { path }
 let path { path } = path
 
 let package_dir t package_id =
   t.path
-  / Path.relative "packages"
-  / Path.relative (Package_id.name_dash_version_string package_id)
+  / Basename.of_filename "packages"
+  / Basename.of_filename (Package_id.name_dash_version_string package_id)
 ;;
 
 let package_ocamldeps_cache_file t package_id =
-  package_dir t package_id / Path.relative "ocamldeps_cache.marshal"
+  package_dir t package_id / Basename.of_filename "ocamldeps_cache.marshal"
 ;;
 
 let package_base_dir t package_id profile =
-  package_dir t package_id / Path.relative (Profile.name profile)
+  package_dir t package_id / Basename.of_filename (Profile.name profile)
 ;;
 
 let package_internal_dir t package_id profile =
-  package_base_dir t package_id profile / Path.relative "internal"
+  package_base_dir t package_id profile / Basename.of_filename "internal"
 ;;
 
 let package_lib_dir t package_id profile =
-  package_base_dir t package_id profile / Path.relative "lib"
+  package_base_dir t package_id profile / Basename.of_filename "lib"
 ;;
 
 let package_exe_dir t package_id profile =
-  package_base_dir t package_id profile / Path.relative "exe"
+  package_base_dir t package_id profile / Basename.of_filename "exe"
 ;;
 
 let package_dirs t package_id profile =

@@ -9,13 +9,13 @@ let rm_rf path =
        behaviour of "rm -f". *)
     ()
   | Ok file ->
-    File.traverse_bottom_up file ~f:(fun file ->
-      match (file.kind : _ File.kind) with
-      | Regular | Link | Unknown -> Unix.unlink (Path.to_filename file.path)
+    File_non_root.traverse_bottom_up file ~f:(fun file ->
+      match (file.kind : File_non_root.kind) with
+      | Regular | Link | Unknown -> Unix.unlink (Absolute_path.to_filename file.path)
       | Dir _ ->
         (* The directory will be empty by this point because the traversal is
            bottom-up. *)
-        Unix.rmdir (Path.to_filename file.path))
+        Unix.rmdir (Absolute_path.to_filename file.path))
 ;;
 
 let mkdir_p_filename path =
@@ -47,14 +47,25 @@ let mkdir_p_filename path =
     else Unix.mkdir partial_path perms)
 ;;
 
-let mkdir_p path = mkdir_p_filename (Path.to_filename path)
+let mkdir_p : type is_root. is_root Absolute_path.t -> unit =
+  fun path ->
+  match Absolute_path.is_root path with
+  | True -> ()
+  | False -> mkdir_p_filename (Absolute_path.to_filename path)
+;;
 
 let recursive_move_hier_between_dirs ~src_hier ~dst =
-  File.traverse_bottom_up src_hier ~f:(fun src_file ->
-    let relative_path = Path.chop_prefix src_file.path ~prefix:src_hier.path in
-    let dst_path = Path.concat dst relative_path in
-    mkdir_p_filename (Filename.dirname (Path.to_filename dst_path));
-    if File.is_dir src_file
+  File_non_root.traverse_bottom_up src_hier ~f:(fun src_file ->
+    let relative_path_filename =
+      Filename.chop_prefix
+        (Absolute_path.to_filename src_file.path)
+        ~prefix:(Absolute_path.to_filename src_hier.path)
+    in
+    let dst_path_filename =
+      Filename.concat (Absolute_path.to_filename dst) relative_path_filename
+    in
+    mkdir_p_filename (Filename.dirname dst_path_filename);
+    if File_non_root.is_dir src_file
     then (
       (* If the file is a directory then don't call [rename] to move it.
          Instead, create a new directory with the same name using [mkdir_p] and
@@ -65,56 +76,64 @@ let recursive_move_hier_between_dirs ~src_hier ~dst =
          [Unix.rmdir] rather than [rm_rf], which prevents a mistake in this
          function from accidentally deleting an important directory
          ([Unix.rmdir] only deletes empty directories). *)
-      mkdir_p dst_path;
-      Unix.rmdir (Path.to_filename src_file.path))
-    else Fileutils.mv (Path.to_filename src_file.path) (Path.to_filename dst_path))
+      mkdir_p_filename dst_path_filename;
+      Unix.rmdir (Absolute_path.to_filename src_file.path))
+    else Fileutils.mv (Absolute_path.to_filename src_file.path) dst_path_filename)
 ;;
 
 let recursive_move_between_dirs ~src ~dst =
-  if Sys.file_exists (Path.to_filename dst)
+  if Sys.file_exists (Absolute_path.to_filename dst)
   then
-    if Sys.is_directory (Path.to_filename dst)
+    if Sys.is_directory (Absolute_path.to_filename dst)
     then ()
     else
       panic
         [ Pp.textf
             "Tried moving files to %S but that file is not a directory."
-            (Path.to_filename dst)
+            (Absolute_path.to_filename dst)
         ]
   else
     panic
       [ Pp.textf
           "Tried moving files to %S but that directory does not exist."
-          (Path.to_filename dst)
+          (Absolute_path.to_filename dst)
       ];
   match Read_hierarchy.read src with
   | Error `Not_found ->
     panic
       [ Pp.textf
           "Tried moving files from %S but that that directory does not exist."
-          (Path.to_filename src)
+          (Absolute_path.to_filename src)
       ]
   | Ok src_hier ->
-    if not (File.is_dir src_hier)
+    if not (File_non_root.is_dir src_hier)
     then
       panic
         [ Pp.textf
             "Tried moving files from %S but that file is not a directory."
-            (Path.to_filename src)
+            (Absolute_path.to_filename src)
         ];
     recursive_move_hier_between_dirs ~src_hier ~dst
 ;;
 
 let cp_rf ~src ~dst =
-  Fileutils.cp ~recurse:true ~force:Force [ Path.to_filename src ] (Path.to_filename dst)
+  Fileutils.cp
+    ~recurse:true
+    ~force:Force
+    [ Absolute_path.to_filename src ]
+    (Absolute_path.to_filename dst)
 ;;
 
 let cp_f ~src ~dst =
-  Fileutils.cp ~recurse:false ~force:Force [ Path.to_filename src ] (Path.to_filename dst)
+  Fileutils.cp
+    ~recurse:false
+    ~force:Force
+    [ Absolute_path.to_filename src ]
+    (Absolute_path.to_filename dst)
 ;;
 
-let exists path = Sys.file_exists (Path.to_filename path)
-let is_directory path = Sys.is_directory (Path.to_filename path)
+let exists path = Sys.file_exists (Absolute_path.to_filename path)
+let is_directory path = Sys.is_directory (Absolute_path.to_filename path)
 
 let with_out_channel path ~mode ~f =
   let open_channel =
@@ -122,7 +141,7 @@ let with_out_channel path ~mode ~f =
     | `Text -> Out_channel.open_text
     | `Bin -> Out_channel.open_bin
   in
-  let channel = open_channel (Path.to_filename path) in
+  let channel = open_channel (Absolute_path.to_filename path) in
   let ret = f channel in
   Out_channel.close channel;
   ret
@@ -139,7 +158,7 @@ let with_in_channel path ~mode ~f =
     | `Text -> In_channel.open_text
     | `Bin -> In_channel.open_bin
   in
-  let in_channel = open_channel (Path.to_filename path) in
+  let in_channel = open_channel (Absolute_path.to_filename path) in
   let ret = f in_channel in
   In_channel.close in_channel;
   ret
@@ -150,8 +169,10 @@ let read_text_file path =
 ;;
 
 let mtime path =
-  let stats = Unix.stat (Path.to_filename path) in
+  let stats = Unix.stat (Absolute_path.to_filename path) in
   stats.st_mtime
 ;;
 
-let symlink ~src ~dst = Unix.symlink (Path.to_filename src) (Path.to_filename dst)
+let symlink ~src ~dst =
+  Unix.symlink (Absolute_path.to_filename src) (Absolute_path.to_filename dst)
+;;

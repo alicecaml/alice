@@ -70,7 +70,7 @@ end|}
     File_ops.mkdir_p (Alice_root.env_dir ());
     let make_env_file filename text =
       File_ops.write_text_file
-        (Path.concat (Alice_root.env_dir ()) (Path.relative filename))
+        (Alice_root.env_dir () / Basename.of_filename filename)
         text
     in
     make_env_file "env.bash" bash_src;
@@ -81,7 +81,7 @@ end|}
       (raw_message
          (sprintf
             "Installed env scripts to '%s'."
-            (Path.to_filename (Alice_root.env_dir ()))))
+            (Absolute_path.to_filename (Alice_root.env_dir ()))))
   ;;
 end
 
@@ -110,7 +110,7 @@ module Completion_script = struct
     File_ops.mkdir_p (Alice_root.completions_dir ());
     let make_completion_file filename text =
       File_ops.write_text_file
-        (Path.concat (Alice_root.completions_dir ()) (Path.relative filename))
+        (Alice_root.completions_dir () / Basename.of_filename filename)
         text
     in
     make_completion_file "bash.sh" (bash_src ());
@@ -118,7 +118,7 @@ module Completion_script = struct
       (raw_message
          (sprintf
             "Installed completion scripts to '%s'."
-            (Path.to_filename (Alice_root.completions_dir ()))))
+            (Absolute_path.to_filename (Alice_root.completions_dir ()))))
   ;;
 end
 

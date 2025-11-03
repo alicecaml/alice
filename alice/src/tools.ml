@@ -3,12 +3,12 @@ open Alice_hierarchy
 open Climate
 
 let panic_if_hashes_don't_match path expected_hash =
-  let actual_hash = Sha256.file (Path.to_filename path) in
+  let actual_hash = Sha256.file (Absolute_path.to_filename path) in
   if Sha256.equal actual_hash expected_hash
   then ()
   else
     Alice_error.panic
-      [ Pp.textf "Hash mismatch for file: %s" (Path.to_filename path)
+      [ Pp.textf "Hash mismatch for file: %s" (Absolute_path.to_filename path)
       ; Pp.newline
       ; Pp.textf "Expected hash: %s" (Sha256.to_hex expected_hash)
       ; Pp.newline
@@ -24,7 +24,7 @@ module Remote_tarball = struct
     ; version : string
     ; url_base : string
     ; url_file : string
-    ; top_level_dir : Path.Relative.t
+    ; top_level_dir : Basename.t
     ; sha256 : Sha256.t
     }
 
@@ -33,7 +33,7 @@ module Remote_tarball = struct
     ; version
     ; url_base
     ; url_file
-    ; top_level_dir = Path.relative top_level_dir
+    ; top_level_dir = Basename.of_filename top_level_dir
     ; sha256 = Sha256.of_hex sha256
     }
   ;;
@@ -42,13 +42,13 @@ module Remote_tarball = struct
     let url = String.cat url_base url_file in
     let open Alice_ui in
     Temp_dir.with_ ~prefix:"alice." ~suffix:".tools" ~f:(fun dir ->
-      let tarball_file = Path.concat dir (Path.relative (sprintf "%s.tar.gz" name)) in
+      let tarball_file = dir / Basename.of_filename (sprintf "%s.tar.gz" name) in
       println (verb_message `Fetching (sprintf "%s.%s (%s)..." name version url_file));
       Fetch.fetch ~url ~output_file:tarball_file;
       panic_if_hashes_don't_match tarball_file sha256;
       println (verb_message `Unpacking (sprintf "%s.%s..." name version));
       Extract.extract ~tarball_file ~output_dir:dir;
-      File_ops.recursive_move_between_dirs ~src:(Path.concat dir top_level_dir) ~dst;
+      File_ops.recursive_move_between_dirs ~src:(dir / top_level_dir) ~dst;
       print_newline ();
       println
         (raw_message
@@ -57,7 +57,7 @@ module Remote_tarball = struct
               "Successfully installed %s.%s to '%s'!\n"
               name
               version
-              (Path.to_filename dst))))
+              (Absolute_path.to_filename dst))))
   ;;
 end
 
@@ -308,12 +308,12 @@ module Root = struct
   open Alice_io
 
   type t =
-    { name : string
+    { name : Basename.t
     ; remote_tarballs_by_target : Remote_tarballs.t Target.Map.t
     }
 
   let root_5_3_1 =
-    { name = "5.3.1+relocatable"
+    { name = Basename.of_filename "5.3.1+relocatable"
     ; remote_tarballs_by_target =
         Target.Map.of_list_exn
           [ ( Target.create ~os:Linux ~arch:Aarch64 ~linked:Static
@@ -341,26 +341,27 @@ module Root = struct
       Alice_error.user_exn
         [ Pp.textf
             "Root %s is not available for platform %s-%s (%sally linked)"
-            t.name
+            (Basename.to_filename t.name)
             (Target.Os.to_string target.os)
             (Target.Arch.to_string target.arch)
             (Target.Linked.to_string target.linked)
         ]
   ;;
 
-  let dir { name; _ } = Path.concat (Alice_root.roots_dir ()) (Path.relative name)
+  let dir { name; _ } = Alice_root.roots_dir () / name
 
   let install t ~target ~compiler_only ~global =
-    let remote_tarballs = choose_remote_tarballs t ~target in
-    let dst =
-      match global with
-      | Some global -> global
-      | None -> dir t
+    let install_to dst =
+      Alice_io.File_ops.mkdir_p dst;
+      let remote_tarballs = choose_remote_tarballs t ~target in
+      if compiler_only
+      then Remote_tarballs.get_compiler remote_tarballs ~dst
+      else Remote_tarballs.get_all remote_tarballs ~dst
     in
-    Alice_io.File_ops.mkdir_p dst;
-    if compiler_only
-    then Remote_tarballs.get_compiler remote_tarballs ~dst
-    else Remote_tarballs.get_all remote_tarballs ~dst
+    match (global : Absolute_path.Root_or_non_root.t option) with
+    | Some (`Non_root dst) -> install_to dst
+    | Some (`Root dst) -> install_to dst
+    | None -> install_to (dir t)
   ;;
 
   let make_current t =
@@ -379,9 +380,9 @@ module Root = struct
   let conv =
     let open Arg_parser in
     enum
-      ~eq:(fun a b -> String.equal a.name b.name)
+      ~eq:(fun a b -> Basename.equal a.name b.name)
       ~default_value_name:"ROOT"
-      [ root_5_3_1.name, root_5_3_1 ]
+      [ Basename.to_filename root_5_3_1.name, root_5_3_1 ]
   ;;
 end
 
@@ -424,11 +425,12 @@ module Shell = struct
     let bin_dir =
       match root with
       | None -> Alice_root.current_bin ()
-      | Some root -> Path.concat (Root.dir root) (Path.relative "bin")
+      | Some root -> Root.dir root / Basename.of_filename "bin"
     in
     match t with
-    | Bash | Zsh -> sprintf "export PATH=\"%s:$PATH\"" (Path.to_filename bin_dir)
-    | Fish -> sprintf "fish_add_path --prepend --path \"%s\"" (Path.to_filename bin_dir)
+    | Bash | Zsh -> sprintf "export PATH=\"%s:$PATH\"" (Absolute_path.to_filename bin_dir)
+    | Fish ->
+      sprintf "fish_add_path --prepend --path \"%s\"" (Absolute_path.to_filename bin_dir)
   ;;
 end
 
@@ -441,7 +443,8 @@ let install =
       [ "r"; "root" ]
       Root.conv
       ~default
-      ~doc:(sprintf "Version to install. [default = %s]" default.name)
+      ~doc:
+        (sprintf "Version to install. [default = %s]" (Basename.to_filename default.name))
   and+ compiler_only =
     flag [ "c"; "compiler-only" ] ~doc:"Only install the OCaml compiler."
   and+ global =
@@ -455,7 +458,9 @@ let install =
     let open Alice_ui in
     println
       (raw_message
-         (sprintf "No current root was found so making %s the current root." root.name));
+         (sprintf
+            "No current root was found so making %s the current root."
+            (Basename.to_filename root.name)));
     Root.make_current root)
 ;;
 
@@ -488,8 +493,8 @@ let change =
     Alice_error.panic
       [ Pp.textf
           "Root %s is not installed. Run `alice tools get %s` first."
-          root.name
-          root.name
+          (Basename.to_filename root.name)
+          (Basename.to_filename root.name)
       ]
 ;;
 
@@ -504,7 +509,7 @@ let exec =
   let open Alice_env in
   let env = Env.current () in
   let path_variable = Path_variable.get_or_empty env in
-  let augmented_path_variable = Alice_root.current_bin () :: path_variable in
+  let augmented_path_variable = `Non_root (Alice_root.current_bin ()) :: path_variable in
   let augmented_env = Path_variable.set augmented_path_variable env in
   match Alice_io.Process.Blocking.run ~env:(`Env augmented_env) prog ~args with
   | Error `Prog_not_available ->

@@ -12,7 +12,7 @@ let parse_field_opt ~manifest_path_for_messages key toml_table ~f =
       user_exn
         [ Pp.textf
             "Error while parsing toml file %S:\n"
-            (Path.to_filename manifest_path_for_messages)
+            (Absolute_path.to_filename manifest_path_for_messages)
         ; Pp.textf
             "Expected field %S to contain a %s, but instead found:\n"
             (Table.Key.to_string key)
@@ -28,7 +28,7 @@ let parse_field ~manifest_path_for_messages key toml_table ~f =
     user_exn
       [ Pp.textf
           "Error while parsing toml file %S:\nCan't find required field %S."
-          (Path.to_filename manifest_path_for_messages)
+          (Absolute_path.to_filename manifest_path_for_messages)
           (Table.Key.to_string key)
       ]
 ;;
@@ -43,7 +43,7 @@ let check_for_extraneous_fields ~manifest_path_for_messages ~all_keys toml_table
          user_exn
            [ Pp.textf
                "Error while parsing toml file %S:\n"
-               (Path.to_filename manifest_path_for_messages)
+               (Absolute_path.to_filename manifest_path_for_messages)
            ; Pp.textf "Unexpected key: %s" key
            ]
        | true -> ())

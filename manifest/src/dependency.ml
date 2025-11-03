@@ -20,7 +20,7 @@ let of_toml ~manifest_path_for_messages ~name toml_value =
       toml_table;
     let path =
       Fields.parse_field ~manifest_path_for_messages Keys.path toml_table ~f:(function
-        | Toml.Types.TString path -> `Ok (Path.of_filename path)
+        | Toml.Types.TString path -> `Ok (Either_path.of_filename path)
         | _ -> `Expected "string")
     in
     let source = Dependency_source.Local_directory path in
@@ -29,7 +29,7 @@ let of_toml ~manifest_path_for_messages ~name toml_value =
     user_exn
       [ Pp.textf
           "Error while parsing toml file %S:\n"
-          (Path.to_filename manifest_path_for_messages)
+          (Absolute_path.to_filename manifest_path_for_messages)
       ; Pp.text "Expected dependency to be a table or string, but instead found:\n"
       ; Pp.text (Toml.Printer.string_of_value other)
       ]
@@ -40,7 +40,7 @@ let to_toml t =
   let source = Dependency.source t in
   let (Dependency_source.Local_directory path) = source in
   let table =
-    [ Keys.path, Toml.Types.TString (Path.Either.to_filename path) ]
+    [ Keys.path, Toml.Types.TString (Either_path.to_filename path) ]
     |> Toml.Types.Table.of_key_values
   in
   let rhs = Toml.Types.TTable table in

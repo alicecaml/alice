@@ -23,26 +23,21 @@ let entries_without_current_or_parent dir_path =
 ;;
 
 let read base_path =
-  match Sys.file_exists (Path.to_filename base_path) with
+  match Sys.file_exists (Absolute_path.to_filename base_path) with
   | false -> Error `Not_found
   | true ->
     let rec loop path =
-      let stat = Unix.lstat (Path.to_filename path) in
+      let stat = Unix.lstat (Absolute_path.to_filename path) in
       let kind =
         match stat.st_kind with
-        | S_REG -> File.Regular
+        | S_REG -> File_non_root.Regular
         | S_LNK -> Link
         | S_DIR ->
           let files =
-            entries_without_current_or_parent (Path.to_filename path)
+            entries_without_current_or_parent (Absolute_path.to_filename path)
             |> List.map ~f:(fun name ->
-              match Path.of_filename name with
-              | `Absolute _ ->
-                Alice_error.panic
-                  [ Pp.textf "Unexpected absolute path in direcotry entry: %s" name ]
-              | `Relative name ->
-                let path = Path.concat path name in
-                loop path)
+              let basename = Basename.of_filename name in
+              loop (path / basename))
           in
           Dir files
         | _ -> Unknown
@@ -57,7 +52,7 @@ let read_dir path =
   | Error `Not_found ->
     Error [ Pp.textf "Directory not found: %s" (Alice_ui.path_to_string path) ]
   | Ok file ->
-    (match File.as_dir file with
+    (match File_non_root.as_dir file with
      | Some dir -> Ok dir
      | None -> Error [ Pp.textf "%S is not a directory" (Alice_ui.path_to_string path) ])
 ;;

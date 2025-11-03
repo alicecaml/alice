@@ -41,18 +41,18 @@ end
 module Generated_file = struct
   module Compiled = struct
     type t =
-      { path : Path.Relative.t
+      { path : Basename.t
       ; role : Role.t
       }
 
     let to_dyn { path; role } =
-      Dyn.record [ "path", Path.Relative.to_dyn path; "role", Role.to_dyn role ]
+      Dyn.record [ "path", Basename.to_dyn path; "role", Role.to_dyn role ]
     ;;
 
-    let equal t { path; role } = Path.Relative.equal t.path path && Role.equal t.role role
+    let equal t { path; role } = Basename.equal t.path path && Role.equal t.role role
 
     let compare t { path; role } =
-      match Path.compare t.path path with
+      match Basename.compare t.path path with
       | 0 -> Role.compare t.role role
       | other -> other
     ;;
@@ -87,8 +87,8 @@ module Generated_file = struct
     ;;
 
     let path = function
-      | Cmxa -> Path.relative "lib.cmxa"
-      | A -> Path.relative "lib.a"
+      | Cmxa -> Basename.of_filename "lib.cmxa"
+      | A -> Basename.of_filename "lib.a"
     ;;
   end
 
@@ -96,14 +96,13 @@ module Generated_file = struct
     type t =
       | Compiled of Compiled.t
       | Linked_library of Linked_library.t
-      | Linked_executable of Path.Relative.t
+      | Linked_executable of Basename.t
 
     let to_dyn = function
       | Compiled compiled -> Dyn.variant "Compiled" [ Compiled.to_dyn compiled ]
       | Linked_library linked_library ->
         Dyn.variant "Linked_library" [ Linked_library.to_dyn linked_library ]
-      | Linked_executable path ->
-        Dyn.variant "Linked_executable" [ Path.Relative.to_dyn path ]
+      | Linked_executable path -> Dyn.variant "Linked_executable" [ Basename.to_dyn path ]
     ;;
 
     let equal a b =
@@ -112,7 +111,7 @@ module Generated_file = struct
       | Compiled _, _ -> false
       | Linked_library a, Linked_library b -> Linked_library.equal a b
       | Linked_library _, _ -> false
-      | Linked_executable a, Linked_executable b -> Path.Relative.equal a b
+      | Linked_executable a, Linked_executable b -> Basename.equal a b
       | Linked_executable _, _ -> false
     ;;
 
@@ -123,7 +122,7 @@ module Generated_file = struct
       | Linked_library a, Linked_library b -> Linked_library.compare a b
       | Linked_library _, Compiled _ -> 1
       | Linked_library _, Linked_executable _ -> -1
-      | Linked_executable a, Linked_executable b -> Path.compare a b
+      | Linked_executable a, Linked_executable b -> Basename.compare a b
       | Linked_executable _, (Compiled _ | Linked_library _) -> 1
     ;;
   end
@@ -185,16 +184,16 @@ open File_type
 module File = struct
   module Source = struct
     type 'type_ t =
-      { path : Path.Absolute.t
+      { path : Absolute_path.non_root_t
       ; type_ : 'type_ File_type.t
       }
 
     let to_dyn { path; type_ } =
-      Dyn.record [ "path", Path.Absolute.to_dyn path; "type_", File_type.to_dyn type_ ]
+      Dyn.record [ "path", Absolute_path.to_dyn path; "type_", File_type.to_dyn type_ ]
     ;;
 
     let equal t { path; type_ } =
-      Path.Absolute.equal t.path path && File_type.equal t.type_ type_
+      Absolute_path.equal t.path path && File_type.equal t.type_ type_
     ;;
 
     let path { path; _ } = path
@@ -202,7 +201,7 @@ module File = struct
     let mli path = { path; type_ = Mli }
 
     let of_path_by_extension path =
-      match Path.Absolute.extension path with
+      match Absolute_path.extension path with
       | ".ml" -> Ok (`Ml (ml path))
       | ".mli" -> Ok (`Mli (mli path))
       | unknown -> Error (`Unknown_extension unknown)
@@ -211,46 +210,43 @@ module File = struct
 
   module Compiled = struct
     type 'type_ t =
-      { path : Path.Relative.t
+      { path : Basename.t
       ; type_ : 'type_ File_type.t
       ; role : Role.t
       }
 
     let to_dyn { path; type_; role } =
       Dyn.record
-        [ "path", Path.Relative.to_dyn path
+        [ "path", Basename.to_dyn path
         ; "type_", File_type.to_dyn type_
         ; "role", Role.to_dyn role
         ]
     ;;
 
     let equal t { path; type_; role } =
-      Path.Relative.equal t.path path
+      Basename.equal t.path path
       && File_type.equal t.type_ type_
       && Role.equal t.role role
     ;;
 
-    let lib_base = Path.remove_extension Alice_package.Package.lib_root_ml
-    let exe_base = Path.remove_extension Alice_package.Package.exe_root_ml
+    let lib_base = Basename.remove_extension Alice_package.Package.lib_root_ml
+    let exe_base = Basename.remove_extension Alice_package.Package.exe_root_ml
 
     let of_path_checked_infer_role_from_name path type_ ext =
-      if Path.has_extension path ~ext
+      if Basename.has_extension path ~ext
       then (
-        let base = Path.remove_extension path in
+        let base = Basename.remove_extension path in
         let role =
-          if Path.equal base lib_base
+          if Basename.equal base lib_base
           then Role.Lib
-          else if Path.equal base exe_base
+          else if Basename.equal base exe_base
           then Exe
           else Internal
         in
         { path; type_; role })
       else
         panic
-          [ Pp.textf
-              "Path %S does not have extension %S."
-              (Alice_ui.path_to_string path)
-              ext
+          [ Pp.textf "Path %S does not have extension %S." (Basename.to_filename path) ext
           ]
     ;;
 
@@ -265,7 +261,7 @@ module File = struct
     let o_infer_role_from_name path = of_path_checked_infer_role_from_name path O ".o"
 
     let of_path_by_extension_infer_role_from_name path =
-      match Path.Relative.extension path with
+      match Basename.extension path with
       | ".cmx" -> Ok (`Cmx (cmx_infer_role_from_name path))
       | ".cmi" -> Ok (`Cmi (cmi_infer_role_from_name path))
       | ".o" -> Ok (`O (o_infer_role_from_name path))
@@ -282,7 +278,7 @@ module File = struct
     type _ t =
       | Lib_cmxa : cmxa t
       | Lib_a : a t
-      | Exe : Path.Relative.t -> exe t
+      | Exe : Basename.t -> exe t
 
     let lib_cmxa = Lib_cmxa
     let lib_a = Lib_a
@@ -291,7 +287,7 @@ module File = struct
     let to_dyn : type a. a t -> Dyn.t = function
       | Lib_cmxa -> Dyn.variant "Lib_cmxa" []
       | Lib_a -> Dyn.variant "Lib_a" []
-      | Exe path -> Dyn.variant "Exe" [ Path.Relative.to_dyn path ]
+      | Exe path -> Dyn.variant "Exe" [ Basename.to_dyn path ]
     ;;
 
     let equal : type a. a t -> a t -> bool =
@@ -301,7 +297,7 @@ module File = struct
       | Lib_cmxa, _ -> false
       | Lib_a, Lib_a -> true
       | Lib_a, _ -> false
-      | Exe a, Exe b -> Path.Relative.equal a b
+      | Exe a, Exe b -> Basename.equal a b
       | Exe _, _ -> false
     ;;
 

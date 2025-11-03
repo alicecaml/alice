@@ -7,9 +7,9 @@ type t
 
 val to_dyn : t -> Dyn.t
 val equal : t -> t -> bool
-val create : root:Path.Absolute.t -> meta:Package_meta.t -> t
-val read_root : Path.Absolute.t -> t
-val root : t -> Path.Absolute.t
+val create : root:Absolute_path.Root_or_non_root.t -> meta:Package_meta.t -> t
+val read_root : Absolute_path.Root_or_non_root.t -> t
+val root : t -> Absolute_path.Root_or_non_root.t
 val meta : t -> Package_meta.t
 val id : t -> Package_id.t
 val name : t -> Package_name.t
@@ -18,18 +18,18 @@ val dependencies : t -> Dependencies.t
 
 (** The file inside the source directory containing the entry point for the
     executable. *)
-val exe_root_ml : Path.Relative.t
+val exe_root_ml : Basename.t
 
 (** The file inside the source directory containing the entry point for the
     library. *)
-val lib_root_ml : Path.Relative.t
+val lib_root_ml : Basename.t
 
-val default_src : Path.Relative.t
+val src : Basename.t
 
 (** The path of the directory inside a package where the source code is located *)
-val src_dir_path : t -> Path.Absolute.t
+val src_dir_path : t -> Absolute_path.non_root_t
 
-val src_dir_exn : t -> Path.absolute File.dir
+val src_dir_exn : t -> File_non_root.dir
 
 module Typed : sig
   type package := t

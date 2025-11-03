@@ -4,7 +4,7 @@ open Alice_package
 module File_ops = Alice_io.File_ops
 module Log = Alice_log
 
-type dep_table = Alice_ocamldep.Deps.t Path.Absolute.Map.t
+type dep_table = Alice_ocamldep.Deps.t Absolute_path.Non_root_map.t
 
 type t =
   { dep_table : dep_table
@@ -27,7 +27,7 @@ let load build_dir package_id =
     let mtime = File_ops.mtime path in
     { dep_table; mtime; build_dir; package_id })
   else
-    { dep_table = Path.Absolute.Map.empty
+    { dep_table = Absolute_path.Non_root_map.empty
     ; mtime = Float.neg_infinity
     ; build_dir
     ; package_id
@@ -36,7 +36,8 @@ let load build_dir package_id =
 
 let store t (dep_table : dep_table) =
   let path = Build_dir.package_ocamldeps_cache_file t.build_dir t.package_id in
-  File_ops.mkdir_p (Path.dirname path);
+  File_ops.mkdir_p
+    (Absolute_path.parent path |> Absolute_path.Root_or_non_root.assert_non_root);
   File_ops.with_out_channel path ~mode:`Bin ~f:(fun channel ->
     Marshal.to_channel channel dep_table [])
 ;;
@@ -58,7 +59,7 @@ let get_deps t ~source_path =
     (* Source file is newer than the cache so we need to run ocamldep. *)
     run_ocamldep ()
   else (
-    match Path.Absolute.Map.find_opt source_path t.dep_table with
+    match Absolute_path.Non_root_map.find_opt source_path t.dep_table with
     | None ->
       (* Source file is absent from the cache. This is unusual because the
            source file is older than the cache. Run ocamldep to compute the
