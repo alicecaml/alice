@@ -27,7 +27,7 @@ module Styles = struct
   let success = Ansi_style.create ~bold:true ~color:`Green ()
 end
 
-let path_to_string : type is_root. is_root Absolute_path.t -> string =
+let absolute_path_to_string : type is_root. is_root Absolute_path.t -> string =
   fun path ->
   match !path_style with
   | `Native -> Absolute_path.to_filename path

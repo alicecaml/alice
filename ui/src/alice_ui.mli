@@ -22,7 +22,7 @@ module Styles : sig
   val success : Ansi_style.t
 end
 
-val path_to_string : _ Absolute_path.t -> string
+val absolute_path_to_string : _ Absolute_path.t -> string
 val basename_to_string : Basename.t -> string
 val raw_message : ?style:Ansi_style.t -> string -> message
 

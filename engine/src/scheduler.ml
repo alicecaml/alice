@@ -142,8 +142,8 @@ module Sequential = struct
     let panic_context () =
       (* Information to help debug package build failures. *)
       let out_dir = Build_dir.package_base_dir build_dir (Package.id package) profile in
-      [ Pp.textf "src_dir: %s\n" (path_to_string src_dir)
-      ; Pp.textf "out_dir: %s\n" (path_to_string out_dir)
+      [ Pp.textf "src_dir: %s\n" (absolute_path_to_string src_dir)
+      ; Pp.textf "out_dir: %s\n" (absolute_path_to_string out_dir)
       ]
     in
     let print_compiling_message =
@@ -182,7 +182,9 @@ module Sequential = struct
            if not (File_ops.exists source_input)
            then
              Alice_error.panic
-               (Pp.textf "Missing source file: %s\n" (path_to_string source_input)
+               (Pp.textf
+                  "Missing source file: %s\n"
+                  (absolute_path_to_string source_input)
                 :: panic_context ()));
         List.iter (Build_plan.compiled_inputs build_plan) ~f:(fun compiled ->
           let compiled_path = abs_path_of_gen_file (Generated_file.Compiled compiled) in
@@ -191,7 +193,7 @@ module Sequential = struct
             Alice_error.panic
               (Pp.textf
                  "Missing file which should have been compiled by this point: %s\n"
-                 (path_to_string compiled_path)
+                 (absolute_path_to_string compiled_path)
                :: panic_context ()));
         let command =
           op_command (Build_plan.op build_plan) package profile build_dir ~dep_libs

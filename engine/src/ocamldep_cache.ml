@@ -19,7 +19,10 @@ let load build_dir package_id =
   then (
     Log.info
       ~package_id
-      [ Pp.textf "Loading ocamldeps cache from: %s" (Alice_ui.path_to_string path) ];
+      [ Pp.textf
+          "Loading ocamldeps cache from: %s"
+          (Alice_ui.absolute_path_to_string path)
+      ];
     let dep_table =
       File_ops.with_in_channel path ~mode:`Bin ~f:(fun channel ->
         Marshal.from_channel channel)
@@ -50,7 +53,7 @@ let get_deps t ~source_path =
       ~package_id:t.package_id
       [ Pp.textf
           "Analyzing dependencies of file: %s"
-          (Alice_ui.path_to_string source_path)
+          (Alice_ui.absolute_path_to_string source_path)
       ];
     Alice_ocamldep.native_deps source_path
   in
@@ -69,8 +72,8 @@ let get_deps t ~source_path =
         [ Pp.textf
             "The ocamldeps cache (%s) is newer than source file %S, however there is no \
              entry in the ocamldeps cache for that source file."
-            (Alice_ui.path_to_string path)
-            (Alice_ui.path_to_string source_path)
+            (Alice_ui.absolute_path_to_string path)
+            (Alice_ui.absolute_path_to_string source_path)
         ];
       run_ocamldep ()
     | Some deps -> deps)

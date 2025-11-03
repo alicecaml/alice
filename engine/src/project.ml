@@ -102,7 +102,7 @@ let run t profile ~args =
   in
   let args = Basename.to_filename exe_name :: args in
   let exe_filename = Absolute_path.to_filename exe_path in
-  println (verb_message `Running (path_to_string exe_path));
+  println (verb_message `Running (absolute_path_to_string exe_path));
   print_newline ();
   match Alice_io.Process.Blocking.run exe_filename ~args with
   | Error `Prog_not_available ->
@@ -123,7 +123,7 @@ let run t profile ~args =
 let clean t =
   let open Alice_ui in
   let to_remove = Build_dir.path t.build_dir in
-  println (verb_message `Removing (Alice_ui.path_to_string to_remove));
+  println (verb_message `Removing (Alice_ui.absolute_path_to_string to_remove));
   File_ops.rm_rf to_remove
 ;;
 

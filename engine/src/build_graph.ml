@@ -104,7 +104,7 @@ let compilation_ops dir package_id build_dir =
       panic
         [ Pp.textf
             "Tried to treat %S as source path but it has an unrecognized extension."
-            (Alice_ui.path_to_string source_path)
+            (Alice_ui.absolute_path_to_string source_path)
         ]
     | Ok (`Ml direct_input) ->
       let indirect_inputs =
@@ -117,7 +117,7 @@ let compilation_ops dir package_id build_dir =
               [ Pp.textf
                   "Running ocamldep on %S produced build input %S whose extension is \
                    unexpected (expected either \".cmx\" or \".cmi\")."
-                  (Alice_ui.path_to_string source_path)
+                  (Alice_ui.absolute_path_to_string source_path)
                   (Basename.to_filename dep)
               ]
           | Error (`Unknown_extension _) ->
@@ -125,7 +125,7 @@ let compilation_ops dir package_id build_dir =
               [ Pp.textf
                   "Running ocamldep on %S produced build input %S whose extension is \
                    unrecognized."
-                  (Alice_ui.path_to_string source_path)
+                  (Alice_ui.absolute_path_to_string source_path)
                   (Basename.to_filename dep)
               ])
       in
@@ -164,7 +164,7 @@ let compilation_ops dir package_id build_dir =
               [ Pp.textf
                   "Running ocamldep on %S produced build input %S whose extension is \
                    unexpected (expected either \".cmi\")."
-                  (Alice_ui.path_to_string source_path)
+                  (Alice_ui.absolute_path_to_string source_path)
                   (Basename.to_filename dep)
               ]
           | Error (`Unknown_extension _) ->
@@ -172,7 +172,7 @@ let compilation_ops dir package_id build_dir =
               [ Pp.textf
                   "Running ocamldep on %S produced build input %S whose extension is \
                    unrecognized."
-                  (Alice_ui.path_to_string source_path)
+                  (Alice_ui.absolute_path_to_string source_path)
                   (Basename.to_filename dep)
               ])
       in

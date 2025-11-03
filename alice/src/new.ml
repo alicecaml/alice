@@ -16,7 +16,7 @@ let make_project name path kind =
       [ Pp.textf
           "Refusing to create project because destination directory exists and contains \
            project manifest (%s).\n"
-          (Alice_ui.path_to_string manifest_path)
+          (Alice_ui.absolute_path_to_string manifest_path)
       ; Pp.text "Delete this file before proceeding."
       ];
   if File_ops.exists src_path
@@ -27,7 +27,7 @@ let make_project name path kind =
         [ Pp.textf
             "Refusing to create project because destination directory exists and \
              contains src directory (%s).\n"
-            (Alice_ui.path_to_string src_path)
+            (Alice_ui.absolute_path_to_string src_path)
         ; Pp.text "Delete this directory before proceeding."
         ]
     else
@@ -36,7 +36,7 @@ let make_project name path kind =
             "Refusing to create project because destination directory exists and \
              contains a file named %S (%s).\n"
             (Basename.to_filename Package.src)
-            (Alice_ui.path_to_string src_path)
+            (Alice_ui.absolute_path_to_string src_path)
         ; Pp.text "Delete this file before proceeding."
         ];
   let manifest =
@@ -100,8 +100,8 @@ let new_ =
   let open Alice_ui in
   let path_string =
     match path with
-    | `Root p -> path_to_string p
-    | `Non_root p -> path_to_string p
+    | `Root p -> absolute_path_to_string p
+    | `Non_root p -> absolute_path_to_string p
   in
   println
     (verb_message

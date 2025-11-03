@@ -50,11 +50,12 @@ let read base_path =
 let read_dir path =
   match read path with
   | Error `Not_found ->
-    Error [ Pp.textf "Directory not found: %s" (Alice_ui.path_to_string path) ]
+    Error [ Pp.textf "Directory not found: %s" (Alice_ui.absolute_path_to_string path) ]
   | Ok file ->
     (match File_non_root.as_dir file with
      | Some dir -> Ok dir
-     | None -> Error [ Pp.textf "%S is not a directory" (Alice_ui.path_to_string path) ])
+     | None ->
+       Error [ Pp.textf "%S is not a directory" (Alice_ui.absolute_path_to_string path) ])
 ;;
 
 let read_dir_exn path =

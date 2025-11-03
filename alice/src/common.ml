@@ -64,7 +64,9 @@ let parse_manifest_path_and_validate =
          [ Pp.textf
              "This command must be run from a directory containing a file named %S.\n"
              (Basename.to_filename Alice_manifest.manifest_name)
-         ; Pp.textf "The file %S does not exist.\n" (Alice_ui.path_to_string path)
+         ; Pp.textf
+             "The file %S does not exist.\n"
+             (Alice_ui.absolute_path_to_string path)
          ; Pp.text
              "Alternatitvely, pass the location of a metadata file with --metadata-path."
          ])

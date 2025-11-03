@@ -64,7 +64,8 @@ end
 
 let native_deps path =
   if not (Alice_io.File_ops.exists path)
-  then panic [ Pp.textf "File does not exist: %s" (Alice_ui.path_to_string path) ];
+  then
+    panic [ Pp.textf "File does not exist: %s" (Alice_ui.absolute_path_to_string path) ];
   match
     run_lines
       [ "-one-line"
