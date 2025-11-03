@@ -1,5 +1,51 @@
 open! Alice_stdlib
 
+module Basename : sig
+  (** The name of a file, with preceeding path components. This is similar to
+      the output of the "basename" unix command, however the filesystem root
+      directory is not considered to be a basename. *)
+  type t
+
+  val to_dyn : t -> Dyn.t
+  val equal : t -> t -> bool
+
+  (** Panics if the given filename is not a valid basename. *)
+  val of_filename : Filename.t -> t
+
+  val to_filename : t -> Filename.t
+  val compare : t -> t -> int
+end
+
+module Absolute_path : sig
+  (** An absolute path with a type parameter which determines whether the path
+      is the filesystem root directory or not. *)
+  type 'is_root t
+
+  type root_t = Type_bool.true_t t
+  type non_root_t = Type_bool.false_t t
+
+  type either =
+    [ `Root of root_t
+    | `Non_root of non_root_t
+    ]
+
+  val to_dyn : _ t -> Dyn.t
+  val equal : 'a t -> 'a t -> bool
+
+  (** Panics if the given filename is not an absolute path. *)
+  val of_filename : Filename.t -> either
+
+  val to_filename : _ t -> Filename.t
+  val concat : _ t -> Basename.t -> non_root_t
+  val compare : 'a t -> 'a t -> int
+  val extension : non_root_t -> string
+  val has_extension : non_root_t -> ext:string -> bool
+  val replace_extension : non_root_t -> ext:string -> non_root_t
+  val add_extension : non_root_t -> ext:string -> non_root_t
+  val remove_extension : non_root_t -> non_root_t
+  val parent : non_root_t -> either
+end
+
 module Path : sig
   type absolute
   type relative

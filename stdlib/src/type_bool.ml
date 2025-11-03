@@ -1,2 +1,2 @@
-type true_t = |
-type false_t = |
+type true_t = True
+type false_t = False

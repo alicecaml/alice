@@ -1,4 +1,111 @@
 open! Alice_stdlib
+open Alice_error
+
+module Basename = struct
+  type t = Filename.t
+
+  let to_dyn = Filename.to_dyn
+  let equal = Filename.equal
+
+  let check_filename filename =
+    if Filename.is_implicit filename
+    then
+      if String.is_empty filename
+      then Error `Empty
+      else if Filename.equal (Filename.basename filename) filename
+      then Ok ()
+      else Error `Multiple_path_components
+    else Error `Not_implicit
+  ;;
+
+  let of_filename_result filename =
+    check_filename filename |> Result.map ~f:(Fun.const filename)
+  ;;
+
+  let of_filename filename =
+    match of_filename_result filename with
+    | Ok t -> t
+    | Error `Empty -> panic [ Pp.text "Filename may not be empty." ]
+    | Error `Multiple_path_components ->
+      panic [ Pp.textf "%S is not a basename as it has multiple components." filename ]
+    | Error `Not_implicit ->
+      panic
+        [ Pp.textf "%S is not a basename as it is not an implicit relative path." filename
+        ]
+  ;;
+
+  let to_filename t = t
+  let compare = Filename.compare
+end
+
+module Absolute_path = struct
+  open Type_bool
+
+  type 'is_root t =
+    | Root : Filename.t -> true_t t
+      (* We still need to store the filename in this case because on windows
+         each drive has a separate root directory. *)
+    | Non_root : Filename.t -> false_t t
+
+  type root_t = true_t t
+  type non_root_t = false_t t
+
+  type either =
+    [ `Root of root_t
+    | `Non_root of non_root_t
+    ]
+
+  let to_dyn : type is_root. is_root t -> Dyn.t = function
+    | Root filename -> Dyn.variant "Root" [ Filename.to_dyn filename ]
+    | Non_root filename -> Dyn.variant "Non_root" [ Filename.to_dyn filename ]
+  ;;
+
+  let equal : type is_root. is_root t -> is_root t -> bool =
+    fun a b ->
+    match a, b with
+    | Root a, Root b -> Filename.equal a b
+    | Non_root a, Non_root b -> Filename.equal a b
+  ;;
+
+  let of_filename_result filename =
+    if Filename.is_relative filename
+    then Error `Not_absolute
+    else if Filename.is_root filename
+    then Ok (`Root (Root filename))
+    else Ok (`Non_root (Non_root filename))
+  ;;
+
+  let of_filename filename =
+    match of_filename_result filename with
+    | Ok either -> either
+    | Error `Not_absolute -> panic [ Pp.textf "%S is not an absolute path." filename ]
+  ;;
+
+  let to_filename : type is_root. is_root t -> Filename.t = function
+    | Root filename -> filename
+    | Non_root filename -> filename
+  ;;
+
+  let concat : type is_root. is_root t -> Basename.t -> non_root_t =
+    fun t basename ->
+    Non_root (Filename.concat (to_filename t) (Basename.to_filename basename))
+  ;;
+
+  let compare a b = Filename.compare (to_filename a) (to_filename b)
+  let extension (Non_root filename) = Filename.extension filename
+  let has_extension (Non_root filename) ~ext = Filename.has_extension filename ~ext
+
+  let replace_extension (Non_root filename) ~ext =
+    Non_root (Filename.replace_extension filename ~ext)
+  ;;
+
+  let add_extension (Non_root filename) ~ext =
+    Non_root (Filename.replace_extension filename ~ext)
+  ;;
+
+  let remove_extension (Non_root filename) = Non_root (Filename.remove_extension filename)
+  let parent (Non_root filename) = of_filename (Filename.dirname filename)
+end
 
 module Path = struct
   type absolute = |

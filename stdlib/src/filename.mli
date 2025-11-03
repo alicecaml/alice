@@ -20,3 +20,7 @@ val to_components : t -> t Nonempty_list.t
 
 val chop_prefix_opt : prefix:t -> t -> t option
 val chop_prefix : prefix:t -> t -> t
+
+(** Is this a filesystem root. On unix this is true only for the system's root
+    directory. On windows this is true for the root of any drive. *)
+val is_root : t -> bool

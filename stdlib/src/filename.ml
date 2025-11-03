@@ -65,3 +65,5 @@ let chop_prefix ~prefix t =
     raise
       (Invalid_argument (Printf.sprintf "Path %S doesn't start with prefix %S" t prefix))
 ;;
+
+let is_root t = (not (equal t current_dir_name)) && equal (basename t) (dirname t)
