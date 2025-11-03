@@ -7,6 +7,7 @@ module Env : sig
   type t
   type raw = string array
 
+  val empty : t
   val to_dyn : t -> Dyn.t
   val current : unit -> t
   val of_raw : raw -> t

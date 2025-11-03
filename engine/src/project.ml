@@ -28,9 +28,10 @@ let build_single_package_typed
     -> (exe, lib) Package.Typed.t
     -> Profile.t
     -> dep_libs:Package.Typed.lib_only_t list
+    -> env:Alice_env.Env.t
     -> unit
   =
-  fun t package_typed profile ~dep_libs ->
+  fun t package_typed profile ~dep_libs ~env ->
   let package = Package.Typed.package package_typed in
   let build_graph = Build_graph.create package_typed t.build_dir in
   let build_plans =
@@ -40,10 +41,16 @@ let build_single_package_typed
     | Exe_and_lib ->
       [ Build_graph.plan_lib build_graph; Build_graph.plan_exe build_graph ]
   in
-  Scheduler.Sequential.eval_build_plan build_plans package profile t.build_dir ~dep_libs
+  Scheduler.Sequential.eval_build_plans
+    build_plans
+    package
+    profile
+    t.build_dir
+    ~dep_libs
+    ~env
 ;;
 
-let build_dependency_graph t dependency_graph profile =
+let build_dependency_graph t dependency_graph profile ~env =
   let open Dependency_graph in
   let rec build_deps nodes = List.iter nodes ~f:build_node
   and build_node node =
@@ -51,28 +58,28 @@ let build_dependency_graph t dependency_graph profile =
     build_deps deps;
     let dep_libs = List.map deps ~f:Traverse_dependencies.package_typed in
     let pt = Traverse_dependencies.package_typed node in
-    build_single_package_typed t pt profile ~dep_libs
+    build_single_package_typed t pt profile ~dep_libs ~env
   in
   let deps = traverse_dependencies dependency_graph in
   build_deps deps;
   let dep_libs = List.map deps ~f:Traverse_dependencies.package_typed in
-  build_single_package_typed t (root dependency_graph) profile ~dep_libs
+  build_single_package_typed t (root dependency_graph) profile ~dep_libs ~env
 ;;
 
-let build_package_typed t package_typed profile =
+let build_package_typed t package_typed profile ~env =
   let dependency_graph = Dependency_graph.compute package_typed in
-  build_dependency_graph t dependency_graph profile
+  build_dependency_graph t dependency_graph profile ~env
 ;;
 
-let build_package t package profile =
+let build_package t package profile ~env =
   Package.with_typed
-    { f = (fun package_typed -> build_package_typed t package_typed profile) }
+    { f = (fun package_typed -> build_package_typed t package_typed profile ~env) }
     package
 ;;
 
-let build t profile =
+let build t profile ~env =
   let open Alice_ui in
-  build_package t t.package profile;
+  build_package t t.package profile ~env;
   println
     (verb_message
        `Finished
@@ -82,7 +89,7 @@ let build t profile =
           (Package_id.name_v_version_string (Package.id t.package))))
 ;;
 
-let run t profile ~args =
+let run t profile ~args ~env =
   let open Alice_ui in
   let package_typed =
     match Package.typed t.package with
@@ -90,7 +97,7 @@ let run t profile ~args =
     | `Exe_only pt -> pt
     | `Exe_and_lib pt -> Package.Typed.limit_to_exe_only pt
   in
-  build_package_typed t package_typed profile;
+  build_package_typed t package_typed profile ~env;
   let exe_name =
     let exe_name =
       Package.name t.package |> Package_name.to_string |> Basename.of_filename
@@ -104,7 +111,7 @@ let run t profile ~args =
   let exe_filename = Absolute_path.to_filename exe_path in
   println (verb_message `Running (absolute_path_to_string exe_path));
   print_newline ();
-  match Alice_io.Process.Blocking.run exe_filename ~args with
+  match Alice_io.Process.Blocking.run exe_filename ~args ~env with
   | Error `Prog_not_available ->
     panic
       [ Pp.textf

@@ -13,8 +13,8 @@ let tar ~tarball_file ~output_dir =
   Command.create "tar" ~args
 ;;
 
-let extract ~tarball_file ~output_dir =
-  match tar ~tarball_file ~output_dir |> Process.Blocking.run_command with
+let extract ~tarball_file ~output_dir ~env =
+  match tar ~tarball_file ~output_dir |> Process.Blocking.run_command ~env with
   | Ok (Process.Status.Exited 0) -> ()
   | _ ->
     Alice_error.panic

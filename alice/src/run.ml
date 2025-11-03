@@ -8,7 +8,7 @@ let run_ =
   and+ project = Common.parse_project
   and+ profile = Common.parse_profile
   and+ args = pos_all string ~doc:"Arguments to pass to the executable." in
-  Project.run project profile ~args
+  Project.run project profile ~args ~env:(Alice_env.Env.current ())
 ;;
 
 let subcommand =

@@ -133,7 +133,7 @@ module Sequential = struct
     loop build_plan
   ;;
 
-  let eval_build_plan build_plans package profile build_dir ~dep_libs =
+  let eval_build_plans build_plans package profile build_dir ~dep_libs ~env =
     let open Alice_ui in
     let abs_path_of_gen_file =
       Build_dir.package_generated_file build_dir (Package.id package) profile
@@ -199,7 +199,7 @@ module Sequential = struct
           op_command (Build_plan.op build_plan) package profile build_dir ~dep_libs
         in
         (let status =
-           match Alice_io.Process.Blocking.run_command command with
+           match Alice_io.Process.Blocking.run_command command ~env with
            | Ok status -> status
            | Error `Prog_not_available ->
              panic [ Pp.textf "Can't find program: %s" command.prog ]

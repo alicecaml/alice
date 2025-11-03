@@ -20,14 +20,14 @@ let wget ~url ~output_file =
   Command.create "wget" ~args
 ;;
 
-let fetch ~url ~output_file =
+let fetch ~url ~output_file ~env =
   Log.info [ Pp.textf "Downloading %s to %s" url (Absolute_path.to_filename output_file) ];
-  match curl ~url ~output_file |> Process.Blocking.run_command with
+  match curl ~url ~output_file |> Process.Blocking.run_command ~env with
   | Ok (Process.Status.Exited 0) ->
     assert (Sys.file_exists (Absolute_path.to_filename output_file));
     ()
   | _ ->
-    (match wget ~url ~output_file |> Process.Blocking.run_command with
+    (match wget ~url ~output_file |> Process.Blocking.run_command ~env with
      | Ok (Process.Status.Exited 0) ->
        assert (Sys.file_exists (Absolute_path.to_filename output_file));
        ()

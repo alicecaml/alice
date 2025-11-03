@@ -33,27 +33,15 @@ module Status = struct
   ;;
 end
 
-module Env_setting = struct
-  type t =
-    [ `Inherit
-    | `Env of Env.t
-    ]
-end
-
 module Blocking = struct
   let run
-        ?(env = `Inherit)
         ?(stdin = Unix.stdin)
         ?(stdout = Unix.stdout)
         ?(stderr = Unix.stderr)
         prog
         ~args
+        ~env
     =
-    let env =
-      match env with
-      | `Inherit -> Env.current ()
-      | `Env env -> env
-    in
     let env = Env.to_raw env in
     let env = Array.to_list env in
     (*print_endline (sprintf "%s" (Dyn.list Dyn.string env |> Dyn.to_string)); *)
@@ -70,11 +58,11 @@ module Blocking = struct
   ;;
 
   let run_capturing_stdout_lines
-        ?env
         ?(stdin = Unix.stdin)
         ?(stderr = Unix.stderr)
         prog
         ~args
+        ~env
     =
     Temp_dir.with_ ~prefix:"alice." ~suffix:".stdout" ~f:(fun dir ->
       let path = dir / Basename.of_filename "stdout" in
@@ -82,7 +70,7 @@ module Blocking = struct
       let output_file_desc =
         Unix.openfile (Absolute_path.to_filename path) [ O_CREAT; O_RDWR ] perms
       in
-      let result = run ?env ~stdin ~stdout:output_file_desc ~stderr prog ~args in
+      let result = run ~stdin ~stdout:output_file_desc ~stderr prog ~args ~env in
       let result =
         Result.map result ~f:(fun status ->
           let _ = Unix.lseek output_file_desc 0 SEEK_SET in
@@ -95,21 +83,21 @@ module Blocking = struct
   ;;
 
   let run_command
-        ?env
         ?(stdin = Unix.stdin)
         ?(stdout = Unix.stdout)
         ?(stderr = Unix.stderr)
         { Command.prog; args }
+        ~env
     =
-    run ?env ~stdin ~stdout ~stderr prog ~args
+    run ~stdin ~stdout ~stderr prog ~args ~env
   ;;
 
   let run_command_capturing_stdout_lines
-        ?env
         ?(stdin = Unix.stdin)
         ?(stderr = Unix.stderr)
         { Command.prog; args }
+        ~env
     =
-    run_capturing_stdout_lines ?env ~stdin ~stderr prog ~args
+    run_capturing_stdout_lines ~stdin ~stderr prog ~args ~env
   ;;
 end

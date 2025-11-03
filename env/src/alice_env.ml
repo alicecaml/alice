@@ -26,6 +26,7 @@ module Env = struct
   type t = Variable.t list
   type raw = string array
 
+  let empty = []
   let to_dyn = Dyn.list Variable.to_dyn
   let of_raw raw = Array.to_list raw |> List.map ~f:Variable.parse
   let to_raw t = List.map t ~f:Variable.to_string |> Array.of_list

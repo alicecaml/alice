@@ -7,7 +7,11 @@ let command args = Command.create (ocamlopt_exe ()) ~args:("-depend" :: args)
 
 let run_lines args =
   let command = command args in
-  match Alice_io.Process.Blocking.run_command_capturing_stdout_lines command with
+  match
+    Alice_io.Process.Blocking.run_command_capturing_stdout_lines
+      command
+      ~env:Alice_env.Env.empty
+  with
   | Ok (status, output) ->
     Alice_io.Process.Status.panic_unless_exit_0 status;
     output

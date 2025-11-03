@@ -19,11 +19,11 @@ module Os = struct
     | Windows -> "windows"
   ;;
 
-  let poll () =
+  let poll ~env =
     if Sys.win32
     then Windows
     else (
-      match Alice_io.Uname.uname_s () with
+      match Alice_io.Uname.uname `S ~env with
       | "Darwin" -> Macos
       | "Linux" -> Linux
       | other -> Alice_error.panic [ Pp.textf "Unknown system: %s" other ])
@@ -62,7 +62,7 @@ module Arch = struct
     | X86_64 -> "x86_64"
   ;;
 
-  let poll () =
+  let poll ~env =
     if Sys.win32
     then (
       let var = "PROCESSOR_ARCHITECTURE" in
@@ -78,7 +78,7 @@ module Arch = struct
           ];
         X86_64)
     else (
-      match Alice_io.Uname.uname_m () with
+      match Alice_io.Uname.uname `M ~env with
       | "arm64" | "aarch64" -> Aarch64
       | "x86_64" -> X86_64
       | other -> Alice_error.panic [ Pp.textf "Unknown architecture: %s" other ])
@@ -159,9 +159,9 @@ include T
 module Map = Map.Make (T)
 module Set = Set.Make (T)
 
-let poll () =
-  let os = Os.poll () in
-  let arch = Arch.poll () in
+let poll ~env =
+  let os = Os.poll ~env in
+  let arch = Arch.poll ~env in
   let linked =
     match os with
     | Linux ->
@@ -180,7 +180,7 @@ let arg_parser =
   and+ linked =
     named_opt [ "linked" ] Linked.conv ~doc:"Choose between static and dynamic linking."
   in
-  let polled = poll () in
+  let polled = poll ~env:(Alice_env.Env.current ()) in
   { os = Option.value os ~default:polled.os
   ; arch = Option.value arch ~default:polled.arch
   ; linked = Option.value linked ~default:polled.linked

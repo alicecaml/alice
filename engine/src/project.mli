@@ -8,8 +8,8 @@ open Alice_hierarchy
 type t
 
 val of_package : Package.t -> t
-val build : t -> Profile.t -> unit
-val run : t -> Profile.t -> args:string list -> unit
+val build : t -> Profile.t -> env:Alice_env.Env.t -> unit
+val run : t -> Profile.t -> args:string list -> env:Alice_env.Env.t -> unit
 val clean : t -> unit
 val dot_build_artifacts : t -> string
 val dot_dependencies : t -> string

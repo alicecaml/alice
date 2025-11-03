@@ -38,16 +38,16 @@ module Remote_tarball = struct
     }
   ;;
 
-  let get { name; version; url_base; url_file; top_level_dir; sha256 } ~dst =
+  let get { name; version; url_base; url_file; top_level_dir; sha256 } ~dst ~env =
     let url = String.cat url_base url_file in
     let open Alice_ui in
     Temp_dir.with_ ~prefix:"alice." ~suffix:".tools" ~f:(fun dir ->
       let tarball_file = dir / Basename.of_filename (sprintf "%s.tar.gz" name) in
       println (verb_message `Fetching (sprintf "%s.%s (%s)..." name version url_file));
-      Fetch.fetch ~url ~output_file:tarball_file;
+      Fetch.fetch ~url ~output_file:tarball_file ~env;
       panic_if_hashes_don't_match tarball_file sha256;
       println (verb_message `Unpacking (sprintf "%s.%s..." name version));
-      Extract.extract ~tarball_file ~output_dir:dir;
+      Extract.extract ~tarball_file ~output_dir:dir ~env;
       File_ops.recursive_move_between_dirs ~src:(dir / top_level_dir) ~dst;
       print_newline ();
       println
@@ -300,8 +300,11 @@ module Remote_tarballs = struct
     }
   ;;
 
-  let get_all t ~dst = List.iter (all t) ~f:(fun rt -> Remote_tarball.get rt ~dst)
-  let get_compiler { compiler; _ } ~dst = Remote_tarball.get compiler ~dst
+  let get_all t ~dst ~env =
+    List.iter (all t) ~f:(fun rt -> Remote_tarball.get rt ~dst ~env)
+  ;;
+
+  let get_compiler { compiler; _ } ~dst ~env = Remote_tarball.get compiler ~dst ~env
 end
 
 module Root = struct
@@ -434,7 +437,7 @@ let install =
       [ "g"; "global" ]
       ~doc:"Install tools to this directory rather than '~/.alice'."
   and+ target = Target.arg_parser in
-  Root.install root ~target ~compiler_only ~global;
+  Root.install root ~target ~compiler_only ~global ~env:(Alice_env.Env.current ());
   if not (Alice_io.File_ops.exists (Alice_root.current ()))
   then (
     let open Alice_ui in
@@ -493,7 +496,7 @@ let exec =
   let path_variable = Path_variable.get_or_empty env in
   let augmented_path_variable = `Non_root (Alice_root.current_bin ()) :: path_variable in
   let augmented_env = Path_variable.set augmented_path_variable env in
-  match Alice_io.Process.Blocking.run ~env:(`Env augmented_env) prog ~args with
+  match Alice_io.Process.Blocking.run ~env:augmented_env prog ~args with
   | Error `Prog_not_available ->
     Alice_error.panic [ Pp.textf "The executable %s does not exist." prog ]
   | Ok (Exited code) -> exit code

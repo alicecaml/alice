@@ -7,7 +7,7 @@ let build =
   let+ () = Common.set_globals_from_flags
   and+ project = Common.parse_project
   and+ profile = Common.parse_profile in
-  Project.build project profile
+  Project.build project profile ~env:(Alice_env.Env.current ())
 ;;
 
 let subcommand =

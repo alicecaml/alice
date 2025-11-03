@@ -1,4 +1,3 @@
 open! Alice_stdlib
 
-val uname_m : unit -> string
-val uname_s : unit -> string
+val uname : [ `M | `S ] -> env:Alice_env.Env.t -> string
