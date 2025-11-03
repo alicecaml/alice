@@ -94,27 +94,27 @@ end
 
 module Compile_source : sig
   type t =
-    { direct_input : ml File.Source.t
-    ; indirect_inputs : [ `Cmx of cmx File.Compiled.t | `Cmi of cmi File.Compiled.t ] list
-    ; direct_output : cmx File.Compiled.t
-    ; indirect_output : o File.Compiled.t
+    { source_input : ml File.Source.t
+    ; compiled_inputs : [ `Cmx of cmx File.Compiled.t | `Cmi of cmi File.Compiled.t ] list
+    ; cmx_output : cmx File.Compiled.t
+    ; o_output : o File.Compiled.t
     ; interface_output_if_no_matching_mli_is_present : cmi File.Compiled.t option
     }
 end
 
 module Compile_interface : sig
   type t =
-    { direct_input : mli File.Source.t
-    ; indirect_inputs : cmi File.Compiled.t list
-    ; direct_output : cmi File.Compiled.t
+    { interface_input : mli File.Source.t
+    ; cmi_inputs : cmi File.Compiled.t list
+    ; cmi_output : cmi File.Compiled.t
     }
 end
 
 module Link_library : sig
   type t =
-    { direct_inputs : cmx File.Compiled.t list
-    ; direct_output : cmxa File.Linked.t
-    ; indirect_output : a File.Linked.t
+    { cmx_inputs : cmx File.Compiled.t list
+    ; cmxa_output : cmxa File.Linked.t
+    ; a_output : a File.Linked.t
     }
 
   val of_inputs : cmx File.Compiled.t list -> t
@@ -122,8 +122,8 @@ end
 
 module Link_executable : sig
   type t =
-    { direct_inputs : cmx File.Compiled.t list
-    ; direct_output : exe File.Linked.t
+    { cmx_inputs : cmx File.Compiled.t list
+    ; exe_output : exe File.Linked.t
     }
 end
 

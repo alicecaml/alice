@@ -34,7 +34,8 @@ let op_command op package profile build_dir ~dep_libs ~ocamlopt =
   in
   let internal_dir = Build_dir.package_internal_dir build_dir package_id profile in
   let lib_dir = Build_dir.package_lib_dir build_dir package_id profile in
-  let compile_source_or_interface direct_input direct_output =
+  match (op : Typed_op.t) with
+  | Compile_source { source_input; cmx_output; _ } ->
     Profile.ocamlopt_command
       profile
       ~ocamlopt
@@ -44,18 +45,29 @@ let op_command op package profile build_dir ~dep_libs ~ocamlopt =
            ; internal_dir |> Absolute_path.to_filename
            ; "-c"
            ; "-o"
-           ; Compiled.generated_file direct_output
+           ; Compiled.generated_file cmx_output
              |> abs_path_of_gen_file
              |> Absolute_path.to_filename
-           ; Source.path direct_input |> Absolute_path.to_filename
+           ; "-impl"
+           ; Source.path source_input |> Absolute_path.to_filename
            ])
-  in
-  match (op : Typed_op.t) with
-  | Compile_source { direct_input; direct_output; _ } ->
-    compile_source_or_interface direct_input direct_output
-  | Compile_interface { direct_input; direct_output; _ } ->
-    compile_source_or_interface direct_input direct_output
-  | Link_library { direct_inputs; direct_output; _ } ->
+  | Compile_interface { interface_input; cmi_output; _ } ->
+    Profile.ocamlopt_command
+      profile
+      ~ocamlopt
+      ~args:
+        (lib_include_args
+         @ [ "-I"
+           ; internal_dir |> Absolute_path.to_filename
+           ; "-c"
+           ; "-o"
+           ; Compiled.generated_file cmi_output
+             |> abs_path_of_gen_file
+             |> Absolute_path.to_filename
+           ; "-intf"
+           ; Source.path interface_input |> Absolute_path.to_filename
+           ])
+  | Link_library { cmx_inputs; cmxa_output; _ } ->
     Profile.ocamlopt_command
       profile
       ~ocamlopt
@@ -67,16 +79,16 @@ let op_command op package profile build_dir ~dep_libs ~ocamlopt =
            ; lib_dir |> Absolute_path.to_filename
            ; "-a"
            ; "-o"
-           ; Linked.generated_file direct_output
+           ; Linked.generated_file cmxa_output
              |> abs_path_of_gen_file
              |> Absolute_path.to_filename
            ]
          @ lib_cmxa_files
-         @ List.map direct_inputs ~f:(fun compiled ->
+         @ List.map cmx_inputs ~f:(fun compiled ->
            Compiled.generated_file compiled
            |> abs_path_of_gen_file
            |> Absolute_path.to_filename))
-  | Link_executable { direct_inputs; direct_output } ->
+  | Link_executable { cmx_inputs; exe_output } ->
     Profile.ocamlopt_command
       profile
       ~ocamlopt
@@ -87,12 +99,12 @@ let op_command op package profile build_dir ~dep_libs ~ocamlopt =
            ; "-I"
            ; lib_dir |> Absolute_path.to_filename (* so exe can depend on library *)
            ; "-o"
-           ; Linked.generated_file direct_output
+           ; Linked.generated_file exe_output
              |> abs_path_of_gen_file
              |> Absolute_path.to_filename
            ]
          @ lib_cmxa_files
-         @ List.map direct_inputs ~f:(fun compiled ->
+         @ List.map cmx_inputs ~f:(fun compiled ->
            Compiled.generated_file compiled
            |> abs_path_of_gen_file
            |> Absolute_path.to_filename))

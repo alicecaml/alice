@@ -107,8 +107,8 @@ let compilation_ops dir package_id build_dir env ocamlopt =
             "Tried to treat %S as source path but it has an unrecognized extension."
             (Alice_ui.absolute_path_to_string source_path)
         ]
-    | Ok (`Ml direct_input) ->
-      let indirect_inputs =
+    | Ok (`Ml source_input) ->
+      let compiled_inputs =
         List.map deps.inputs ~f:(fun dep ->
           match File.Compiled.of_path_by_extension_infer_role_from_name dep with
           | Ok (`Cmx cmx) -> `Cmx cmx
@@ -130,13 +130,13 @@ let compilation_ops dir package_id build_dir env ocamlopt =
                   (Basename.to_filename dep)
               ])
       in
-      let source_file = Absolute_path.basename source_path in
-      let direct_output =
-        Basename.replace_extension source_file ~ext:".cmx"
+      let source_base_name = Absolute_path.basename source_path in
+      let cmx_output =
+        Basename.replace_extension source_base_name ~ext:".cmx"
         |> File.Compiled.cmx_infer_role_from_name
       in
-      let indirect_output =
-        Basename.replace_extension source_file ~ext:".o"
+      let o_output =
+        Basename.replace_extension source_base_name ~ext:".o"
         |> File.Compiled.o_infer_role_from_name
       in
       let matching_mli_file = Absolute_path.replace_extension source_path ~ext:".mli" in
@@ -145,18 +145,18 @@ let compilation_ops dir package_id build_dir env ocamlopt =
         then None
         else
           Some
-            (Basename.replace_extension source_file ~ext:".cmi"
+            (Basename.replace_extension source_base_name ~ext:".cmi"
              |> File.Compiled.cmi_infer_role_from_name)
       in
       Compile_source
-        { direct_input
-        ; indirect_inputs
-        ; direct_output
-        ; indirect_output
+        { source_input
+        ; compiled_inputs
+        ; cmx_output
+        ; o_output
         ; interface_output_if_no_matching_mli_is_present
         }
-    | Ok (`Mli direct_input) ->
-      let indirect_inputs =
+    | Ok (`Mli interface_input) ->
+      let cmi_inputs =
         List.map deps.inputs ~f:(fun dep ->
           match File.Compiled.of_path_by_extension_infer_role_from_name dep with
           | Ok (`Cmi cmi) -> cmi
@@ -177,12 +177,12 @@ let compilation_ops dir package_id build_dir env ocamlopt =
                   (Basename.to_filename dep)
               ])
       in
-      let direct_output =
+      let cmi_output =
         Absolute_path.basename source_path
         |> Basename.replace_extension ~ext:".cmi"
         |> File.Compiled.cmi_infer_role_from_name
       in
-      Compile_interface { direct_input; indirect_inputs; direct_output })
+      Compile_interface { interface_input; cmi_inputs; cmi_output })
 ;;
 
 type ('exe, 'lib) t =
@@ -206,14 +206,14 @@ let cmx_files_in_build_order build_dag_compilation_only =
     | [] -> acc
     | x :: xs ->
       (match Build_plan.op x with
-       | Compile_source { direct_output; _ } ->
+       | Compile_source { cmx_output; _ } ->
          let deps = Build_plan.deps x in
          let to_visit = xs @ deps in
-         let generated_file = File.Compiled.generated_file direct_output in
+         let generated_file = File.Compiled.generated_file cmx_output in
          if Generated_file.Set.mem generated_file seen
          then loop to_visit seen acc
          else (
-           let acc = direct_output :: acc in
+           let acc = cmx_output :: acc in
            let seen = Generated_file.Set.add generated_file seen in
            loop to_visit seen acc)
        | _ -> loop xs seen acc)
@@ -262,7 +262,7 @@ let create
     File.Linked.exe exe_name
   in
   let link_executable () =
-    Link_executable { direct_output = exe_file; direct_inputs = cmx_files }
+    Link_executable { exe_output = exe_file; cmx_inputs = cmx_files }
   in
   let link_ops =
     match Package.Typed.type_ package_typed with

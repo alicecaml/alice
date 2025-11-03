@@ -313,31 +313,31 @@ end
 
 module Compile_source = struct
   type t =
-    { direct_input : ml File.Source.t
-    ; indirect_inputs : [ `Cmx of cmx File.Compiled.t | `Cmi of cmi File.Compiled.t ] list
-    ; direct_output : cmx File.Compiled.t
-    ; indirect_output : o File.Compiled.t
+    { source_input : ml File.Source.t
+    ; compiled_inputs : [ `Cmx of cmx File.Compiled.t | `Cmi of cmi File.Compiled.t ] list
+    ; cmx_output : cmx File.Compiled.t
+    ; o_output : o File.Compiled.t
     ; interface_output_if_no_matching_mli_is_present : cmi File.Compiled.t option
     }
 
   let equal
         t
-        { direct_input
-        ; indirect_inputs
-        ; direct_output
-        ; indirect_output
+        { source_input
+        ; compiled_inputs
+        ; cmx_output
+        ; o_output
         ; interface_output_if_no_matching_mli_is_present
         }
     =
-    File.Source.equal t.direct_input direct_input
-    && List.equal t.indirect_inputs indirect_inputs ~eq:(fun a b ->
+    File.Source.equal t.source_input source_input
+    && List.equal t.compiled_inputs compiled_inputs ~eq:(fun a b ->
       match a, b with
       | `Cmx a, `Cmx b -> File.Compiled.equal a b
       | `Cmx _, _ -> false
       | `Cmi a, `Cmi b -> File.Compiled.equal a b
       | `Cmi _, _ -> false)
-    && File.Compiled.equal t.direct_output direct_output
-    && File.Compiled.equal t.indirect_output indirect_output
+    && File.Compiled.equal t.cmx_output cmx_output
+    && File.Compiled.equal t.o_output o_output
     && Option.equal
          ~eq:File.Compiled.equal
          t.interface_output_if_no_matching_mli_is_present
@@ -345,23 +345,23 @@ module Compile_source = struct
   ;;
 
   let to_dyn
-        { direct_input
-        ; indirect_inputs
-        ; direct_output
-        ; indirect_output
+        { source_input
+        ; compiled_inputs
+        ; cmx_output
+        ; o_output
         ; interface_output_if_no_matching_mli_is_present
         }
     =
     Dyn.record
-      [ "direct_input", File.Source.to_dyn direct_input
-      ; ( "indirect_inputs"
+      [ "source_input", File.Source.to_dyn source_input
+      ; ( "compiled_inputs"
         , Dyn.list
             (function
               | `Cmx file -> Dyn.variant "Cmx" [ File.Compiled.to_dyn file ]
               | `Cmi file -> Dyn.variant "Cmi" [ File.Compiled.to_dyn file ])
-            indirect_inputs )
-      ; "direct_output", File.Compiled.to_dyn direct_output
-      ; "indirect_output", File.Compiled.to_dyn indirect_output
+            compiled_inputs )
+      ; "cmx_output", File.Compiled.to_dyn cmx_output
+      ; "o_output", File.Compiled.to_dyn o_output
       ; ( "interface_output_if_no_matching_mli_is_present"
         , Dyn.option File.Compiled.to_dyn interface_output_if_no_matching_mli_is_present )
       ]
@@ -370,67 +370,65 @@ end
 
 module Compile_interface = struct
   type t =
-    { direct_input : mli File.Source.t
-    ; indirect_inputs : cmi File.Compiled.t list
-    ; direct_output : cmi File.Compiled.t
+    { interface_input : mli File.Source.t
+    ; cmi_inputs : cmi File.Compiled.t list
+    ; cmi_output : cmi File.Compiled.t
     }
 
-  let equal t { direct_input; indirect_inputs; direct_output } =
-    File.Source.equal t.direct_input direct_input
-    && List.equal t.indirect_inputs indirect_inputs ~eq:File.Compiled.equal
-    && File.Compiled.equal t.direct_output direct_output
+  let equal t { interface_input; cmi_inputs; cmi_output } =
+    File.Source.equal t.interface_input interface_input
+    && List.equal t.cmi_inputs cmi_inputs ~eq:File.Compiled.equal
+    && File.Compiled.equal t.cmi_output cmi_output
   ;;
 
-  let to_dyn { direct_input; indirect_inputs; direct_output } =
+  let to_dyn { interface_input; cmi_inputs; cmi_output } =
     Dyn.record
-      [ "direct_input", File.Source.to_dyn direct_input
-      ; "indirect_inputs", Dyn.list File.Compiled.to_dyn indirect_inputs
-      ; "direct_output", File.Compiled.to_dyn direct_output
+      [ "interface_input", File.Source.to_dyn interface_input
+      ; "cmi_inputs", Dyn.list File.Compiled.to_dyn cmi_inputs
+      ; "cmi_output", File.Compiled.to_dyn cmi_output
       ]
   ;;
 end
 
 module Link_library = struct
   type t =
-    { direct_inputs : cmx File.Compiled.t list
-    ; direct_output : cmxa File.Linked.t
-    ; indirect_output : a File.Linked.t
+    { cmx_inputs : cmx File.Compiled.t list
+    ; cmxa_output : cmxa File.Linked.t
+    ; a_output : a File.Linked.t
     }
 
-  let equal t { direct_inputs; direct_output; indirect_output } =
-    List.equal t.direct_inputs direct_inputs ~eq:File.Compiled.equal
-    && File.Linked.equal t.direct_output direct_output
-    && File.Linked.equal t.indirect_output indirect_output
+  let equal t { cmx_inputs; cmxa_output; a_output } =
+    List.equal t.cmx_inputs cmx_inputs ~eq:File.Compiled.equal
+    && File.Linked.equal t.cmxa_output cmxa_output
+    && File.Linked.equal t.a_output a_output
   ;;
 
-  let to_dyn { direct_inputs; direct_output; indirect_output } =
+  let to_dyn { cmx_inputs; cmxa_output; a_output } =
     Dyn.record
-      [ "direct_inputs", Dyn.list File.Compiled.to_dyn direct_inputs
-      ; "direct_output", File.Linked.to_dyn direct_output
-      ; "indirect_output", File.Linked.to_dyn indirect_output
+      [ "cmx_inputs", Dyn.list File.Compiled.to_dyn cmx_inputs
+      ; "cmxa_output", File.Linked.to_dyn cmxa_output
+      ; "a_output", File.Linked.to_dyn a_output
       ]
   ;;
 
-  let of_inputs direct_inputs =
-    { direct_inputs; direct_output = Lib_cmxa; indirect_output = Lib_a }
-  ;;
+  let of_inputs cmx_inputs = { cmx_inputs; cmxa_output = Lib_cmxa; a_output = Lib_a }
 end
 
 module Link_executable = struct
   type t =
-    { direct_inputs : cmx File.Compiled.t list
-    ; direct_output : exe File.Linked.t
+    { cmx_inputs : cmx File.Compiled.t list
+    ; exe_output : exe File.Linked.t
     }
 
-  let equal t { direct_inputs; direct_output } =
-    List.equal t.direct_inputs direct_inputs ~eq:File.Compiled.equal
-    && File.Linked.equal t.direct_output direct_output
+  let equal t { cmx_inputs; exe_output } =
+    List.equal t.cmx_inputs cmx_inputs ~eq:File.Compiled.equal
+    && File.Linked.equal t.exe_output exe_output
   ;;
 
-  let to_dyn { direct_inputs; direct_output } =
+  let to_dyn { cmx_inputs; exe_output } =
     Dyn.record
-      [ "direct_inputs", Dyn.list File.Compiled.to_dyn direct_inputs
-      ; "direct_output", File.Linked.to_dyn direct_output
+      [ "cmx_inputs", Dyn.list File.Compiled.to_dyn cmx_inputs
+      ; "exe_output", File.Linked.to_dyn exe_output
       ]
   ;;
 end
@@ -465,44 +463,35 @@ let to_dyn = function
 ;;
 
 let source_input = function
-  | Compile_source { direct_input; _ } -> Some (File.Source.path direct_input)
-  | Compile_interface { direct_input; _ } -> Some (File.Source.path direct_input)
+  | Compile_source { source_input; _ } -> Some (File.Source.path source_input)
+  | Compile_interface { interface_input; _ } -> Some (File.Source.path interface_input)
   | Link_library _ -> None
   | Link_executable _ -> None
 ;;
 
 let compiled_inputs = function
-  | Compile_source { indirect_inputs; _ } ->
-    List.map indirect_inputs ~f:(function
+  | Compile_source { compiled_inputs; _ } ->
+    List.map compiled_inputs ~f:(function
       | `Cmx file -> File.Compiled.generated_file_compiled file
       | `Cmi file -> File.Compiled.generated_file_compiled file)
-  | Compile_interface { indirect_inputs; _ } ->
-    List.map indirect_inputs ~f:File.Compiled.generated_file_compiled
-  | Link_library { direct_inputs; _ } ->
-    List.map direct_inputs ~f:File.Compiled.generated_file_compiled
-  | Link_executable { direct_inputs; _ } ->
-    List.map direct_inputs ~f:File.Compiled.generated_file_compiled
+  | Compile_interface { cmi_inputs; _ } ->
+    List.map cmi_inputs ~f:File.Compiled.generated_file_compiled
+  | Link_library { cmx_inputs; _ } ->
+    List.map cmx_inputs ~f:File.Compiled.generated_file_compiled
+  | Link_executable { cmx_inputs; _ } ->
+    List.map cmx_inputs ~f:File.Compiled.generated_file_compiled
 ;;
 
 let outputs = function
   | Compile_source
-      { direct_output
-      ; indirect_output
-      ; interface_output_if_no_matching_mli_is_present
-      ; _
-      } ->
-    [ File.Compiled.generated_file direct_output
-    ; File.Compiled.generated_file indirect_output
-    ]
+      { cmx_output; o_output; interface_output_if_no_matching_mli_is_present; _ } ->
+    [ File.Compiled.generated_file cmx_output; File.Compiled.generated_file o_output ]
     @ (Option.map
          interface_output_if_no_matching_mli_is_present
          ~f:File.Compiled.generated_file
        |> Option.to_list)
-  | Compile_interface { direct_output; _ } ->
-    [ File.Compiled.generated_file direct_output ]
-  | Link_library { direct_output; indirect_output; _ } ->
-    [ File.Linked.generated_file direct_output
-    ; File.Linked.generated_file indirect_output
-    ]
-  | Link_executable { direct_output; _ } -> [ File.Linked.generated_file direct_output ]
+  | Compile_interface { cmi_output; _ } -> [ File.Compiled.generated_file cmi_output ]
+  | Link_library { cmxa_output; a_output; _ } ->
+    [ File.Linked.generated_file cmxa_output; File.Linked.generated_file a_output ]
+  | Link_executable { exe_output; _ } -> [ File.Linked.generated_file exe_output ]
 ;;
