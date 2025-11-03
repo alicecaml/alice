@@ -25,9 +25,9 @@ let subcommand =
     "dot"
     (group
        ~doc:"Print graphviz source files."
-       [ subcommand "artifacts" (singleton ~doc:"Vizualize the build plan." dot_artifacts)
+       [ subcommand "artifacts" (singleton ~doc:"Visualize the build plan." dot_artifacts)
        ; subcommand
            "packages"
-           (singleton ~doc:"Vizualize the package dependency graph." dot_packages)
+           (singleton ~doc:"Visualize the package dependency graph." dot_packages)
        ])
 ;;
