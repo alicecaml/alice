@@ -403,24 +403,6 @@ module Shell = struct
     enum ~eq:equal ~default_value_name:"SHELL" [ "bash", Bash; "zsh", Zsh; "fish", Fish ]
   ;;
 
-  let of_string_opt = function
-    | "bash" -> Some Bash
-    | "zsh" -> Some Zsh
-    | "fish" -> Some Fish
-    | _ -> None
-  ;;
-
-  let from_env () =
-    match Alice_io.Env.shell () with
-    | None -> Bash
-    | Some shell_basename ->
-      (match of_string_opt shell_basename with
-       | Some shell -> shell
-       | None ->
-         Alice_error.panic
-           [ Pp.textf "Don't know how to handle shell: %s" shell_basename ])
-  ;;
-
   let update_path t ~root =
     let bin_dir =
       match root with
@@ -478,7 +460,7 @@ let env =
   let shell =
     match shell with
     | Some shell -> shell
-    | None -> Shell.from_env ()
+    | None -> Bash
   in
   print_endline (Shell.update_path shell ~root)
 ;;
