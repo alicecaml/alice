@@ -20,6 +20,7 @@ val store : t -> dep_table -> unit
     run in the event of a cache miss. *)
 val get_deps
   :  t
+  -> Alice_env.Env.t
   -> Alice_which.Ocamlopt.t
   -> source_path:Absolute_path.non_root_t
   -> Alice_ocamldep.Deps.t

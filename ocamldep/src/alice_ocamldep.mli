@@ -16,4 +16,8 @@ end
     well as the files which must be generated before compiling the given file
     ([Deps.inputs]). Returned paths are relative to the directory containing
     [file]. *)
-val native_deps : Alice_which.Ocamlopt.t -> Absolute_path.non_root_t -> Deps.t
+val native_deps
+  :  Alice_env.Env.t
+  -> Alice_which.Ocamlopt.t
+  -> Absolute_path.non_root_t
+  -> Deps.t

@@ -9,7 +9,7 @@ let dot_artifacts =
   let env = Alice_env.Env.current () in
   let os_type = Alice_env.Os_type.current () in
   let ocamlopt = Alice_which.ocamlopt os_type env in
-  print_endline @@ Project.dot_build_artifacts project os_type ocamlopt
+  print_endline @@ Project.dot_build_artifacts project os_type env ocamlopt
 ;;
 
 let dot_packages =

@@ -6,12 +6,8 @@ let command ocamlopt args =
   Command.create (Alice_which.Ocamlopt.to_filename ocamlopt) ~args:("-depend" :: args)
 ;;
 
-let run_lines ocamlopt args =
+let run_lines env ocamlopt args =
   let command = command ocamlopt args in
-  let env =
-    (* Run ocamldep in an hermetic environment for reproducibility. *)
-    Alice_env.Env.empty
-  in
   match Alice_io.Process.Blocking.run_command_capturing_stdout_lines command ~env with
   | Ok (status, output) ->
     Alice_io.Process.Status.panic_unless_exit_0 status;
@@ -67,12 +63,13 @@ module Deps = struct
   ;;
 end
 
-let native_deps ocamlopt path =
+let native_deps env ocamlopt path =
   if not (Alice_io.File_ops.exists path)
   then
     panic [ Pp.textf "File does not exist: %s" (Alice_ui.absolute_path_to_string path) ];
   match
     run_lines
+      env
       ocamlopt
       [ "-one-line"
       ; "-native"

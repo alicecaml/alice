@@ -10,7 +10,7 @@ let build =
   let env = Alice_env.Env.current () in
   let os_type = Alice_env.Os_type.current () in
   let ocamlopt = Alice_which.ocamlopt os_type env in
-  Project.build project env profile os_type ocamlopt
+  Project.build project profile os_type env ocamlopt
 ;;
 
 let subcommand =
