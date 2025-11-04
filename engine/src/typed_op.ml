@@ -29,12 +29,14 @@ module Role = struct
   ;;
 
   let compare a b =
-    let to_int = function
-      | Internal -> 0
-      | Lib -> 1
-      | Exe -> 2
-    in
-    Int.compare (to_int a) (to_int b)
+    match a, b with
+    | Internal, Internal -> 0
+    | Internal, _ -> -1
+    | _, Internal -> 1
+    | Lib, Lib -> 0
+    | Lib, _ -> -1
+    | _, Lib -> 1
+    | Exe, Exe -> 0
   ;;
 end
 
@@ -79,11 +81,11 @@ module Generated_file = struct
     ;;
 
     let compare a b =
-      let to_int = function
-        | Cmxa -> 0
-        | A -> 1
-      in
-      Int.compare (to_int a) (to_int b)
+      match a, b with
+      | Cmxa, Cmxa -> 0
+      | Cmxa, _ -> -1
+      | _, Cmxa -> 1
+      | A, A -> 0
     ;;
 
     let path = function
@@ -118,12 +120,12 @@ module Generated_file = struct
     let compare a b =
       match a, b with
       | Compiled a, Compiled b -> Compiled.compare a b
-      | Compiled _, (Linked_library _ | Linked_executable _) -> -1
+      | Compiled _, _ -> -1
+      | _, Compiled _ -> 1
       | Linked_library a, Linked_library b -> Linked_library.compare a b
-      | Linked_library _, Compiled _ -> 1
-      | Linked_library _, Linked_executable _ -> -1
+      | Linked_library _, _ -> -1
+      | _, Linked_library _ -> 1
       | Linked_executable a, Linked_executable b -> Basename.compare a b
-      | Linked_executable _, (Compiled _ | Linked_library _) -> 1
     ;;
   end
 
