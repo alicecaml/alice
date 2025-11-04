@@ -3,6 +3,7 @@ open Alice_package
 open Alice_hierarchy
 open Alice_error
 module File_ops = Alice_io.File_ops
+module Package_with_deps = Dependency_graph.Package_with_deps
 
 type t =
   { build_dir : Build_dir.t
@@ -25,7 +26,7 @@ let of_package package =
 let build_single_package
   : type exe lib.
     t
-    -> (exe, lib) Dependency_graph.Package_with_deps.t
+    -> (exe, lib) Package_with_deps.t
     -> Profile.t
     -> Alice_env.Os_type.t
     -> Alice_env.Env.t
@@ -33,9 +34,7 @@ let build_single_package
     -> unit
   =
   fun t package_with_deps profile os_type env ocaml_compiler ->
-  let package_typed = package_with_deps.package in
-  let dep_libs = package_with_deps.immediate_deps in
-  let package = Package.Typed.package package_typed in
+  let package_typed = Package_with_deps.package_typed package_with_deps in
   let build_graph =
     Build_graph.create package_typed t.build_dir os_type env ocaml_compiler
   in
@@ -48,12 +47,11 @@ let build_single_package
   in
   Scheduler.Sequential.eval_build_plans
     build_plans
-    package
+    package_with_deps
     env
     profile
     t.build_dir
     ocaml_compiler
-    ~dep_libs
 ;;
 
 let build_dependency_graph t dependency_graph profile os_type env ocaml_compiler =

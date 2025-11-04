@@ -6,9 +6,12 @@ module File_ops = Alice_io.File_ops
 module Log = Alice_log
 module Build_plan = Build_graph.Build_plan
 module Generated_file = Typed_op.Generated_file
+module Package_with_deps = Dependency_graph.Package_with_deps
 
-let op_command op package profile build_dir ~dep_libs ocaml_compiler =
+let op_command op package_with_deps profile build_dir ocaml_compiler =
   let open Typed_op.File in
+  let package = Package_with_deps.package package_with_deps in
+  let dep_libs = Package_with_deps.immediate_deps package_with_deps in
   let lib_include_args =
     List.concat_map dep_libs ~f:(fun dep_lib ->
       let package_id = Package.Typed.package dep_lib |> Package.id in
@@ -148,8 +151,9 @@ module Sequential = struct
     loop build_plan
   ;;
 
-  let eval_build_plans build_plans package env profile build_dir ocaml_compiler ~dep_libs =
+  let eval_build_plans build_plans package_with_deps env profile build_dir ocaml_compiler =
     let open Alice_ui in
+    let package = Dependency_graph.Package_with_deps.package package_with_deps in
     let abs_path_of_gen_file =
       Build_dir.package_generated_file build_dir (Package.id package) profile
     in
@@ -213,10 +217,9 @@ module Sequential = struct
         let command =
           op_command
             (Build_plan.op build_plan)
-            package
+            package_with_deps
             profile
             build_dir
-            ~dep_libs
             ocaml_compiler
         in
         (let status =

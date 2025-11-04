@@ -11,10 +11,11 @@ val compute : ('exe, 'lib) Package.Typed.t -> ('exe, 'lib) t
 val dot : (_, _) t -> string
 
 module Package_with_deps : sig
-  type ('exe, 'lib) t =
-    { package : ('exe, 'lib) Package.Typed.t
-    ; immediate_deps : Package.Typed.lib_only_t list
-    }
+  type ('exe, 'lib) t
+
+  val package_typed : ('exe, 'lib) t -> ('exe, 'lib) Package.Typed.t
+  val package : (_, _) t -> Package.t
+  val immediate_deps : (_, _) t -> Package.Typed.lib_only_t list
 end
 
 (** Returns the transitive closure of dependencies excluding the package at the
