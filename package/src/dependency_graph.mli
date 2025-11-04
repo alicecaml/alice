@@ -9,18 +9,19 @@ type ('exe, 'lib) t
 val to_dyn : (_, _) t -> Dyn.t
 val compute : ('exe, 'lib) Package.Typed.t -> ('exe, 'lib) t
 val dot : (_, _) t -> string
-val root : ('exe, 'lib) t -> ('exe, 'lib) Package.Typed.t
 
-module Traverse_dependencies : sig
-  (** The dependencies of a package are statically known to be libraries, but
-      the root package may be an executable. Thus the dependencies must be
-      traversed separately from the root package. This is a helper for
-      traversing the transitive dependency closure of a package, excluding the
-      package itself. *)
-  type t
-
-  val package_typed : t -> Package.Typed.lib_only_t
-  val deps : t -> t list
+module Package_with_deps : sig
+  type ('exe, 'lib) t =
+    { package : ('exe, 'lib) Package.Typed.t
+    ; immediate_deps : Package.Typed.lib_only_t list
+    }
 end
 
-val traverse_dependencies : (_, _) t -> Traverse_dependencies.t list
+(** Returns the transitive closure of dependencies excluding the package at the
+    root of the dependency graph. This lets us statically know that each
+    dependency is a library package, while the root package may not be. *)
+val transitive_dependency_closure_in_dependency_order
+  :  (_, _) t
+  -> (Type_bool.false_t, Type_bool.true_t) Package_with_deps.t list
+
+val root_package_with_deps : ('exe, 'lib) t -> ('exe, 'lib) Package_with_deps.t

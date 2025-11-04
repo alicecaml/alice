@@ -125,17 +125,25 @@ let to_string_graph t =
 ;;
 
 let dot t = to_string_graph t |> Alice_graphviz.dot_src_of_string_graph
-let root { root; _ } = root
 
-module Traverse_dependencies = struct
-  include Dependency_dag.Traverse
-
-  let package_typed = node
+module Package_with_deps = struct
+  type ('exe, 'lib) t =
+    { package : ('exe, 'lib) Package.Typed.t
+    ; immediate_deps : Package.Typed.lib_only_t list
+    }
 end
 
-let traverse_dependencies { dependency_dag; _ } =
-  Dependency_dag.roots dependency_dag
-  |> List.filter_map ~f:(fun node ->
-    let name = Node.name node in
-    Dependency_dag.traverse dependency_dag ~name)
+let root_package_with_deps { root; dependency_dag } =
+  let immediate_deps = Dependency_dag.roots dependency_dag in
+  { Package_with_deps.package = root; immediate_deps }
+;;
+
+let transitive_dependency_closure_in_dependency_order { dependency_dag; _ } =
+  Dependency_dag.all_nodes_in_dependency_order dependency_dag
+  |> List.map ~f:(fun package ->
+    let traverse = Dependency_dag.traverse dependency_dag ~name:(Node.name package) in
+    let immediate_deps =
+      Dependency_dag.Traverse.deps traverse |> List.map ~f:Dependency_dag.Traverse.node
+    in
+    { Package_with_deps.package; immediate_deps })
 ;;

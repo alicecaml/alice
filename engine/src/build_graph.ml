@@ -201,38 +201,17 @@ let to_dyn { build_dag; exe_file; package_typed } =
 
 let cmx_files_in_build_order build_dag_compilation_only =
   let open Typed_op in
-  let rec loop to_visit seen acc =
-    match to_visit with
-    | [] -> acc
-    | x :: xs ->
-      (match Build_plan.op x with
-       | Compile_source { cmx_output; _ } ->
-         let deps = Build_plan.deps x in
-         let to_visit = xs @ deps in
-         let generated_file = File.Compiled.generated_file cmx_output in
-         if Generated_file.Set.mem generated_file seen
-         then loop to_visit seen acc
-         else (
-           let acc = cmx_output :: acc in
-           let seen = Generated_file.Set.add generated_file seen in
-           loop to_visit seen acc)
-       | _ -> loop xs seen acc)
-  in
-  let root_traverses =
-    Build_dag.roots build_dag_compilation_only
-    |> List.filter_map ~f:(fun root ->
-      match
-        Build_node.name root |> Generated_file.path |> Basename.has_extension ~ext:".cmx"
-      with
-      | false -> None
-      | true ->
-        let traverse =
-          Build_dag.traverse build_dag_compilation_only ~output:(Build_node.name root)
-          |> Option.get
-        in
-        Some traverse)
-  in
-  loop root_traverses Generated_file.Set.empty []
+  Build_dag.all_nodes_in_dependency_order build_dag_compilation_only
+  |> List.filter_map ~f:(fun (node : Build_node.t) ->
+    match node.op with
+    | Compile_source { cmx_output; _ } ->
+      if Generated_file.equal node.artifact (File.Compiled.generated_file cmx_output)
+      then
+        (* Multiple artifacts are built from the same command, but here we're
+           only interested in the cmx artifact. *)
+        Some cmx_output
+      else None
+    | _ -> None)
 ;;
 
 let create
@@ -282,12 +261,10 @@ let create
 
 let plan_exe ({ build_dag; exe_file; _ } : (Type_bool.true_t, _) t) =
   Build_dag.traverse build_dag ~output:(Typed_op.File.Linked.generated_file exe_file)
-  |> Option.get
 ;;
 
 let plan_lib ({ build_dag; _ } : (_, Type_bool.true_t) t) =
   Build_dag.traverse build_dag ~output:(Typed_op.Generated_file.Linked_library Cmxa)
-  |> Option.get
 ;;
 
 let create_exe_plan package_typed build_dir os_type env ocamlopt =

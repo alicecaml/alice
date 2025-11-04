@@ -4,6 +4,8 @@ module type Node = sig
   module Name : sig
     type t
 
+    val to_dyn : t -> Dyn.t
+
     module Set : Set.S with type elt = t
     module Map : Map.S with type key = t
   end
@@ -48,6 +50,24 @@ module Make (Node : Node) = struct
     |> String.Map.of_list_exn
   ;;
 
+  let transitive_closure_in_dependency_order t ~starts =
+    let rec loop node seen acc =
+      let unseen_deps = Node.Name.Set.diff (Node.dep_names node) seen in
+      let seen, acc = loop_multi unseen_deps seen acc in
+      Node.Name.Set.add (Node.name node) seen, node :: acc
+    and loop_multi names seen acc =
+      Node.Name.Set.fold names ~init:(seen, acc) ~f:(fun name (seen, acc) ->
+        let node = Node.Name.Map.find name t in
+        loop node seen acc)
+    in
+    loop_multi (Node.Name.Set.of_list starts) Node.Name.Set.empty [] |> snd |> List.rev
+  ;;
+
+  let all_nodes_in_dependency_order t =
+    let starts = List.map (roots t) ~f:Node.name in
+    transitive_closure_in_dependency_order t ~starts
+  ;;
+
   module Traverse = struct
     type nonrec t =
       { node : Node.t
@@ -66,8 +86,12 @@ module Make (Node : Node) = struct
   end
 
   let traverse t ~name =
-    Node.Name.Map.find_opt name t
-    |> Option.map ~f:(fun node -> { Traverse.node; dag = t })
+    match Node.Name.Map.find_opt name t with
+    | Some node -> { Traverse.node; dag = t }
+    | None ->
+      Alice_error.panic
+        [ Pp.textf "No such node in this DAG: %s" (Node.Name.to_dyn name |> Dyn.to_string)
+        ]
   ;;
 
   module Staging = struct

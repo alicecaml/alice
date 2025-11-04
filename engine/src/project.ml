@@ -22,18 +22,19 @@ let of_package package =
   { build_dir; package }
 ;;
 
-let build_single_package_typed
+let build_single_package
   : type exe lib.
     t
-    -> (exe, lib) Package.Typed.t
+    -> (exe, lib) Dependency_graph.Package_with_deps.t
     -> Profile.t
     -> Alice_env.Os_type.t
     -> Alice_env.Env.t
     -> Alice_which.Ocamlopt.t
-    -> dep_libs:Package.Typed.lib_only_t list
     -> unit
   =
-  fun t package_typed profile os_type env ocamlopt ~dep_libs ->
+  fun t package_with_deps profile os_type env ocamlopt ->
+  let package_typed = package_with_deps.package in
+  let dep_libs = package_with_deps.immediate_deps in
   let package = Package.Typed.package package_typed in
   let build_graph = Build_graph.create package_typed t.build_dir os_type env ocamlopt in
   let build_plans =
@@ -49,31 +50,17 @@ let build_single_package_typed
     env
     profile
     t.build_dir
+    ocamlopt
     ~dep_libs
-    ~ocamlopt
 ;;
 
 let build_dependency_graph t dependency_graph profile os_type env ocamlopt =
   let open Dependency_graph in
-  let rec build_deps nodes = List.iter nodes ~f:build_node
-  and build_node node =
-    let deps = Traverse_dependencies.deps node in
-    build_deps deps;
-    let dep_libs = List.map deps ~f:Traverse_dependencies.package_typed in
-    let pt = Traverse_dependencies.package_typed node in
-    build_single_package_typed t pt profile os_type env ocamlopt ~dep_libs
-  in
-  let deps = traverse_dependencies dependency_graph in
-  build_deps deps;
-  let dep_libs = List.map deps ~f:Traverse_dependencies.package_typed in
-  build_single_package_typed
-    t
-    (root dependency_graph)
-    profile
-    os_type
-    env
-    ocamlopt
-    ~dep_libs
+  transitive_dependency_closure_in_dependency_order dependency_graph
+  |> List.iter ~f:(fun package_with_deps ->
+    build_single_package t package_with_deps profile os_type env ocamlopt);
+  let root = root_package_with_deps dependency_graph in
+  build_single_package t root profile os_type env ocamlopt
 ;;
 
 let build_package_typed t package_typed profile env ocamlopt =
