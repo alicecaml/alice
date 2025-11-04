@@ -11,7 +11,7 @@ module Package_with_deps = Dependency_graph.Package_with_deps
 let op_command op package_with_deps profile build_dir ocaml_compiler =
   let open Typed_op.File in
   let package = Package_with_deps.package package_with_deps in
-  let dep_libs = Package_with_deps.immediate_deps package_with_deps in
+  let dep_libs = Package_with_deps.immediate_deps_in_dependency_order package_with_deps in
   let lib_include_args =
     List.concat_map dep_libs ~f:(fun dep_lib ->
       let package_id = Package.Typed.package dep_lib |> Package.id in
