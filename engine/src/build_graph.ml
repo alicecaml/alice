@@ -185,7 +185,6 @@ let compilation_ops dir package_id build_dir env ocaml_compiler =
         ; cmx_output
         ; o_output
         ; interface_output_if_no_matching_mli_is_present
-        ; transitive_dep_of_lib = false
         }
     | Ok (`Mli interface_input) ->
       let cmi_inputs =
@@ -214,8 +213,7 @@ let compilation_ops dir package_id build_dir env ocaml_compiler =
         |> Basename.replace_extension ~ext:".cmi"
         |> File.Compiled.cmi_infer_role_from_name
       in
-      Compile_interface
-        { interface_input; cmi_inputs; cmi_output; transitive_dep_of_lib = false })
+      Compile_interface { interface_input; cmi_inputs; cmi_output })
 ;;
 
 type ('exe, 'lib) t =

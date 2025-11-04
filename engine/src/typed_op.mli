@@ -101,7 +101,6 @@ module Compile_source : sig
     ; cmx_output : cmx File.Compiled.t
     ; o_output : o File.Compiled.t
     ; interface_output_if_no_matching_mli_is_present : cmi File.Compiled.t option
-    ; transitive_dep_of_lib : bool
     }
 end
 
@@ -110,7 +109,6 @@ module Compile_interface : sig
     { interface_input : mli File.Source.t
     ; cmi_inputs : cmi File.Compiled.t list
     ; cmi_output : cmi File.Compiled.t
-    ; transitive_dep_of_lib : bool
     }
 end
 
@@ -136,8 +134,6 @@ type t =
   | Compile_interface of Compile_interface.t
   | Link_library of Link_library.t
   | Link_executable of Link_executable.t
-
-module Set : Set.S with type elt = t
 
 val equal : t -> t -> bool
 val to_dyn : t -> Dyn.t
