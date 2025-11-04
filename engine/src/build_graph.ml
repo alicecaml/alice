@@ -70,6 +70,37 @@ module Build_dag = struct
   ;;
 
   let traverse t ~output = traverse t ~name:output
+
+  (* Returns the cmx files in build order which must be built before the files
+     listed in [starts], including the files in [starts]. *)
+  let cmx_files_in_build_order t ~starts =
+    let open Typed_op in
+    transitive_closure_in_dependency_order t ~starts
+    |> List.filter_map ~f:(fun (node : Build_node.t) ->
+      match node.op with
+      | Compile_source { cmx_output; _ } ->
+        if Generated_file.equal node.artifact (File.Compiled.generated_file cmx_output)
+        then
+          (* Multiple artifacts are built from the same command, but here we're
+             only interested in the cmx artifact. *)
+          Some cmx_output
+        else None
+      | _ -> None)
+  ;;
+
+  (* The cmx files needed to build the library cmx target in build order. *)
+  let cmx_files_in_build_order_for_lib t =
+    cmx_files_in_build_order
+      t
+      ~starts:[ Typed_op.File.Compiled.generated_file Typed_op.File.Compiled.lib_cmx ]
+  ;;
+
+  (* The cmx files needed to build the executable cmx target in build order. *)
+  let cmx_files_in_build_order_for_exe t =
+    cmx_files_in_build_order
+      t
+      ~starts:[ Typed_op.File.Compiled.generated_file Typed_op.File.Compiled.exe_cmx ]
+  ;;
 end
 
 module Build_plan = struct
@@ -154,6 +185,7 @@ let compilation_ops dir package_id build_dir env ocaml_compiler =
         ; cmx_output
         ; o_output
         ; interface_output_if_no_matching_mli_is_present
+        ; transitive_dep_of_lib = false
         }
     | Ok (`Mli interface_input) ->
       let cmi_inputs =
@@ -182,7 +214,8 @@ let compilation_ops dir package_id build_dir env ocaml_compiler =
         |> Basename.replace_extension ~ext:".cmi"
         |> File.Compiled.cmi_infer_role_from_name
       in
-      Compile_interface { interface_input; cmi_inputs; cmi_output })
+      Compile_interface
+        { interface_input; cmi_inputs; cmi_output; transitive_dep_of_lib = false })
 ;;
 
 type ('exe, 'lib) t =
@@ -197,21 +230,6 @@ let to_dyn { build_dag; exe_file; package_typed } =
     ; "exe_file", Typed_op.File.Linked.to_dyn exe_file
     ; "package_typed", Package.Typed.to_dyn package_typed
     ]
-;;
-
-let cmx_files_in_build_order build_dag_compilation_only =
-  let open Typed_op in
-  Build_dag.all_nodes_in_dependency_order build_dag_compilation_only
-  |> List.filter_map ~f:(fun (node : Build_node.t) ->
-    match node.op with
-    | Compile_source { cmx_output; _ } ->
-      if Generated_file.equal node.artifact (File.Compiled.generated_file cmx_output)
-      then
-        (* Multiple artifacts are built from the same command, but here we're
-           only interested in the cmx artifact. *)
-        Some cmx_output
-      else None
-    | _ -> None)
 ;;
 
 let create
@@ -231,8 +249,12 @@ let create
     compilation_ops src_dir (Package.id package) build_dir env ocaml_compiler
   in
   let build_dag_compilation_only = Build_dag.of_ops compilation_ops in
-  let cmx_files = cmx_files_in_build_order build_dag_compilation_only in
-  let link_library () = Link_library (Link_library.of_inputs cmx_files) in
+  let link_library () =
+    let cmx_files =
+      Build_dag.cmx_files_in_build_order_for_lib build_dag_compilation_only
+    in
+    Link_library (Link_library.of_inputs cmx_files)
+  in
   let exe_file =
     let exe_name =
       Basename.of_filename (Package.name package |> Package_name.to_string)
@@ -241,6 +263,9 @@ let create
     File.Linked.exe exe_name
   in
   let link_executable () =
+    let cmx_files =
+      Build_dag.cmx_files_in_build_order_for_exe build_dag_compilation_only
+    in
     Link_executable { exe_output = exe_file; cmx_inputs = cmx_files }
   in
   let link_ops =

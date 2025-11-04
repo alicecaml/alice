@@ -85,6 +85,22 @@ module Typed = struct
 
   let package { package; _ } = package
   let type_ { type_; _ } = type_
+
+  let contains_exe : type exe lib. (exe, lib) t -> exe Type_bool.t =
+    fun t ->
+    match t.type_ with
+    | Exe_only -> True
+    | Lib_only -> False
+    | Exe_and_lib -> True
+  ;;
+
+  let contains_lib : type exe lib. (exe, lib) t -> lib Type_bool.t =
+    fun t ->
+    match t.type_ with
+    | Exe_only -> False
+    | Lib_only -> True
+    | Exe_and_lib -> True
+  ;;
 end
 
 let typed t =
