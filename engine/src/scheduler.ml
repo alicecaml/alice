@@ -7,7 +7,7 @@ module Log = Alice_log
 module Build_plan = Build_graph.Build_plan
 module Generated_file = Typed_op.Generated_file
 
-let op_command op package profile build_dir ~dep_libs ~ocamlopt =
+let op_command op package profile build_dir ~dep_libs ocaml_compiler =
   let open Typed_op.File in
   let lib_include_args =
     List.concat_map dep_libs ~f:(fun dep_lib ->
@@ -36,9 +36,9 @@ let op_command op package profile build_dir ~dep_libs ~ocamlopt =
   let lib_dir = Build_dir.package_lib_dir build_dir package_id profile in
   match (op : Typed_op.t) with
   | Compile_source { source_input; cmx_output; _ } ->
-    Profile.ocamlopt_command
+    Profile.ocaml_compiler_command
       profile
-      ~ocamlopt
+      ocaml_compiler
       ~args:
         (lib_include_args
          @ [ "-I"
@@ -52,9 +52,9 @@ let op_command op package profile build_dir ~dep_libs ~ocamlopt =
            ; Source.path source_input |> Absolute_path.to_filename
            ])
   | Compile_interface { interface_input; cmi_output; _ } ->
-    Profile.ocamlopt_command
+    Profile.ocaml_compiler_command
       profile
-      ~ocamlopt
+      ocaml_compiler
       ~args:
         (lib_include_args
          @ [ "-I"
@@ -68,9 +68,9 @@ let op_command op package profile build_dir ~dep_libs ~ocamlopt =
            ; Source.path interface_input |> Absolute_path.to_filename
            ])
   | Link_library { cmx_inputs; cmxa_output; _ } ->
-    Profile.ocamlopt_command
+    Profile.ocaml_compiler_command
       profile
-      ~ocamlopt
+      ocaml_compiler
       ~args:
         (lib_include_args
          @ [ "-I"
@@ -89,9 +89,9 @@ let op_command op package profile build_dir ~dep_libs ~ocamlopt =
            |> abs_path_of_gen_file
            |> Absolute_path.to_filename))
   | Link_executable { cmx_inputs; exe_output } ->
-    Profile.ocamlopt_command
+    Profile.ocaml_compiler_command
       profile
-      ~ocamlopt
+      ocaml_compiler
       ~args:
         (lib_include_args
          @ [ "-I"
@@ -148,7 +148,7 @@ module Sequential = struct
     loop build_plan
   ;;
 
-  let eval_build_plans build_plans package env profile build_dir ocamlopt ~dep_libs =
+  let eval_build_plans build_plans package env profile build_dir ocaml_compiler ~dep_libs =
     let open Alice_ui in
     let abs_path_of_gen_file =
       Build_dir.package_generated_file build_dir (Package.id package) profile
@@ -217,7 +217,7 @@ module Sequential = struct
             profile
             build_dir
             ~dep_libs
-            ~ocamlopt
+            ocaml_compiler
         in
         (let status =
            match Alice_io.Process.Blocking.run_command command ~env with

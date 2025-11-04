@@ -24,7 +24,7 @@ val create
   -> Build_dir.t
   -> Alice_env.Os_type.t
   -> Alice_env.Env.t
-  -> Alice_which.Ocamlopt.t
+  -> Alice_which.Ocaml_compiler.t
   -> ('exe, 'lib) t
 
 val plan_exe : (true_t, _) t -> Build_plan.t
@@ -35,7 +35,7 @@ val create_exe_plan
   -> Build_dir.t
   -> Alice_env.Os_type.t
   -> Alice_env.Env.t
-  -> Alice_which.Ocamlopt.t
+  -> Alice_which.Ocaml_compiler.t
   -> Build_plan.t
 
 val create_lib_plan
@@ -43,7 +43,7 @@ val create_lib_plan
   -> Build_dir.t
   -> Alice_env.Os_type.t
   -> Alice_env.Env.t
-  -> Alice_which.Ocamlopt.t
+  -> Alice_which.Ocaml_compiler.t
   -> Build_plan.t
 
 val dot : (_, _) t -> string

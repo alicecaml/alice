@@ -21,6 +21,6 @@ val store : t -> dep_table -> unit
 val get_deps
   :  t
   -> Alice_env.Env.t
-  -> Alice_which.Ocamlopt.t
+  -> Alice_which.Ocaml_compiler.t
   -> source_path:Absolute_path.non_root_t
   -> Alice_ocamldep.Deps.t

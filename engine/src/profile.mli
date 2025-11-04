@@ -2,10 +2,10 @@ open! Alice_stdlib
 
 type t
 
-val ocamlopt_command
+val ocaml_compiler_command
   :  t
+  -> Alice_which.Ocaml_compiler.t
   -> args:string list
-  -> ocamlopt:Alice_which.Ocamlopt.t
   -> Command.t
 
 val debug : t

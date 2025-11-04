@@ -18,6 +18,6 @@ end
     [file]. *)
 val native_deps
   :  Alice_env.Env.t
-  -> Alice_which.Ocamlopt.t
+  -> Alice_which.Ocaml_compiler.t
   -> Absolute_path.non_root_t
   -> Deps.t

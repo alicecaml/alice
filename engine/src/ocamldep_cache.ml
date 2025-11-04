@@ -45,7 +45,7 @@ let store t (dep_table : dep_table) =
     Marshal.to_channel channel dep_table [])
 ;;
 
-let get_deps t env ocamlopt ~source_path =
+let get_deps t env ocaml_compiler ~source_path =
   let path = Build_dir.package_ocamldeps_cache_file t.build_dir t.package_id in
   let source_mtime = File_ops.mtime source_path in
   let run_ocamldep () =
@@ -55,7 +55,7 @@ let get_deps t env ocamlopt ~source_path =
           "Analyzing dependencies of file: %s"
           (Alice_ui.absolute_path_to_string source_path)
       ];
-    Alice_ocamldep.native_deps env ocamlopt source_path
+    Alice_ocamldep.native_deps env ocaml_compiler source_path
   in
   if source_mtime > t.mtime
   then

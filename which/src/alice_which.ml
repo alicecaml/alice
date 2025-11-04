@@ -2,7 +2,7 @@ open! Alice_stdlib
 open Alice_hierarchy
 open Alice_env
 
-module Ocamlopt = struct
+module Ocaml_compiler = struct
   type t = Filename.t
 
   let to_filename t = t

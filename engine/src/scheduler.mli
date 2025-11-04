@@ -8,7 +8,7 @@ module Sequential : sig
     -> Alice_env.Env.t
     -> Profile.t
     -> Build_dir.t
-    -> Alice_which.Ocamlopt.t
+    -> Alice_which.Ocaml_compiler.t
     -> dep_libs:Package.Typed.lib_only_t list
     -> unit
 end

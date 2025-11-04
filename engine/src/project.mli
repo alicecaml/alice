@@ -14,7 +14,7 @@ val build
   -> Profile.t
   -> Alice_env.Os_type.t
   -> Alice_env.Env.t
-  -> Alice_which.Ocamlopt.t
+  -> Alice_which.Ocaml_compiler.t
   -> unit
 
 val run
@@ -22,7 +22,7 @@ val run
   -> Profile.t
   -> Alice_env.Os_type.t
   -> Alice_env.Env.t
-  -> Alice_which.Ocamlopt.t
+  -> Alice_which.Ocaml_compiler.t
   -> args:string list
   -> unit
 
@@ -32,7 +32,7 @@ val dot_build_artifacts
   :  t
   -> Alice_env.Os_type.t
   -> Alice_env.Env.t
-  -> Alice_which.Ocamlopt.t
+  -> Alice_which.Ocaml_compiler.t
   -> string
 
 val dot_dependencies : t -> string
