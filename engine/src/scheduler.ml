@@ -85,7 +85,7 @@ module Sequential = struct
   (* Determines which files need to be (re)built. A file needs to be rebuilt if
      any of its dependencies need to be rebuilt, or if its mtime is earlier than
      any of its source dependencies. *)
-  let files_to_build build_plan abs_path_of_gen_file =
+  let files_to_build build_plan package_id profile build_dir =
     let rec loop build_plan =
       let deps = Build_plan.deps build_plan in
       let to_rebuild =
@@ -102,7 +102,9 @@ module Sequential = struct
            is earlier than the latest mtime among source files which the
            output depends on. *)
         Generated_file.Set.filter (Build_plan.outputs build_plan) ~f:(fun output ->
-          let output_abs = abs_path_of_gen_file output in
+          let output_abs =
+            Build_dir.package_generated_file build_dir package_id profile output
+          in
           match File_ops.exists output_abs with
           | false ->
             (* File doesn't exist. Build it! *)
@@ -122,20 +124,17 @@ module Sequential = struct
   let eval_build_plans build_plans package_with_deps env profile build_dir ocaml_compiler =
     let open Alice_ui in
     let package = Dependency_graph.Package_with_deps.package package_with_deps in
-    let abs_path_of_gen_file =
-      Build_dir.package_generated_file build_dir (Package.id package) profile
-    in
+    let package_id = Package.id package in
     let src_dir = Package.src_dir_path package in
     let panic_context () =
       (* Information to help debug package build failures. *)
-      let out_dir = Build_dir.package_base_dir build_dir (Package.id package) profile in
+      let out_dir = Build_dir.package_base_dir build_dir package_id profile in
       [ Pp.textf "src_dir: %s\n" (absolute_path_to_string src_dir)
       ; Pp.textf "out_dir: %s\n" (absolute_path_to_string out_dir)
       ]
     in
     let print_compiling_message =
-      println_once
-        (verb_message `Compiling (Package_id.name_v_version_string (Package.id package)))
+      println_once (verb_message `Compiling (Package_id.name_v_version_string package_id))
     in
     let rec loop ~acc_files_to_build build_plan =
       let acc_files_to_build =
@@ -155,7 +154,7 @@ module Sequential = struct
         print_compiling_message ();
         let outputs = Build_plan.outputs build_plan in
         Log.info
-          ~package_id:(Package.id package)
+          ~package_id
           [ Pp.textf
               "Building targets: %s"
               (Generated_file.Set.to_list outputs
@@ -174,7 +173,13 @@ module Sequential = struct
                   (absolute_path_to_string source_input)
                 :: panic_context ()));
         List.iter (Build_plan.compiled_inputs build_plan) ~f:(fun compiled ->
-          let compiled_path = abs_path_of_gen_file (Generated_file.Compiled compiled) in
+          let compiled_path =
+            Build_dir.package_generated_file_compiled
+              build_dir
+              package_id
+              profile
+              compiled
+          in
           if not (File_ops.exists compiled_path)
           then
             Alice_error.panic
@@ -204,11 +209,11 @@ module Sequential = struct
               :: panic_context ()));
         Generated_file.Set.diff acc_files_to_build (Build_plan.outputs build_plan)
     in
-    Build_dir.package_dirs build_dir (Package.id package) profile
-    |> List.iter ~f:File_ops.mkdir_p;
+    Build_dir.package_dirs build_dir package_id profile |> List.iter ~f:File_ops.mkdir_p;
     let files_to_build =
       List.fold_left build_plans ~init:Generated_file.Set.empty ~f:(fun acc build_plan ->
-        files_to_build build_plan abs_path_of_gen_file |> Generated_file.Set.union acc)
+        files_to_build build_plan package_id profile build_dir
+        |> Generated_file.Set.union acc)
     in
     let remaining_files_to_build =
       List.fold_left

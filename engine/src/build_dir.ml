@@ -40,16 +40,20 @@ let package_dirs t package_id profile =
   ]
 ;;
 
+let package_generated_file_compiled t package_id profile compiled =
+  let open Typed_op.Generated_file in
+  let base =
+    match Compiled.visibility compiled with
+    | Private -> package_private_dir t package_id profile
+    | Public -> package_public_dir t package_id profile
+  in
+  base / Compiled.path compiled
+;;
+
 let package_generated_file t package_id profile generated_file =
   let open Typed_op.Generated_file in
   match (generated_file : t) with
-  | Compiled compiled ->
-    let base =
-      match Compiled.visibility compiled with
-      | Private -> package_private_dir t package_id profile
-      | Public -> package_public_dir t package_id profile
-    in
-    base / Compiled.path compiled
+  | Compiled compiled -> package_generated_file_compiled t package_id profile compiled
   | Linked_library linked_library ->
     package_public_dir t package_id profile / Linked_library.path linked_library
   | Linked_executable path -> package_executable_dir t package_id profile / path

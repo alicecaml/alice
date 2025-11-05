@@ -13,6 +13,13 @@ val package_public_dir : t -> Package_id.t -> Profile.t -> Absolute_path.non_roo
 val package_executable_dir : t -> Package_id.t -> Profile.t -> Absolute_path.non_root_t
 val package_dirs : t -> Package_id.t -> Profile.t -> Absolute_path.non_root_t list
 
+val package_generated_file_compiled
+  :  t
+  -> Package_id.t
+  -> Profile.t
+  -> Typed_op.Generated_file.Compiled.t
+  -> Absolute_path.non_root_t
+
 val package_generated_file
   :  t
   -> Package_id.t
