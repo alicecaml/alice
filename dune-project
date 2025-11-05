@@ -34,12 +34,7 @@
 
 (package
  (name alice_manifest)
- (depends
-  ocaml
-  (toml
-   (and
-    (>= 7)
-    (< 8)))))
+ (depends ocaml toml))
 
 (package
  (name alice_ocamldep)
@@ -75,25 +70,4 @@
 
 (package
  (name alice_stdlib)
- (depends
-  ocaml
-  (dyn
-   (and
-    (>= 3)
-    (< 4)))
-  (fileutils
-   (and
-    (>= 0.6)
-    (< 0.7)))
-  (pp
-   (and
-    (>= 2)
-    (< 3)))
-  (re
-   (and
-    (>= 1)
-    (< 2)))
-  (xdg
-   (and
-    (>= 3)
-    (< 4)))))
+ (depends ocaml dyn fileutils pp re xdg))
