@@ -15,28 +15,21 @@ let op_command op package_with_deps profile build_dir ocaml_compiler =
   let lib_include_args =
     List.concat_map dep_libs ~f:(fun dep_lib ->
       let package_id = Package.Typed.package dep_lib |> Package.id in
-      let dep_lib_dir = Build_dir.package_lib_dir build_dir package_id profile in
-      let dep_internal_dir =
-        Build_dir.package_internal_dir build_dir package_id profile
-      in
       [ "-I"
-      ; Absolute_path.to_filename dep_lib_dir
-      ; "-I"
-      ; Absolute_path.to_filename dep_internal_dir
+      ; Build_dir.package_public_dir build_dir package_id profile
+        |> Absolute_path.to_filename
       ])
   in
   let lib_cmxa_files =
     List.map dep_libs ~f:(fun dep_lib ->
       let package_id = Package.Typed.package dep_lib |> Package.id in
-      let dep_lib_dir = Build_dir.package_lib_dir build_dir package_id profile in
-      dep_lib_dir / Linked.path Linked.lib_cmxa |> Absolute_path.to_filename)
+      let public = Build_dir.package_public_dir build_dir package_id profile in
+      public / Linked.path Linked.lib_cmxa |> Absolute_path.to_filename)
   in
   let package_id = Package.id package in
-  let abs_path_of_gen_file =
-    Build_dir.package_generated_file build_dir package_id profile
-  in
-  let internal_dir = Build_dir.package_internal_dir build_dir package_id profile in
-  let lib_dir = Build_dir.package_lib_dir build_dir package_id profile in
+  let private_ = Build_dir.package_private_dir build_dir package_id profile in
+  let public = Build_dir.package_public_dir build_dir package_id profile in
+  let executable = Build_dir.package_executable_dir build_dir package_id profile in
   match (op : Typed_op.t) with
   | Compile_source { source_input; cmx_output; _ } ->
     Profile.ocaml_compiler_command
@@ -45,14 +38,12 @@ let op_command op package_with_deps profile build_dir ocaml_compiler =
       ~args:
         (lib_include_args
          @ [ "-I"
-           ; internal_dir |> Absolute_path.to_filename
+           ; Absolute_path.to_filename private_
            ; "-c"
            ; "-o"
-           ; Compiled.generated_file cmx_output
-             |> abs_path_of_gen_file
-             |> Absolute_path.to_filename
+           ; Absolute_path.to_filename @@ (private_ / Compiled.path cmx_output)
            ; "-impl"
-           ; Source.path source_input |> Absolute_path.to_filename
+           ; Absolute_path.to_filename @@ Source.path source_input
            ])
   | Compile_interface { interface_input; cmi_output; _ } ->
     Profile.ocaml_compiler_command
@@ -61,12 +52,10 @@ let op_command op package_with_deps profile build_dir ocaml_compiler =
       ~args:
         (lib_include_args
          @ [ "-I"
-           ; internal_dir |> Absolute_path.to_filename
+           ; Absolute_path.to_filename private_
            ; "-c"
            ; "-o"
-           ; Compiled.generated_file cmi_output
-             |> abs_path_of_gen_file
-             |> Absolute_path.to_filename
+           ; Absolute_path.to_filename @@ (private_ / Compiled.path cmi_output)
            ; "-intf"
            ; Source.path interface_input |> Absolute_path.to_filename
            ])
@@ -76,41 +65,20 @@ let op_command op package_with_deps profile build_dir ocaml_compiler =
       ocaml_compiler
       ~args:
         (lib_include_args
-         @ [ "-I"
-           ; internal_dir |> Absolute_path.to_filename
-           ; "-I"
-           ; lib_dir |> Absolute_path.to_filename
-           ; "-a"
-           ; "-o"
-           ; Linked.generated_file cmxa_output
-             |> abs_path_of_gen_file
-             |> Absolute_path.to_filename
-           ]
-         @ lib_cmxa_files
          @ List.map cmx_inputs ~f:(fun compiled ->
-           Compiled.generated_file compiled
-           |> abs_path_of_gen_file
-           |> Absolute_path.to_filename))
+           Absolute_path.to_filename @@ (private_ / Compiled.path compiled))
+         @ [ "-a"; "-o"; Absolute_path.to_filename @@ (public / Linked.path cmxa_output) ]
+        )
   | Link_executable { cmx_inputs; exe_output } ->
     Profile.ocaml_compiler_command
       profile
       ocaml_compiler
       ~args:
         (lib_include_args
-         @ [ "-I"
-           ; internal_dir |> Absolute_path.to_filename
-           ; "-I"
-           ; lib_dir |> Absolute_path.to_filename (* so exe can depend on library *)
-           ; "-o"
-           ; Linked.generated_file exe_output
-             |> abs_path_of_gen_file
-             |> Absolute_path.to_filename
-           ]
-         @ lib_cmxa_files
          @ List.map cmx_inputs ~f:(fun compiled ->
-           Compiled.generated_file compiled
-           |> abs_path_of_gen_file
-           |> Absolute_path.to_filename))
+           Absolute_path.to_filename @@ (private_ / Compiled.path compiled))
+         @ lib_cmxa_files
+         @ [ "-o"; Absolute_path.to_filename @@ (executable / Linked.path exe_output) ])
 ;;
 
 module Sequential = struct

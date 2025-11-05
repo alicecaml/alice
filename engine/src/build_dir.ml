@@ -21,40 +21,36 @@ let package_base_dir t package_id profile =
   package_dir t package_id / Basename.of_filename (Profile.name profile)
 ;;
 
-let package_internal_dir t package_id profile =
-  package_base_dir t package_id profile / Basename.of_filename "internal"
+let package_private_dir t package_id profile =
+  package_base_dir t package_id profile / Basename.of_filename "private"
 ;;
 
-let package_lib_dir t package_id profile =
-  package_base_dir t package_id profile / Basename.of_filename "lib"
+let package_public_dir t package_id profile =
+  package_base_dir t package_id profile / Basename.of_filename "public"
 ;;
 
-let package_exe_dir t package_id profile =
-  package_base_dir t package_id profile / Basename.of_filename "exe"
+let package_executable_dir t package_id profile =
+  package_base_dir t package_id profile / Basename.of_filename "executable"
 ;;
 
 let package_dirs t package_id profile =
-  [ package_internal_dir t package_id profile
-  ; package_lib_dir t package_id profile
-  ; package_exe_dir t package_id profile
+  [ package_public_dir t package_id profile
+  ; package_private_dir t package_id profile
+  ; package_executable_dir t package_id profile
   ]
 ;;
 
-let package_role_dir t package_id profile role =
-  let f =
-    match (role : Typed_op.Role.t) with
-    | Internal -> package_internal_dir
-    | Lib -> package_lib_dir
-    | Exe -> package_exe_dir
-  in
-  f t package_id profile
-;;
-
 let package_generated_file t package_id profile generated_file =
-  match (generated_file : Typed_op.Generated_file.t) with
-  | Compiled { path; role } -> package_role_dir t package_id profile role / path
+  let open Typed_op.Generated_file in
+  match (generated_file : t) with
+  | Compiled compiled ->
+    let base =
+      match Compiled.visibility compiled with
+      | Private -> package_private_dir t package_id profile
+      | Public -> package_public_dir t package_id profile
+    in
+    base / Compiled.path compiled
   | Linked_library linked_library ->
-    package_lib_dir t package_id profile
-    / Typed_op.Generated_file.Linked_library.path linked_library
-  | Linked_executable path -> package_exe_dir t package_id profile / path
+    package_public_dir t package_id profile / Linked_library.path linked_library
+  | Linked_executable path -> package_executable_dir t package_id profile / path
 ;;

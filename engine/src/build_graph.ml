@@ -141,7 +141,7 @@ let compilation_ops dir package_id build_dir env ocaml_compiler =
     | Ok (`Ml source_input) ->
       let compiled_inputs =
         List.map deps.inputs ~f:(fun dep ->
-          match File.Compiled.of_path_by_extension_infer_role_from_name dep with
+          match File.Compiled.of_path_by_extension_private dep with
           | Ok (`Cmx cmx) -> `Cmx cmx
           | Ok (`Cmi cmi) -> `Cmi cmi
           | Ok _ ->
@@ -164,11 +164,10 @@ let compilation_ops dir package_id build_dir env ocaml_compiler =
       let source_base_name = Absolute_path.basename source_path in
       let cmx_output =
         Basename.replace_extension source_base_name ~ext:".cmx"
-        |> File.Compiled.cmx_infer_role_from_name
+        |> File.Compiled.cmx_private
       in
       let o_output =
-        Basename.replace_extension source_base_name ~ext:".o"
-        |> File.Compiled.o_infer_role_from_name
+        Basename.replace_extension source_base_name ~ext:".o" |> File.Compiled.o_private
       in
       let matching_mli_file = Absolute_path.replace_extension source_path ~ext:".mli" in
       let interface_output_if_no_matching_mli_is_present =
@@ -177,7 +176,7 @@ let compilation_ops dir package_id build_dir env ocaml_compiler =
         else
           Some
             (Basename.replace_extension source_base_name ~ext:".cmi"
-             |> File.Compiled.cmi_infer_role_from_name)
+             |> File.Compiled.cmi_private)
       in
       Compile_source
         { source_input
@@ -189,7 +188,7 @@ let compilation_ops dir package_id build_dir env ocaml_compiler =
     | Ok (`Mli interface_input) ->
       let cmi_inputs =
         List.map deps.inputs ~f:(fun dep ->
-          match File.Compiled.of_path_by_extension_infer_role_from_name dep with
+          match File.Compiled.of_path_by_extension_private dep with
           | Ok (`Cmi cmi) -> cmi
           | Ok _ ->
             panic
@@ -211,7 +210,7 @@ let compilation_ops dir package_id build_dir env ocaml_compiler =
       let cmi_output =
         Absolute_path.basename source_path
         |> Basename.replace_extension ~ext:".cmi"
-        |> File.Compiled.cmi_infer_role_from_name
+        |> File.Compiled.cmi_private
       in
       Compile_interface { interface_input; cmi_inputs; cmi_output })
 ;;

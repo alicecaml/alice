@@ -2,41 +2,30 @@ open! Alice_stdlib
 open Alice_hierarchy
 open Alice_error
 
-module Role = struct
+module Visibility = struct
   type t =
-    | Internal
-    | Lib
-    | Exe
+    | Public
+    | Private
 
-  let to_dyn t =
-    let tag =
-      match t with
-      | Internal -> "Internal"
-      | Lib -> "Lib"
-      | Exe -> "Exe"
-    in
-    Dyn.variant tag []
+  let to_dyn = function
+    | Private -> Dyn.variant "Private" []
+    | Public -> Dyn.variant "Public" []
   ;;
 
   let equal a b =
     match a, b with
-    | Internal, Internal -> true
-    | Internal, _ -> false
-    | Lib, Lib -> true
-    | Lib, _ -> false
-    | Exe, Exe -> true
-    | Exe, _ -> false
+    | Public, Public -> true
+    | Public, _ -> false
+    | Private, Private -> true
+    | Private, _ -> false
   ;;
 
   let compare a b =
     match a, b with
-    | Internal, Internal -> 0
-    | Internal, _ -> -1
-    | _, Internal -> 1
-    | Lib, Lib -> 0
-    | Lib, _ -> -1
-    | _, Lib -> 1
-    | Exe, Exe -> 0
+    | Public, Public -> 0
+    | Public, _ -> -1
+    | _, Public -> 1
+    | Private, Private -> 0
   ;;
 end
 
@@ -44,23 +33,27 @@ module Generated_file = struct
   module Compiled = struct
     type t =
       { path : Basename.t
-      ; role : Role.t
+      ; visibility : Visibility.t
       }
 
-    let to_dyn { path; role } =
-      Dyn.record [ "path", Basename.to_dyn path; "role", Role.to_dyn role ]
+    let to_dyn { path; visibility } =
+      Dyn.record
+        [ "path", Basename.to_dyn path; "visibility", Visibility.to_dyn visibility ]
     ;;
 
-    let equal t { path; role } = Basename.equal t.path path && Role.equal t.role role
+    let equal t { path; visibility } =
+      Basename.equal t.path path && Visibility.equal t.visibility visibility
+    ;;
 
-    let compare t { path; role } =
+    let compare t { path; visibility } =
       let open Compare in
       let= () = Basename.compare t.path path in
-      let= () = Role.compare t.role role in
+      let= () = Visibility.compare t.visibility visibility in
       0
     ;;
 
     let path { path; _ } = path
+    let visibility { visibility; _ } = visibility
   end
 
   module Linked_library = struct
@@ -215,68 +208,56 @@ module File = struct
     type 'type_ t =
       { path : Basename.t
       ; type_ : 'type_ File_type.t
-      ; role : Role.t
+      ; visibility : Visibility.t
       }
 
-    let to_dyn { path; type_; role } =
+    let to_dyn { path; type_; visibility } =
       Dyn.record
         [ "path", Basename.to_dyn path
         ; "type_", File_type.to_dyn type_
-        ; "role", Role.to_dyn role
+        ; "visibility", Visibility.to_dyn visibility
         ]
     ;;
 
-    let equal t { path; type_; role } =
+    let equal t { path; type_; visibility } =
       Basename.equal t.path path
       && File_type.equal t.type_ type_
-      && Role.equal t.role role
+      && Visibility.equal t.visibility visibility
     ;;
 
     let lib_base = Basename.remove_extension Alice_package.Package.lib_root_ml
     let exe_base = Basename.remove_extension Alice_package.Package.exe_root_ml
 
-    let of_path_checked_infer_role_from_name path type_ ext =
+    let of_path_checked path type_ ext ~visibility =
       if Basename.has_extension path ~ext
-      then (
-        let base = Basename.remove_extension path in
-        let role =
-          if Basename.equal base lib_base
-          then Role.Lib
-          else if Basename.equal base exe_base
-          then Exe
-          else Internal
-        in
-        { path; type_; role })
+      then { path; type_; visibility }
       else
         panic
           [ Pp.textf "Path %S does not have extension %S." (Basename.to_filename path) ext
           ]
     ;;
 
-    let cmx_infer_role_from_name path =
-      of_path_checked_infer_role_from_name path Cmx ".cmx"
-    ;;
+    let cmx_private path = of_path_checked path Cmx ".cmx" ~visibility:Private
+    let cmi_private path = of_path_checked path Cmi ".cmi" ~visibility:Private
+    let o_private path = of_path_checked path O ".o" ~visibility:Private
 
-    let cmi_infer_role_from_name path =
-      of_path_checked_infer_role_from_name path Cmi ".cmi"
-    ;;
-
-    let o_infer_role_from_name path = of_path_checked_infer_role_from_name path O ".o"
-
-    let of_path_by_extension_infer_role_from_name path =
+    let of_path_by_extension_private path =
       match Basename.extension path with
-      | ".cmx" -> Ok (`Cmx (cmx_infer_role_from_name path))
-      | ".cmi" -> Ok (`Cmi (cmi_infer_role_from_name path))
-      | ".o" -> Ok (`O (o_infer_role_from_name path))
+      | ".cmx" -> Ok (`Cmx (cmx_private path))
+      | ".cmi" -> Ok (`Cmi (cmi_private path))
+      | ".o" -> Ok (`O (o_private path))
       | unknown -> Error (`Unknown_extension unknown)
     ;;
 
     let path { path; _ } = path
-    let role { role; _ } = role
-    let generated_file_compiled { path; role; _ } = { Generated_file.Compiled.path; role }
+
+    let generated_file_compiled { path; visibility; _ } =
+      { Generated_file.Compiled.path; visibility }
+    ;;
+
     let generated_file t = Generated_file.Compiled (generated_file_compiled t)
-    let lib_cmx = cmx_infer_role_from_name (Basename.add_extension lib_base ~ext:".cmx")
-    let exe_cmx = cmx_infer_role_from_name (Basename.add_extension exe_base ~ext:".cmx")
+    let lib_cmx = cmx_private (Basename.add_extension lib_base ~ext:".cmx")
+    let exe_cmx = cmx_private (Basename.add_extension exe_base ~ext:".cmx")
   end
 
   module Linked = struct

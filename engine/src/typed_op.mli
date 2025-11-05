@@ -1,19 +1,18 @@
 open! Alice_stdlib
 open Alice_hierarchy
 
-module Role : sig
+module Visibility : sig
   type t =
-    | Internal
-    | Lib
-    | Exe
+    | Public
+    | Private
 end
 
 module Generated_file : sig
   module Compiled : sig
-    type t =
-      { path : Basename.t
-      ; role : Role.t
-      }
+    type t
+
+    val path : t -> Basename.t
+    val visibility : t -> Visibility.t
   end
 
   module Linked_library : sig
@@ -66,12 +65,11 @@ module File : sig
     type 'a t
 
     val path : _ t -> Basename.t
-    val role : _ t -> Role.t
-    val cmx_infer_role_from_name : Basename.t -> cmx t
-    val cmi_infer_role_from_name : Basename.t -> cmi t
-    val o_infer_role_from_name : Basename.t -> o t
+    val cmx_private : Basename.t -> cmx t
+    val cmi_private : Basename.t -> cmi t
+    val o_private : Basename.t -> o t
 
-    val of_path_by_extension_infer_role_from_name
+    val of_path_by_extension_private
       :  Basename.t
       -> ( [ `Cmx of cmx t | `Cmi of cmi t | `O of o t ]
            , [ `Unknown_extension of string ] )

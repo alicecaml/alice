@@ -105,7 +105,7 @@ let run t profile os_type env ocaml_compiler ~args =
     |> Alice_env.Os_type.basename_add_exe_extension_on_windows os_type
   in
   let exe_path =
-    Build_dir.package_exe_dir t.build_dir (Package.id t.package) profile / exe_name
+    Build_dir.package_executable_dir t.build_dir (Package.id t.package) profile / exe_name
   in
   let args = Basename.to_filename exe_name :: args in
   let exe_filename = Absolute_path.to_filename exe_path in
