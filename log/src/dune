@@ -1,3 +1,4 @@
 (library
- (public_name alice_log)
+ (package alice)
+ (name alice_log)
  (libraries alice_stdlib alice_print alice_package_meta))

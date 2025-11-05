@@ -1,3 +1,4 @@
 (library
- (public_name alice_hierarchy)
+ (package alice)
+ (name alice_hierarchy)
  (libraries alice_stdlib alice_error))
