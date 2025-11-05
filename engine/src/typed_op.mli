@@ -76,6 +76,7 @@ module File : sig
            result
 
     val generated_file : _ t -> Generated_file.t
+    val generated_file_compiled : _ t -> Generated_file.Compiled.t
     val lib_cmx : cmx t
     val exe_cmx : cmx t
   end
@@ -90,6 +91,16 @@ module File : sig
     val generated_file : _ t -> Generated_file.t
     val path : _ t -> Basename.t
   end
+end
+
+module Pack : sig
+  type t
+
+  val equal : t -> t -> bool
+  val of_package_name : Alice_package.Package_name.t -> t
+  val package_name : t -> Alice_package.Package_name.t
+  val cmx_file : t -> cmx File.Compiled.t
+  val module_name : t -> Module_name.t
 end
 
 module Compile_source : sig
@@ -107,6 +118,13 @@ module Compile_interface : sig
     { interface_input : mli File.Source.t
     ; cmi_inputs : cmi File.Compiled.t list
     ; cmi_output : cmi File.Compiled.t
+    }
+end
+
+module Pack_library : sig
+  type t =
+    { cmx_inputs : cmx File.Compiled.t list
+    ; pack : Pack.t
     }
 end
 
@@ -130,6 +148,7 @@ end
 type t =
   | Compile_source of Compile_source.t
   | Compile_interface of Compile_interface.t
+  | Pack_library of Pack_library.t
   | Link_library of Link_library.t
   | Link_executable of Link_executable.t
 

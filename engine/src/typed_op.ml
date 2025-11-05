@@ -238,6 +238,7 @@ module File = struct
     ;;
 
     let cmx_private path = of_path_checked path Cmx ".cmx" ~visibility:Private
+    let cmx_public path = of_path_checked path Cmx ".cmx" ~visibility:Public
     let cmi_private path = of_path_checked path Cmi ".cmi" ~visibility:Private
     let o_private path = of_path_checked path O ".o" ~visibility:Private
 
@@ -292,6 +293,26 @@ module File = struct
 
     let path t = generated_file t |> Generated_file.path
   end
+end
+
+module Pack = struct
+  open Alice_package
+
+  type t = Package_name.t
+
+  let equal = Package_name.equal
+  let to_dyn = Package_name.to_dyn
+  let of_package_name t = t
+  let package_name t = t
+  let module_name t = Module_name.internal_modules t
+
+  let cmx_file t =
+    let basename =
+      Module_name.basename_without_extension (module_name t)
+      |> Basename.add_extension ~ext:".cmx"
+    in
+    File.Compiled.cmx_public basename
+  ;;
 end
 
 module Compile_source = struct
@@ -373,6 +394,22 @@ module Compile_interface = struct
   ;;
 end
 
+module Pack_library = struct
+  type t =
+    { cmx_inputs : cmx File.Compiled.t list
+    ; pack : Pack.t
+    }
+
+  let equal t { cmx_inputs; pack } =
+    List.equal ~eq:File.Compiled.equal t.cmx_inputs cmx_inputs && Pack.equal t.pack pack
+  ;;
+
+  let to_dyn { cmx_inputs; pack } =
+    Dyn.record
+      [ "cmx_inputs", Dyn.list File.Compiled.to_dyn cmx_inputs; "pack", Pack.to_dyn pack ]
+  ;;
+end
+
 module Link_library = struct
   type t =
     { cmx_inputs : cmx File.Compiled.t list
@@ -419,6 +456,7 @@ end
 type t =
   | Compile_source of Compile_source.t
   | Compile_interface of Compile_interface.t
+  | Pack_library of Pack_library.t
   | Link_library of Link_library.t
   | Link_executable of Link_executable.t
 
@@ -428,6 +466,8 @@ let equal a b =
   | Compile_source _, _ -> false
   | Compile_interface a, Compile_interface b -> Compile_interface.equal a b
   | Compile_interface _, _ -> false
+  | Pack_library a, Pack_library b -> Pack_library.equal a b
+  | Pack_library _, _ -> false
   | Link_library a, Link_library b -> Link_library.equal a b
   | Link_library _, _ -> false
   | Link_executable a, Link_executable b -> Link_executable.equal a b
@@ -439,6 +479,8 @@ let to_dyn = function
     Dyn.variant "Compile_source" [ Compile_source.to_dyn compile_source ]
   | Compile_interface compile_interface ->
     Dyn.variant "Compile_interface" [ Compile_interface.to_dyn compile_interface ]
+  | Pack_library pack_library ->
+    Dyn.variant "Pack_library" [ Pack_library.to_dyn pack_library ]
   | Link_library link_library ->
     Dyn.variant "Link_library" [ Link_library.to_dyn link_library ]
   | Link_executable link_executable ->
@@ -448,21 +490,23 @@ let to_dyn = function
 let source_input = function
   | Compile_source { source_input; _ } -> Some (File.Source.path source_input)
   | Compile_interface { interface_input; _ } -> Some (File.Source.path interface_input)
+  | Pack_library _ -> None
   | Link_library _ -> None
   | Link_executable _ -> None
 ;;
 
-let compiled_inputs = function
-  | Compile_source { compiled_inputs; _ } ->
-    List.map compiled_inputs ~f:(function
-      | `Cmx file -> File.Compiled.generated_file_compiled file
-      | `Cmi file -> File.Compiled.generated_file_compiled file)
-  | Compile_interface { cmi_inputs; _ } ->
-    List.map cmi_inputs ~f:File.Compiled.generated_file_compiled
-  | Link_library { cmx_inputs; _ } ->
-    List.map cmx_inputs ~f:File.Compiled.generated_file_compiled
-  | Link_executable { cmx_inputs; _ } ->
-    List.map cmx_inputs ~f:File.Compiled.generated_file_compiled
+let compiled_inputs t =
+  let to_compiled = File.Compiled.generated_file_compiled in
+  let cm_to_compiled = function
+    | `Cmx file -> to_compiled file
+    | `Cmi file -> to_compiled file
+  in
+  match t with
+  | Compile_source { compiled_inputs; _ } -> List.map compiled_inputs ~f:cm_to_compiled
+  | Compile_interface { cmi_inputs; _ } -> List.map cmi_inputs ~f:to_compiled
+  | Pack_library { cmx_inputs; _ } -> List.map cmx_inputs ~f:to_compiled
+  | Link_library { cmx_inputs; _ } -> List.map cmx_inputs ~f:to_compiled
+  | Link_executable { cmx_inputs; _ } -> List.map cmx_inputs ~f:to_compiled
 ;;
 
 let outputs = function
@@ -474,6 +518,7 @@ let outputs = function
          ~f:File.Compiled.generated_file
        |> Option.to_list)
   | Compile_interface { cmi_output; _ } -> [ File.Compiled.generated_file cmi_output ]
+  | Pack_library { pack; _ } -> [ File.Compiled.generated_file (Pack.cmx_file pack) ]
   | Link_library { cmxa_output; a_output; _ } ->
     [ File.Linked.generated_file cmxa_output; File.Linked.generated_file a_output ]
   | Link_executable { exe_output; _ } -> [ File.Linked.generated_file exe_output ]

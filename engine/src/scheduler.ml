@@ -29,7 +29,13 @@ let op_command op package_with_deps profile build_dir ocaml_compiler =
   let package_id = Package.id package in
   let private_ = Build_dir.package_private_dir build_dir package_id profile in
   let public = Build_dir.package_public_dir build_dir package_id profile in
+  let compiled_absolute_filename compiled =
+    let compiled = Typed_op.File.Compiled.generated_file_compiled compiled in
+    Build_dir.package_generated_file_compiled build_dir package_id profile compiled
+    |> Absolute_path.to_filename
+  in
   let executable = Build_dir.package_executable_dir build_dir package_id profile in
+  let package_pack = Typed_op.Pack.of_package_name (Package.name package) in
   match (op : Typed_op.t) with
   | Compile_source { source_input; cmx_output; _ } ->
     Profile.ocaml_compiler_command
@@ -40,8 +46,10 @@ let op_command op package_with_deps profile build_dir ocaml_compiler =
          @ [ "-I"
            ; Absolute_path.to_filename private_
            ; "-c"
+           ; "-for-pack"
+           ; Typed_op.Pack.module_name package_pack |> Module_name.to_string
            ; "-o"
-           ; Absolute_path.to_filename @@ (private_ / Compiled.path cmx_output)
+           ; compiled_absolute_filename cmx_output
            ; "-impl"
            ; Absolute_path.to_filename @@ Source.path source_input
            ])
@@ -54,19 +62,36 @@ let op_command op package_with_deps profile build_dir ocaml_compiler =
          @ [ "-I"
            ; Absolute_path.to_filename private_
            ; "-c"
+           ; "-for-pack"
+           ; Typed_op.Pack.module_name package_pack |> Module_name.to_string
            ; "-o"
-           ; Absolute_path.to_filename @@ (private_ / Compiled.path cmi_output)
+           ; compiled_absolute_filename cmi_output
            ; "-intf"
            ; Source.path interface_input |> Absolute_path.to_filename
            ])
+  | Pack_library { cmx_inputs; pack; _ } ->
+    if not (Typed_op.Pack.equal pack package_pack)
+    then
+      panic
+        [ Pp.textf
+            "Tried to generate pack module for package %S but we're currently building a \
+             different package (%S)."
+            (Package_name.to_string @@ Typed_op.Pack.package_name pack)
+            (Package_name.to_string @@ Typed_op.Pack.package_name package_pack)
+        ];
+    Profile.ocaml_compiler_command
+      profile
+      ocaml_compiler
+      ~args:
+        (List.map cmx_inputs ~f:compiled_absolute_filename
+         @ [ "-pack"; "-o"; compiled_absolute_filename (Typed_op.Pack.cmx_file pack) ])
   | Link_library { cmx_inputs; cmxa_output; _ } ->
     Profile.ocaml_compiler_command
       profile
       ocaml_compiler
       ~args:
         (lib_include_args
-         @ List.map cmx_inputs ~f:(fun compiled ->
-           Absolute_path.to_filename @@ (private_ / Compiled.path compiled))
+         @ List.map cmx_inputs ~f:compiled_absolute_filename
          @ [ "-a"; "-o"; Absolute_path.to_filename @@ (public / Linked.path cmxa_output) ]
         )
   | Link_executable { cmx_inputs; exe_output } ->
@@ -75,8 +100,7 @@ let op_command op package_with_deps profile build_dir ocaml_compiler =
       ocaml_compiler
       ~args:
         (lib_include_args
-         @ List.map cmx_inputs ~f:(fun compiled ->
-           Absolute_path.to_filename @@ (private_ / Compiled.path compiled))
+         @ List.map cmx_inputs ~f:compiled_absolute_filename
          @ lib_cmxa_files
          @ [ "-o"; Absolute_path.to_filename @@ (executable / Linked.path exe_output) ])
 ;;

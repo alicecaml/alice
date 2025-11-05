@@ -250,7 +250,12 @@ let create
     let cmx_files =
       Build_dag.cmx_files_in_build_order_for_lib build_dag_compilation_only
     in
-    Link_library (Link_library.of_inputs cmx_files)
+    let pack = Typed_op.Pack.of_package_name (Package.name package) in
+    let pack_op = Pack_library { cmx_inputs = cmx_files; pack } in
+    let link_library_op =
+      Link_library (Link_library.of_inputs [ Typed_op.Pack.cmx_file pack ])
+    in
+    [ pack_op; link_library_op ]
   in
   let exe_file =
     let exe_name =
@@ -263,13 +268,13 @@ let create
     let cmx_files =
       Build_dag.cmx_files_in_build_order_for_exe build_dag_compilation_only
     in
-    Link_executable { exe_output = exe_file; cmx_inputs = cmx_files }
+    [ Link_executable { exe_output = exe_file; cmx_inputs = cmx_files } ]
   in
   let link_ops =
     match Package.Typed.type_ package_typed with
-    | Exe_only -> [ link_executable () ]
-    | Lib_only -> [ link_library () ]
-    | Exe_and_lib -> [ link_library (); link_executable () ]
+    | Exe_only -> link_executable ()
+    | Lib_only -> link_library ()
+    | Exe_and_lib -> link_library () @ link_executable ()
   in
   let build_dag =
     List.fold_left
