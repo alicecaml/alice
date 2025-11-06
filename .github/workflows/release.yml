@@ -65,6 +65,7 @@ jobs:
       - run: |
           mkdir -p "$env:ALICE_OUT_NAME/share/bash-completion/completions"
           scripts/generate_minified_bash_completion_script.sh > "$env:ALICE_OUT_NAME/share/bash-completion/completions/alice"
+      - run: Copy-Item extra/alice/bin/* "$env:ALICE_OUT_NAME"
       - run: tar czf "$env:ALICE_OUT_NAME.tar.gz" "$env:ALICE_OUT_NAME"
       - uses: ncipollo/release-action@v1
         with:
@@ -126,6 +127,7 @@ jobs:
       - run: |
           mkdir -p $ALICE_OUT_NAME/share/bash-completion/completions
           scripts/generate_minified_bash_completion_script.sh > $ALICE_OUT_NAME/share/bash-completion/completions/alice
+      - run: cp -v extra/alice-bin/* $ALICE_OUT_NAME
       - run: tar czf "$ALICE_OUT_NAME.tar.gz" "$ALICE_OUT_NAME"
       - uses: ncipollo/release-action@v1
         with:
