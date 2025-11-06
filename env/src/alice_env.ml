@@ -78,6 +78,10 @@ module Env = struct
       if String.equal variable.name name then Some variable.value else None)
   ;;
 
+  let find_name_opt t ~f =
+    List.find_opt t ~f:(fun (variable : Variable.t) -> f variable.name)
+  ;;
+
   let contains t ~name =
     List.exists t ~f:(fun (variable : Variable.t) -> String.equal variable.name name)
   ;;
@@ -96,7 +100,6 @@ module Path_variable = struct
   type t = Absolute_path.Root_or_non_root.t list
 
   let to_dyn = Dyn.list Absolute_path.Root_or_non_root.to_dyn
-  let name = "PATH"
 
   let of_raw os_type raw =
     String.split_on_char ~sep:(Os_type.path_delimiter os_type) raw
@@ -115,21 +118,26 @@ module Path_variable = struct
     |> String.concat ~sep:(String.make 1 (Os_type.path_delimiter os_type))
   ;;
 
-  let get_opt ?(name = name) os_type env =
-    Env.get_opt env ~name |> Option.map ~f:(of_raw os_type)
+  let is_path_variable_name os_type name =
+    if Os_type.is_windows os_type
+    then String.equal (String.uppercase_ascii name) "PATH"
+    else String.equal name "PATH"
   ;;
 
-  let get_or_empty ?(name = name) os_type env =
-    get_opt ~name os_type env |> Option.value ~default:[]
+  let get_opt os_type env =
+    Env.find_name_opt ~f:(is_path_variable_name os_type) env
+    |> Option.map ~f:(fun (variable : Variable.t) -> of_raw os_type variable.value)
   ;;
 
-  let get_result ?(name = name) os_type env =
-    match get_opt ~name os_type env with
-    | None -> Error (`Variable_not_defined name)
+  let get_or_empty os_type env = get_opt os_type env |> Option.value ~default:[]
+
+  let get_result os_type env =
+    match get_opt os_type env with
+    | None -> Error (`Variable_not_defined "todo")
     | Some t -> Ok t
   ;;
 
-  let set ?(name = name) t os_type env = Env.set env ~name ~value:(to_raw os_type t)
+  let set t os_type env = Env.set env ~name:"PATH" ~value:(to_raw os_type t)
 end
 
 module Xdg = struct

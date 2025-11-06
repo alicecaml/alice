@@ -1,5 +1,9 @@
 Build a package with dependencies.
 
+  $ sanitize() {
+  > cat | sed '/Command failed: /d' | sed '/File .*, line [0-9]\+, characters/d'
+  > }
+
   $ alice run --normalize-paths --manifest-path app/Alice.toml
    Compiling c v0.1.0
    Compiling b v0.1.0
@@ -24,8 +28,8 @@ Build a package with dependencies.
   }
 
 Make a new package to test some things which are not allowed:
-  $ alice new --exe bad
-    Creating new executable package "bad" in $TESTCASE_ROOT/bad
+  $ alice new --normalize-paths --exe bad
+    Creating new executable package "bad" in bad
   $ cat >> bad/Alice.toml << EOF
   > [dependencies]
   > a = { path = "../a" }
@@ -42,9 +46,8 @@ Even though the package "c" is in the transitive dependency closure of "bad",
   $ cat > bad/src/main.ml << EOF
   > let () = print_endline C.Message.message
   > EOF
-  $ alice build --normalize-paths --manifest-path bad/Alice.toml 2>&1  | grep -v 'Command failed:'
+  $ alice build --normalize-paths --manifest-path bad/Alice.toml 2>&1  | sanitize
    Compiling bad v0.1.0
-  File "$TESTCASE_ROOT/bad/src/main.ml", line 1, characters 23-40:
   1 | let () = print_endline C.Message.message
                              ^^^^^^^^^^^^^^^^^
   Error: Unbound module C
@@ -57,15 +60,13 @@ to access the transitive dependency "c" from "bad" via this module.
   $ cat > bad/src/main.ml << EOF
   > let () = print_endline Internal_modules_of_c.Lib.Message.message
   > EOF
-  $ alice build --normalize-paths --manifest-path bad/Alice.toml 2>&1  | grep -v 'Command failed:'
+  $ alice build --normalize-paths --manifest-path bad/Alice.toml 2>&1  | sanitize
    Compiling bad v0.1.0
-  File "$TESTCASE_ROOT/bad/src/main.ml", line 1, characters 23-64:
   1 | let () = print_endline Internal_modules_of_c.Lib.Message.message
                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Alert deprecated: module Public_interface_to_open_of_a.Internal_modules_of_c
   This module is an empty shadow of another module intended for internal use only.
   
-  File "$TESTCASE_ROOT/bad/src/main.ml", line 1, characters 23-64:
   1 | let () = print_endline Internal_modules_of_c.Lib.Message.message
                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: Unbound module Internal_modules_of_c.Lib
@@ -78,15 +79,13 @@ client code, even when the package is an immediate dependency.
   $ cat > bad/src/main.ml << EOF
   > let () = print_endline Public_interface_to_open_of_a.A.C.Message.message
   > EOF
-  $ alice build --normalize-paths --manifest-path bad/Alice.toml 2>&1  | grep -v 'Command failed:'
+  $ alice build --normalize-paths --manifest-path bad/Alice.toml 2>&1  | sanitize
    Compiling bad v0.1.0
-  File "$TESTCASE_ROOT/bad/src/main.ml", line 1, characters 23-72:
   1 | let () = print_endline Public_interface_to_open_of_a.A.C.Message.message
                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Alert deprecated: module Public_interface_to_open_of_a.Public_interface_to_open_of_a
   This module is an empty shadow of another module intended for internal use only.
   
-  File "$TESTCASE_ROOT/bad/src/main.ml", line 1, characters 23-72:
   1 | let () = print_endline Public_interface_to_open_of_a.A.C.Message.message
                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: Unbound module Public_interface_to_open_of_a.A

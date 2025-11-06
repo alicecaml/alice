@@ -15,18 +15,21 @@ let equal = String.equal
 let has_extension t ~ext = String.equal (extension t) ext
 
 let replace_extension t ~ext =
-  assert (Char.equal (String.get ext 0) '.');
-  match chop_extension t with
-  | without_extension -> Some (String.cat without_extension ext)
-  | exception Invalid_argument _ -> None
+  if Char.equal (String.get ext 0) '.'
+  then (
+    match chop_extension t with
+    | without_extension -> Some (String.cat without_extension ext)
+    | exception Invalid_argument _ -> None)
+  else failwith (Printf.sprintf "ext argument must begin with a '.', got %S" ext)
 ;;
 
 let add_extension t ~ext =
-  assert (Char.equal (String.get ext 0) '.');
-  String.cat t ext
+  if Char.equal (String.get ext 0) '.'
+  then String.cat t ext
+  else failwith (Printf.sprintf "ext argument must begin with a '.', got %S" ext)
 ;;
 
-let is_root t = (not (equal t current_dir_name)) && equal (basename t) (dirname t)
+let is_root t = (not (is_relative t)) && equal (dirname t) t
 
 let to_components t =
   let rec loop t =
@@ -41,9 +44,14 @@ let to_components t =
   let (first :: rest) = loop t |> Nonempty_list.rev in
   if equal current_dir_name first
   then `Relative rest
-  else (
-    assert (is_root first);
-    `Absolute (first, rest))
+  else if is_root first
+  then `Absolute (first, rest)
+  else
+    failwith
+      (Printf.sprintf
+         "Expected %S to be an absolute path, but [is_root %S] is false."
+         t
+         t)
 ;;
 
 let of_components components =

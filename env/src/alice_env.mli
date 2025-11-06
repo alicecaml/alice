@@ -29,15 +29,9 @@ module Path_variable : sig
   type t = Absolute_path.Root_or_non_root.t list
 
   val to_dyn : t -> Dyn.t
-  val get_or_empty : ?name:string -> Os_type.t -> Env.t -> t
-
-  val get_result
-    :  ?name:string
-    -> Os_type.t
-    -> Env.t
-    -> (t, [ `Variable_not_defined of string ]) result
-
-  val set : ?name:string -> t -> Os_type.t -> Env.t -> Env.t
+  val get_or_empty : Os_type.t -> Env.t -> t
+  val get_result : Os_type.t -> Env.t -> (t, [ `Variable_not_defined of string ]) result
+  val set : t -> Os_type.t -> Env.t -> Env.t
 end
 
 module Xdg : sig
