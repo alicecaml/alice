@@ -605,9 +605,8 @@ let generated_inputs t =
 ;;
 
 let outputs = function
-  | Compile_source
-      { cmx_output; o_output; interface_output_if_no_matching_mli_is_present; _ } ->
-    [ File.Compiled.generated_file cmx_output; File.Compiled.generated_file o_output ]
+  | Compile_source { cmx_output; interface_output_if_no_matching_mli_is_present; _ } ->
+    [ File.Compiled.generated_file cmx_output ]
     @ (Option.map
          interface_output_if_no_matching_mli_is_present
          ~f:File.Compiled.generated_file
