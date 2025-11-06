@@ -1,7 +1,7 @@
 Build a package with dependencies.
 
   $ sanitize() {
-  > cat | sed '/Command failed: /d' | sed '/File .*, line [0-9]\+, characters/d'
+  > cat | sed -E '/Command failed: /d' | sed -E '/File .*, line [0-9]+, characters/d' | sed -E 's/Unbound module "([^ ]*)"/Unbound module \1/'
   > }
 
   $ alice run --normalize-paths --manifest-path app/Alice.toml
