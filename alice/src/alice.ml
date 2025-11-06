@@ -6,7 +6,7 @@ module Version = struct
   open Alice_package_meta.Semantic_version
 
   let version () =
-    match of_string "0.0.0" with
+    match of_string "0.1.0-rc1" with
     | Ok v -> v
     | Error e ->
       Alice_error.User_error.eprint e;
