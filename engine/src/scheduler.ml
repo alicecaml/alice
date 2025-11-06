@@ -156,7 +156,7 @@ let op_action op package_with_deps profile build_dir ocaml_compiler =
       Public_interface_to_open.of_package_with_deps package_with_deps
     in
     Generated_public_interface_to_open { output_path; public_interface_to_open }
-  | Compile_generated_source { generated_source_input; cmx_output; _ } ->
+  | Compile_public_interface_to_open { generated_source_input; cmx_output; _ } ->
     let impl =
       Build_dir.package_generated_source_dir build_dir package_id profile
       / Typed_op.File.Generated_source.path generated_source_input

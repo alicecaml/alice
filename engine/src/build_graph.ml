@@ -262,11 +262,11 @@ let create
       Generate_public_interface_to_open { ml_output = public_interface_to_open_ml }
     in
     let compile_public_interface_to_open =
-      Compile_generated_source.of_generated_source_input_public_outputs
+      Compile_public_interface_to_open.of_generated_source_input
         public_interface_to_open_ml
     in
     let compile_public_interface_to_open_op =
-      Compile_generated_source compile_public_interface_to_open
+      Compile_public_interface_to_open compile_public_interface_to_open
     in
     let link_library_op =
       Link_library

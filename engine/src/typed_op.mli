@@ -141,7 +141,7 @@ module Generate_public_interface_to_open : sig
   type t = { ml_output : ml File.Generated_source.t }
 end
 
-module Compile_generated_source : sig
+module Compile_public_interface_to_open : sig
   type t =
     { generated_source_input : ml File.Generated_source.t
     ; cmx_output : cmx File.Compiled.t
@@ -149,7 +149,7 @@ module Compile_generated_source : sig
     ; o_output : o File.Compiled.t
     }
 
-  val of_generated_source_input_public_outputs : ml File.Generated_source.t -> t
+  val of_generated_source_input : ml File.Generated_source.t -> t
 end
 
 module Link_library : sig
@@ -174,7 +174,7 @@ type t =
   | Compile_interface of Compile_interface.t
   | Pack_library of Pack_library.t
   | Generate_public_interface_to_open of Generate_public_interface_to_open.t
-  | Compile_generated_source of Compile_generated_source.t
+  | Compile_public_interface_to_open of Compile_public_interface_to_open.t
   | Link_library of Link_library.t
   | Link_executable of Link_executable.t
 
