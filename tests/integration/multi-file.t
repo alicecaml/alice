@@ -43,23 +43,18 @@ Print the dependency graph of the project:
   digraph {
     "bar.cmi" -> {"bar.ml"}
     "bar.cmx" -> {"bar.ml"}
-    "bar.o" -> {"bar.ml"}
     "foo" -> {"bar.cmx", "foo.cmx", "foo_dep.cmx", "lib.cmx", "main.cmx"}
     "foo.cmi" -> {"foo.mli"}
     "foo.cmx" -> {"foo.cmi", "foo.ml", "foo_dep.cmx"}
-    "foo.o" -> {"foo.cmi", "foo.ml", "foo_dep.cmx"}
     "foo_dep.cmi" -> {"foo_dep.mli"}
     "foo_dep.cmx" -> {"foo_dep.cmi", "foo_dep.ml"}
-    "foo_dep.o" -> {"foo_dep.cmi", "foo_dep.ml"}
     "internal_modules_of_foo.cmx" -> {"bar.cmx", "foo.cmx", "foo_dep.cmx", "lib.cmx"}
     "lib.a" -> {"internal_modules_of_foo.cmx", "public_interface_to_open_of_foo.cmx"}
     "lib.cmi" -> {"bar.cmx", "foo.cmx", "lib.ml"}
     "lib.cmx" -> {"bar.cmx", "foo.cmx", "lib.ml"}
     "lib.cmxa" -> {"internal_modules_of_foo.cmx", "public_interface_to_open_of_foo.cmx"}
-    "lib.o" -> {"bar.cmx", "foo.cmx", "lib.ml"}
     "main.cmi" -> {"lib.cmx", "main.ml"}
     "main.cmx" -> {"lib.cmx", "main.ml"}
-    "main.o" -> {"lib.cmx", "main.ml"}
     "public_interface_to_open_of_foo.cmx" -> {"public_interface_to_open_of_foo.ml"}
   }
 
@@ -86,17 +81,17 @@ Initial build:
    [INFO] [foo v0.1.0] Analyzing dependencies of file: src/lib.ml
    [INFO] [foo v0.1.0] Analyzing dependencies of file: src/main.ml
    Compiling foo v0.1.0
-   [INFO] [foo v0.1.0] Building targets: bar.cmi, bar.cmx, bar.o
+   [INFO] [foo v0.1.0] Building targets: bar.cmi, bar.cmx
    [INFO] [foo v0.1.0] Building targets: foo.cmi
    [INFO] [foo v0.1.0] Building targets: foo_dep.cmi
-   [INFO] [foo v0.1.0] Building targets: foo_dep.cmx, foo_dep.o
-   [INFO] [foo v0.1.0] Building targets: foo.cmx, foo.o
-   [INFO] [foo v0.1.0] Building targets: lib.cmi, lib.cmx, lib.o
+   [INFO] [foo v0.1.0] Building targets: foo_dep.cmx
+   [INFO] [foo v0.1.0] Building targets: foo.cmx
+   [INFO] [foo v0.1.0] Building targets: lib.cmi, lib.cmx
    [INFO] [foo v0.1.0] Building targets: internal_modules_of_foo.cmx
    [INFO] [foo v0.1.0] Building targets: public_interface_to_open_of_foo.ml
    [INFO] [foo v0.1.0] Building targets: public_interface_to_open_of_foo.cmx
    [INFO] [foo v0.1.0] Building targets: lib.cmxa, lib.a
-   [INFO] [foo v0.1.0] Building targets: main.cmi, main.cmx, main.o
+   [INFO] [foo v0.1.0] Building targets: main.cmi, main.cmx
    [INFO] [foo v0.1.0] Building targets: foo
     Finished debug build of package: 'foo v0.1.0'
 
@@ -110,14 +105,14 @@ the dependency graph from this file to the output should be rebuilt:
    [INFO] [foo v0.1.0] Loading ocamldeps cache from: build/packages/foo-0.1.0/ocamldeps_cache.marshal
    [INFO] [foo v0.1.0] Analyzing dependencies of file: src/foo_dep.ml
    Compiling foo v0.1.0
-   [INFO] [foo v0.1.0] Building targets: foo_dep.cmx, foo_dep.o
-   [INFO] [foo v0.1.0] Building targets: foo.cmx, foo.o
-   [INFO] [foo v0.1.0] Building targets: lib.cmi, lib.cmx, lib.o
+   [INFO] [foo v0.1.0] Building targets: foo_dep.cmx
+   [INFO] [foo v0.1.0] Building targets: foo.cmx
+   [INFO] [foo v0.1.0] Building targets: lib.cmi, lib.cmx
    [INFO] [foo v0.1.0] Building targets: internal_modules_of_foo.cmx
    [INFO] [foo v0.1.0] Building targets: public_interface_to_open_of_foo.ml
    [INFO] [foo v0.1.0] Building targets: public_interface_to_open_of_foo.cmx
    [INFO] [foo v0.1.0] Building targets: lib.cmxa, lib.a
-   [INFO] [foo v0.1.0] Building targets: main.cmi, main.cmx, main.o
+   [INFO] [foo v0.1.0] Building targets: main.cmi, main.cmx
    [INFO] [foo v0.1.0] Building targets: foo
     Finished debug build of package: 'foo v0.1.0'
 
@@ -133,7 +128,7 @@ Change a shallow dependency and rebuild. Only the final build steps should run:
    [INFO] [foo v0.1.0] Building targets: public_interface_to_open_of_foo.ml
    [INFO] [foo v0.1.0] Building targets: public_interface_to_open_of_foo.cmx
    [INFO] [foo v0.1.0] Building targets: lib.cmxa, lib.a
-   [INFO] [foo v0.1.0] Building targets: main.cmi, main.cmx, main.o
+   [INFO] [foo v0.1.0] Building targets: main.cmi, main.cmx
    [INFO] [foo v0.1.0] Building targets: foo
     Finished debug build of package: 'foo v0.1.0'
 
@@ -148,12 +143,12 @@ Change an interface and rebuild:
    [INFO] [foo v0.1.0] Analyzing dependencies of file: src/foo.mli
    Compiling foo v0.1.0
    [INFO] [foo v0.1.0] Building targets: foo.cmi
-   [INFO] [foo v0.1.0] Building targets: foo.cmx, foo.o
-   [INFO] [foo v0.1.0] Building targets: lib.cmi, lib.cmx, lib.o
+   [INFO] [foo v0.1.0] Building targets: foo.cmx
+   [INFO] [foo v0.1.0] Building targets: lib.cmi, lib.cmx
    [INFO] [foo v0.1.0] Building targets: internal_modules_of_foo.cmx
    [INFO] [foo v0.1.0] Building targets: public_interface_to_open_of_foo.ml
    [INFO] [foo v0.1.0] Building targets: public_interface_to_open_of_foo.cmx
    [INFO] [foo v0.1.0] Building targets: lib.cmxa, lib.a
-   [INFO] [foo v0.1.0] Building targets: main.cmi, main.cmx, main.o
+   [INFO] [foo v0.1.0] Building targets: main.cmi, main.cmx
    [INFO] [foo v0.1.0] Building targets: foo
     Finished debug build of package: 'foo v0.1.0'
