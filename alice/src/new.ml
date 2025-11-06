@@ -107,8 +107,7 @@ let new_ =
     (verb_message
        `Creating
        (sprintf "new %s package %S in %s" kind_string name path_string));
-  make_project package_name path kind;
-  print_newline ()
+  make_project package_name path kind
 ;;
 
 let subcommand =

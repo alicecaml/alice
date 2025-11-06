@@ -23,7 +23,7 @@ let parse_absolute_path ?doc names =
     match Either_path.of_filename path_str with
     | `Absolute p -> p
     | `Relative p ->
-      `Non_root (Absolute_path.Root_or_non_root.concat_relative Alice_env.initial_cwd p))
+      Absolute_path.Root_or_non_root.concat_relative_exn Alice_env.initial_cwd p)
 ;;
 
 let parse_manifest_path_and_validate =
@@ -32,17 +32,23 @@ let parse_manifest_path_and_validate =
   match manifest_path with
   | Some manifest_path_str ->
     let absolute_path =
-      match Either_path.of_filename manifest_path_str with
-      | `Absolute (`Non_root p) -> p
-      | `Absolute (`Root p) ->
+      let root_error p =
         user_exn
           [ Pp.textf
               "The manifest path %S was specified, but this is a root directory which is \
                not allowed."
               (Absolute_path.to_filename p)
           ]
+      in
+      match Either_path.of_filename manifest_path_str with
+      | `Absolute (`Non_root p) -> p
+      | `Absolute (`Root p) -> root_error p
       | `Relative p ->
-        Absolute_path.Root_or_non_root.concat_relative Alice_env.initial_cwd p
+        (match
+           Absolute_path.Root_or_non_root.concat_relative_exn Alice_env.initial_cwd p
+         with
+         | `Non_root p -> p
+         | `Root p -> root_error p)
     in
     (match File_ops.exists absolute_path with
      | true -> absolute_path

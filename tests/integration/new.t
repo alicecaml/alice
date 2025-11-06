@@ -2,7 +2,6 @@ Exercise initializing a new executable project.
 
   $ alice new hello --normalize-paths
     Creating new executable package "hello" in hello
-  
   $ cd hello
 
   $ alice run --normalize-paths
@@ -42,4 +41,3 @@ Test some error cases for `alice new`:
 
   $ alice new hello --path . --normalize-paths
     Creating new executable package "hello" in .
-  

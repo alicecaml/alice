@@ -45,9 +45,14 @@ module Dependency_dag = struct
       let name = Package.name (Package.Typed.package package_typed) in
       match add t name package_typed with
       | Ok t -> t
-      | Error (`Conflict _) ->
+      | Error (`Conflict existing) ->
         Alice_error.panic
-          [ Pp.textf "Conflicting packages with name: %s" (Package_name.to_string name) ]
+          [ Pp.textf "Conflicting packages with name: %s" (Package_name.to_string name)
+          ; Pp.newline
+          ; Pp.textf "%s" (Node.to_dyn package_typed |> Dyn.to_string)
+          ; Pp.newline
+          ; Pp.textf "%s" (Node.to_dyn existing |> Dyn.to_string)
+          ]
     ;;
 
     let finalize t =
@@ -80,10 +85,9 @@ let transitive_dependency_closure package =
             match dir_path with
             | `Absolute root -> root
             | `Relative rel_root ->
-              `Non_root
-                (Absolute_path.Root_or_non_root.concat_relative
-                   (Package.root package)
-                   rel_root)
+              Absolute_path.Root_or_non_root.concat_relative_exn
+                (Package.root package)
+                rel_root
           in
           Package.read_root dep_root)
     in

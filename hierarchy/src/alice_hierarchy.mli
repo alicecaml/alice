@@ -52,7 +52,13 @@ module Absolute_path : sig
     val equal : t -> t -> bool
     val assert_non_root : t -> non_root_t
     val to_filename : t -> Filename.t
-    val concat_relative : t -> Relative_path.t -> non_root_t
+
+    val concat_relative
+      :  t
+      -> Relative_path.t
+      -> (t, [ `Would_traverse_beyond_the_start_of_absolute_path of Filename.t ]) result
+
+    val concat_relative_exn : t -> Relative_path.t -> t
     val concat_basename : t -> Basename.t -> non_root_t
   end
 
@@ -66,7 +72,15 @@ module Absolute_path : sig
 
   val of_filename_assert_non_root : Filename.t -> non_root_t
   val to_filename : _ t -> Filename.t
-  val concat_relative : _ t -> Relative_path.t -> non_root_t
+
+  val concat_relative
+    :  _ t
+    -> Relative_path.t
+    -> ( Root_or_non_root.t
+         , [ `Would_traverse_beyond_the_start_of_absolute_path of Filename.t ] )
+         result
+
+  val concat_relative_exn : _ t -> Relative_path.t -> Root_or_non_root.t
   val concat_basename : _ t -> Basename.t -> non_root_t
   val compare : 'a t -> 'a t -> int
   val extension : non_root_t -> string

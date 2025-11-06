@@ -62,7 +62,7 @@ module Relative_path = struct
 
   let of_filename filename =
     match of_filename_result filename with
-    | Ok either -> either
+    | Ok t -> t
     | Error `Not_relative -> panic [ Pp.textf "%S is not a relative path." filename ]
   ;;
 
@@ -119,7 +119,19 @@ module Absolute_path = struct
   ;;
 
   let concat_relative t relative =
-    Non_root (Filename.concat (to_filename t) (Relative_path.to_filename relative))
+    let filename = Filename.concat (to_filename t) (Relative_path.to_filename relative) in
+    match Filename.normalize filename with
+    | Error `Would_traverse_beyond_the_start_of_absolute_path ->
+      Error (`Would_traverse_beyond_the_start_of_absolute_path filename)
+    | Ok filename_normalized -> Ok (of_filename filename_normalized)
+  ;;
+
+  let concat_relative_exn t relative =
+    match concat_relative t relative with
+    | Ok x -> x
+    | Error (`Would_traverse_beyond_the_start_of_absolute_path filename) ->
+      user_exn
+        [ Pp.textf "Invalid path %S would traverse beyond the filesystem root." filename ]
   ;;
 
   let concat_basename t basename =
@@ -191,6 +203,12 @@ module Absolute_path = struct
       match t with
       | `Root path -> concat_relative path relative
       | `Non_root path -> concat_relative path relative
+    ;;
+
+    let concat_relative_exn t relative =
+      match t with
+      | `Root path -> concat_relative_exn path relative
+      | `Non_root path -> concat_relative_exn path relative
     ;;
 
     let concat_basename t basename =

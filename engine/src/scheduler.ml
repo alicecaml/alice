@@ -32,7 +32,7 @@ module Action = struct
     | Command of Command.t
     | Generated_public_interface_to_open of Generated_public_interface_to_open.t
 
-  let run t env ~panic_context =
+  let run t env =
     match t with
     | Command command ->
       let status =
@@ -44,9 +44,8 @@ module Action = struct
       (match status with
        | Exited 0 -> ()
        | _ ->
-         Alice_error.panic
-           (Pp.textf "Command failed: %s\n" (Command.to_string command)
-            :: panic_context ()))
+         Alice_error.user_exn
+           [ Pp.textf "Command failed: %s" (Command.to_string command) ])
     | Generated_public_interface_to_open { output_path; public_interface_to_open } ->
       Log.debug
         [ Pp.textf
@@ -262,14 +261,6 @@ module Sequential = struct
     let open Alice_ui in
     let package = Dependency_graph.Package_with_deps.package package_with_deps in
     let package_id = Package.id package in
-    let src_dir = Package.src_dir_path package in
-    let panic_context () =
-      (* Information to help debug package build failures. *)
-      let out_dir = Build_dir.package_base_dir build_dir package_id profile in
-      [ Pp.textf "src_dir: %s\n" (absolute_path_to_string src_dir)
-      ; Pp.textf "out_dir: %s\n" (absolute_path_to_string out_dir)
-      ]
-    in
     let print_compiling_message =
       println_once (verb_message `Compiling (Package_id.name_v_version_string package_id))
     in
@@ -305,10 +296,8 @@ module Sequential = struct
            if not (File_ops.exists source_input)
            then
              Alice_error.panic
-               (Pp.textf
-                  "Missing source file: %s\n"
-                  (absolute_path_to_string source_input)
-                :: panic_context ()));
+               [ Pp.textf "Missing source file: %s" (absolute_path_to_string source_input)
+               ]);
         List.iter (Build_plan.generated_inputs build_plan) ~f:(fun generated_file ->
           let compiled_path =
             Build_dir.package_generated_file build_dir package_id profile generated_file
@@ -316,10 +305,10 @@ module Sequential = struct
           if not (File_ops.exists compiled_path)
           then
             Alice_error.panic
-              (Pp.textf
-                 "Missing file which should have been compiled by this point: %s\n"
-                 (absolute_path_to_string compiled_path)
-               :: panic_context ()));
+              [ Pp.textf
+                  "Missing file which should have been compiled by this point: %s"
+                  (absolute_path_to_string compiled_path)
+              ]);
         let action =
           op_action
             (Build_plan.op build_plan)
@@ -328,7 +317,7 @@ module Sequential = struct
             build_dir
             ocaml_compiler
         in
-        Action.run action env ~panic_context;
+        Action.run action env;
         Generated_file.Set.diff acc_files_to_build (Build_plan.outputs build_plan)
     in
     Build_dir.package_dirs build_dir package_id profile |> List.iter ~f:File_ops.mkdir_p;
@@ -366,11 +355,11 @@ module Sequential = struct
       if not (Generated_file.Set.is_empty remaining_files_to_build_should_be_empty)
       then
         Alice_error.panic
-          (Pp.textf
-             "Not all files were built. Missing files: %s"
-             (Generated_file.Set.to_dyn remaining_files_to_build_should_be_empty
-              |> Dyn.to_string)
-           :: panic_context ());
+          [ Pp.textf
+              "Not all files were built. Missing files: %s"
+              (Generated_file.Set.to_dyn remaining_files_to_build_should_be_empty
+               |> Dyn.to_string)
+          ];
       Rebuilt)
   ;;
 end

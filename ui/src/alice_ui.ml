@@ -46,7 +46,10 @@ let absolute_path_to_string : type is_root. is_root Absolute_path.t -> string =
               ~prefix:(Absolute_path.Root_or_non_root.to_filename Alice_env.initial_cwd)
        in
        (* The start of the path will always be a period. Skip it. *)
-       let (_current_dir :: components) = Filename.to_components filename in
+       let components =
+         match Filename.to_components filename with
+         | `Absolute (_, components) | `Relative components -> components
+       in
        if List.is_empty components then "." else String.concat ~sep:"/" components)
 ;;
 

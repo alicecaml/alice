@@ -16,10 +16,15 @@ val replace_extension : t -> ext:string -> t option
 
 val add_extension : t -> ext:string -> t
 
+type components :=
+  [ `Absolute of string * string list
+  | `Relative of string list
+  ]
+
 (** Split a path into the sequence of names that make it up. The sequence of
     components will never be empty, either begining with the filesystem root or
     the current directory. *)
-val to_components : t -> t Nonempty_list.t
+val to_components : t -> components
 
 val chop_prefix_opt : prefix:t -> t -> t option
 val chop_prefix : prefix:t -> t -> t
@@ -27,3 +32,5 @@ val chop_prefix : prefix:t -> t -> t
 (** Is this a filesystem root. On unix this is true only for the system's root
     directory. On windows this is true for the root of any drive. *)
 val is_root : t -> bool
+
+val normalize : t -> (t, [ `Would_traverse_beyond_the_start_of_absolute_path ]) result

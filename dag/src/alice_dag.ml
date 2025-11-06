@@ -54,9 +54,13 @@ module Make (Node : Node) = struct
      such that nodes preceed their dependencies. *)
   let transitive_closure_multi_in_reverse_dependency_order t ~starts =
     let rec loop node seen acc =
-      let unseen_deps = Node.Name.Set.diff (Node.dep_names node) seen in
-      let seen, acc = loop_multi unseen_deps seen acc in
-      Node.Name.Set.add (Node.name node) seen, node :: acc
+      if Node.Name.Set.mem (Node.name node) seen
+      then seen, acc
+      else (
+        let seen, acc = loop_multi (Node.dep_names node) seen acc in
+        let seen = Node.Name.Set.add (Node.name node) seen in
+        let acc = node :: acc in
+        seen, acc)
     and loop_multi names seen acc =
       Node.Name.Set.fold names ~init:(seen, acc) ~f:(fun name (seen, acc) ->
         let node = Node.Name.Map.find name t in

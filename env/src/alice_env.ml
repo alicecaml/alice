@@ -104,10 +104,9 @@ module Path_variable = struct
     |> List.map ~f:(fun filename ->
       if Filename.is_relative filename
       then
-        `Non_root
-          (Absolute_path.Root_or_non_root.concat_relative
-             initial_cwd
-             (Relative_path.of_filename filename))
+        Absolute_path.Root_or_non_root.concat_relative_exn
+          initial_cwd
+          (Relative_path.of_filename filename)
       else Absolute_path.of_filename filename)
   ;;
 

@@ -20,7 +20,11 @@ let rm_rf path =
 
 let mkdir_p_filename path =
   let perms = 0o755 in
-  let (first :: rest) = Filename.to_components path in
+  let first, rest =
+    match Filename.to_components path with
+    | `Relative rest -> Filename.current_dir_name, rest
+    | `Absolute (root, rest) -> root, rest
+  in
   List.fold_left
     rest
     ~init:(first, [ first ])
