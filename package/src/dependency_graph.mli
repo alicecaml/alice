@@ -16,6 +16,10 @@ module Package_with_deps : sig
   val package_typed : ('exe, 'lib) t -> ('exe, 'lib) Package.Typed.t
   val package : (_, _) t -> Package.t
   val immediate_deps_in_dependency_order : (_, _) t -> Package.Typed.lib_only_t list
+
+  val transitive_dependency_closure_excluding_package
+    :  (_, _) t
+    -> Package.Typed.lib_only_t list
 end
 
 (** Returns the transitive closure of dependencies excluding the package at the

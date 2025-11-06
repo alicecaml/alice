@@ -25,6 +25,19 @@ end
 module Dependency_dag = struct
   include Alice_dag.Make (Node)
 
+  type nonrec t =
+    { dag : t
+    ; all_nodes_in_dependency_order : Package.Typed.lib_only_t list
+    }
+
+  let to_dyn { dag; all_nodes_in_dependency_order } =
+    Dyn.record
+      [ "dag", to_dyn dag
+      ; ( "all_nodes_in_dependency_order"
+        , Dyn.list Package.Typed.to_dyn all_nodes_in_dependency_order )
+      ]
+  ;;
+
   module Staging = struct
     include Staging
 
@@ -38,16 +51,20 @@ module Dependency_dag = struct
     ;;
 
     let finalize t =
-      match finalize t with
-      | Ok t -> t
-      | Error (`Dangling dangling) ->
-        Alice_error.panic
-          [ Pp.textf "No package with name: %s" (Package_name.to_string dangling) ]
-      | Error (`Cycle cycle) ->
-        Alice_error.panic
-          ([ Pp.text "Dependency cycle:"; Pp.newline ]
-           @ List.concat_map cycle ~f:(fun file ->
-             [ Pp.textf " - %s" (Package_name.to_string file); Pp.newline ]))
+      let dag =
+        match finalize t with
+        | Ok t -> t
+        | Error (`Dangling dangling) ->
+          Alice_error.panic
+            [ Pp.textf "No package with name: %s" (Package_name.to_string dangling) ]
+        | Error (`Cycle cycle) ->
+          Alice_error.panic
+            ([ Pp.text "Dependency cycle:"; Pp.newline ]
+             @ List.concat_map cycle ~f:(fun file ->
+               [ Pp.textf " - %s" (Package_name.to_string file); Pp.newline ]))
+      in
+      let all_nodes_in_dependency_order = all_nodes_in_dependency_order dag in
+      { dag; all_nodes_in_dependency_order }
     ;;
   end
 end
@@ -115,11 +132,11 @@ let compute package_typed =
 ;;
 
 let to_string_graph t =
-  Dependency_dag.to_string_graph t.dependency_dag
+  Dependency_dag.to_string_graph t.dependency_dag.dag
   |> String.Map.add
        ~key:(Package_id.name_v_version_string (Package.id (Package.Typed.package t.root)))
        ~data:
-         (Dependency_dag.roots t.dependency_dag
+         (Dependency_dag.roots t.dependency_dag.dag
           |> List.map ~f:Node.show
           |> String.Set.of_list)
 ;;
@@ -129,45 +146,41 @@ let dot t = to_string_graph t |> Alice_graphviz.dot_src_of_string_graph
 module Package_with_deps = struct
   type ('exe, 'lib) t =
     { package_typed : ('exe, 'lib) Package.Typed.t
-    ; immediate_deps_in_dependency_order : Package.Typed.lib_only_t list
+    ; dependency_dag : Dependency_dag.t
+    ; is_root : bool
     }
 
   let package_typed { package_typed; _ } = package_typed
   let package t = package_typed t |> Package.Typed.package
 
-  let immediate_deps_in_dependency_order { immediate_deps_in_dependency_order; _ } =
-    immediate_deps_in_dependency_order
+  let immediate_deps_in_dependency_order { package_typed; dependency_dag; _ } =
+    let immediate_dep_names =
+      Package.Typed.package package_typed
+      |> Package.dependency_names
+      |> Package_name.Set.of_list
+    in
+    List.filter dependency_dag.all_nodes_in_dependency_order ~f:(fun node ->
+      Node.Name.Set.mem (Node.name node) immediate_dep_names)
+  ;;
+
+  let transitive_dependency_closure_excluding_package
+        { package_typed; dependency_dag; is_root }
+    =
+    if is_root
+    then dependency_dag.all_nodes_in_dependency_order
+    else
+      Dependency_dag.transitive_closure_in_dependency_order
+        dependency_dag.dag
+        ~start:(Package.Typed.name package_typed)
+        ~include_start:false
   ;;
 end
 
 let root_package_with_deps { root; dependency_dag } =
-  let all_nodes_in_dependency_order =
-    Dependency_dag.all_nodes_in_dependency_order dependency_dag
-  in
-  let immediate_dep_names =
-    Dependency_dag.roots dependency_dag |> List.map ~f:Node.name |> Node.Name.Set.of_list
-  in
-  let immediate_deps_in_dependency_order =
-    List.filter all_nodes_in_dependency_order ~f:(fun node ->
-      Node.Name.Set.mem (Node.name node) immediate_dep_names)
-  in
-  { Package_with_deps.package_typed = root; immediate_deps_in_dependency_order }
+  { Package_with_deps.package_typed = root; is_root = true; dependency_dag }
 ;;
 
 let transitive_dependency_closure_in_dependency_order { dependency_dag; _ } =
-  let all_nodes_in_dependency_order =
-    Dependency_dag.all_nodes_in_dependency_order dependency_dag
-  in
-  List.map all_nodes_in_dependency_order ~f:(fun package_typed ->
-    let immediate_dep_names =
-      Dependency_dag.traverse dependency_dag ~name:(Node.name package_typed)
-      |> Dependency_dag.Traverse.deps
-      |> List.map ~f:(fun traverse -> Dependency_dag.Traverse.node traverse |> Node.name)
-      |> Node.Name.Set.of_list
-    in
-    let immediate_deps_in_dependency_order =
-      List.filter all_nodes_in_dependency_order ~f:(fun node ->
-        Node.Name.Set.mem (Node.name node) immediate_dep_names)
-    in
-    { Package_with_deps.package_typed; immediate_deps_in_dependency_order })
+  List.map dependency_dag.all_nodes_in_dependency_order ~f:(fun package_typed ->
+    { Package_with_deps.package_typed; is_root = false; dependency_dag })
 ;;

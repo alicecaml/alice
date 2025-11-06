@@ -73,9 +73,9 @@ module Build_dag = struct
 
   (* Returns the cmx files in build order which must be built before the files
      listed in [starts], including the files in [starts]. *)
-  let cmx_files_in_build_order t ~starts =
+  let cmx_files_in_build_order t ~start =
     let open Typed_op in
-    transitive_closure_in_dependency_order t ~starts
+    transitive_closure_in_dependency_order t ~start ~include_start:true
     |> List.filter_map ~f:(fun (node : Build_node.t) ->
       match node.op with
       | Compile_source { cmx_output; _ } ->
@@ -92,14 +92,14 @@ module Build_dag = struct
   let cmx_files_in_build_order_for_lib t =
     cmx_files_in_build_order
       t
-      ~starts:[ Typed_op.File.Compiled.generated_file Typed_op.File.Compiled.lib_cmx ]
+      ~start:(Typed_op.File.Compiled.generated_file Typed_op.File.Compiled.lib_cmx)
   ;;
 
   (* The cmx files needed to build the executable cmx target in build order. *)
   let cmx_files_in_build_order_for_exe t =
     cmx_files_in_build_order
       t
-      ~starts:[ Typed_op.File.Compiled.generated_file Typed_op.File.Compiled.exe_cmx ]
+      ~start:(Typed_op.File.Compiled.generated_file Typed_op.File.Compiled.exe_cmx)
   ;;
 end
 

@@ -15,6 +15,7 @@ val id : t -> Package_id.t
 val name : t -> Package_name.t
 val version : t -> Semantic_version.t
 val dependencies : t -> Dependencies.t
+val dependency_names : t -> Package_name.t list
 
 (** The file inside the source directory containing the entry point for the
     executable. *)
@@ -59,6 +60,7 @@ module Typed : sig
   val limit_to_lib_only : exe_and_lib_t -> lib_only_t
 
   val package : (_, _) t -> package
+  val name : (_, _) t -> Package_name.t
   val type_ : ('exe, 'lib) t -> ('exe, 'lib) type_
   val contains_exe : ('exe, _) t -> 'exe Type_bool.t
   val contains_lib : (_, 'lib) t -> 'lib Type_bool.t

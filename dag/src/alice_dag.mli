@@ -33,10 +33,15 @@ module Make (Node : Node) : sig
   val to_string_graph : t -> String.Set.t String.Map.t
 
   (** Returns a list containing all nodes in the transitive dependency closure
-      of each node named in [starts] (including the nodes named in [starts])
-      where each node appears a single time in the list, and a node will appear
-      earlier than any dependant nodes in the list. *)
-  val transitive_closure_in_dependency_order : t -> starts:Node.Name.t list -> Node.t list
+      of the node [start] where each node appears a single time in the list,
+      and a node will appear earlier than any dependant nodes in the list. If
+      [include_start] is true then the final node will always be the one named
+      in [start]. Otherwise [start] will not appear in the output. *)
+  val transitive_closure_in_dependency_order
+    :  t
+    -> start:Node.Name.t
+    -> include_start:bool
+    -> Node.t list
 
   (** Returns a list where each node in [t] appears exactly once, in such an
       order than a node will appear earlier than any dependant nodes. *)

@@ -50,7 +50,9 @@ module Make (Node : Node) = struct
     |> String.Map.of_list_exn
   ;;
 
-  let transitive_closure_in_dependency_order t ~starts =
+  (* Takes multiple start nodes and returns the transitive closure in order
+     such that nodes preceed their dependencies. *)
+  let transitive_closure_multi_in_reverse_dependency_order t ~starts =
     let rec loop node seen acc =
       let unseen_deps = Node.Name.Set.diff (Node.dep_names node) seen in
       let seen, acc = loop_multi unseen_deps seen acc in
@@ -60,12 +62,29 @@ module Make (Node : Node) = struct
         let node = Node.Name.Map.find name t in
         loop node seen acc)
     in
-    loop_multi (Node.Name.Set.of_list starts) Node.Name.Set.empty [] |> snd |> List.rev
+    let starts = Nonempty_list.to_list starts in
+    match loop_multi (Node.Name.Set.of_list starts) Node.Name.Set.empty [] |> snd with
+    | [] -> failwith "unreachable"
+    | x :: xs -> Nonempty_list.(x :: xs)
+  ;;
+
+  let transitive_closure_in_dependency_order t ~start ~include_start =
+    let (x :: xs) =
+      transitive_closure_multi_in_reverse_dependency_order
+        t
+        ~starts:(Nonempty_list.singleton start)
+    in
+    List.rev (if include_start then x :: xs else xs)
   ;;
 
   let all_nodes_in_dependency_order t =
-    let starts = List.map (roots t) ~f:Node.name in
-    transitive_closure_in_dependency_order t ~starts
+    match Nonempty_list.of_list_opt (roots t) with
+    | None -> []
+    | Some roots ->
+      let starts = Nonempty_list.map roots ~f:Node.name in
+      transitive_closure_multi_in_reverse_dependency_order t ~starts
+      |> Nonempty_list.to_list
+      |> List.rev
   ;;
 
   module Traverse = struct
