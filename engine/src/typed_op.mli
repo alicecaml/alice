@@ -24,6 +24,7 @@ module Generated_file : sig
   end
 
   type t =
+    | Generated_source of Basename.t
     | Compiled of Compiled.t
     | Linked_library of Linked_library.t
     | Linked_executable of Basename.t
@@ -59,6 +60,14 @@ module File : sig
     val of_path_by_extension
       :  Absolute_path.non_root_t
       -> ([ `Ml of ml t | `Mli of mli t ], [ `Unknown_extension of string ]) result
+  end
+
+  module Generated_source : sig
+    type 'a t
+
+    val ml : Basename.t -> ml t
+    val generated_file : _ t -> Generated_file.t
+    val path : _ t -> Basename.t
   end
 
   module Compiled : sig
@@ -128,6 +137,21 @@ module Pack_library : sig
     }
 end
 
+module Generate_public_interface_to_open : sig
+  type t = { ml_output : ml File.Generated_source.t }
+end
+
+module Compile_generated_source : sig
+  type t =
+    { generated_source_input : ml File.Generated_source.t
+    ; cmx_output : cmx File.Compiled.t
+    ; cmi_output : cmi File.Compiled.t
+    ; o_output : o File.Compiled.t
+    }
+
+  val of_generated_source_input_public_outputs : ml File.Generated_source.t -> t
+end
+
 module Link_library : sig
   type t =
     { cmx_inputs : cmx File.Compiled.t list
@@ -149,11 +173,13 @@ type t =
   | Compile_source of Compile_source.t
   | Compile_interface of Compile_interface.t
   | Pack_library of Pack_library.t
+  | Generate_public_interface_to_open of Generate_public_interface_to_open.t
+  | Compile_generated_source of Compile_generated_source.t
   | Link_library of Link_library.t
   | Link_executable of Link_executable.t
 
 val equal : t -> t -> bool
 val to_dyn : t -> Dyn.t
 val source_input : t -> Absolute_path.non_root_t option
-val compiled_inputs : t -> Generated_file.Compiled.t list
+val generated_inputs : t -> Generated_file.t list
 val outputs : t -> Generated_file.t list

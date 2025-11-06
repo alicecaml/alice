@@ -1,1 +1,1 @@
-let () = print_endline "hello"
+let () = print_endline Hello.Foo.message

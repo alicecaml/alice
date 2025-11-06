@@ -23,13 +23,7 @@ module Build_node = struct
   let equal t { artifact; op } = Name.equal t.artifact artifact && Typed_op.equal t.op op
   let name { artifact; _ } = artifact
   let op { op; _ } = op
-
-  let dep_names t =
-    Typed_op.compiled_inputs t.op
-    |> List.map ~f:(fun compiled -> Typed_op.Generated_file.Compiled compiled)
-    |> Name.Set.of_list
-  ;;
-
+  let dep_names t = Typed_op.generated_inputs t.op |> Name.Set.of_list
   let show_name name = Alice_ui.basename_to_string (Name.path name)
   let show t = show_name t.artifact
 end
@@ -108,8 +102,14 @@ module Build_plan = struct
 
   let op t = (node t).op
   let source_input t = Typed_op.source_input (op t)
-  let compiled_inputs t = Typed_op.compiled_inputs (op t)
+  let generated_inputs t = Typed_op.generated_inputs (op t)
   let outputs t = Typed_op.outputs (op t) |> Typed_op.Generated_file.Set.of_list
+
+  let is_sensitive_to_dependencies t =
+    match op t with
+    | Generate_public_interface_to_open _ -> true
+    | _ -> false
+  ;;
 end
 
 let compilation_ops dir package_id build_dir env ocaml_compiler =
@@ -252,10 +252,32 @@ let create
     in
     let pack = Typed_op.Pack.of_package_name (Package.name package) in
     let pack_op = Pack_library { cmx_inputs = cmx_files; pack } in
-    let link_library_op =
-      Link_library (Link_library.of_inputs [ Typed_op.Pack.cmx_file pack ])
+    let public_interface_to_open_ml =
+      Module_name.public_interface_to_open (Package.name package)
+      |> Module_name.basename_without_extension
+      |> Basename.add_extension ~ext:".ml"
+      |> File.Generated_source.ml
     in
-    [ pack_op; link_library_op ]
+    let generate_public_interface_to_open_op =
+      Generate_public_interface_to_open { ml_output = public_interface_to_open_ml }
+    in
+    let compile_public_interface_to_open =
+      Compile_generated_source.of_generated_source_input_public_outputs
+        public_interface_to_open_ml
+    in
+    let compile_public_interface_to_open_op =
+      Compile_generated_source compile_public_interface_to_open
+    in
+    let link_library_op =
+      Link_library
+        (Link_library.of_inputs
+           [ Typed_op.Pack.cmx_file pack; compile_public_interface_to_open.cmx_output ])
+    in
+    [ pack_op
+    ; generate_public_interface_to_open_op
+    ; compile_public_interface_to_open_op
+    ; link_library_op
+    ]
   in
   let exe_file =
     let exe_name =

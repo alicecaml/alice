@@ -90,11 +90,13 @@ module Generated_file = struct
 
   module T = struct
     type t =
+      | Generated_source of Basename.t
       | Compiled of Compiled.t
       | Linked_library of Linked_library.t
       | Linked_executable of Basename.t
 
     let to_dyn = function
+      | Generated_source path -> Dyn.variant "Generated_source" [ Basename.to_dyn path ]
       | Compiled compiled -> Dyn.variant "Compiled" [ Compiled.to_dyn compiled ]
       | Linked_library linked_library ->
         Dyn.variant "Linked_library" [ Linked_library.to_dyn linked_library ]
@@ -103,6 +105,8 @@ module Generated_file = struct
 
     let equal a b =
       match a, b with
+      | Generated_source a, Generated_source b -> Basename.equal a b
+      | Generated_source _, _ -> false
       | Compiled a, Compiled b -> Compiled.equal a b
       | Compiled _, _ -> false
       | Linked_library a, Linked_library b -> Linked_library.equal a b
@@ -113,6 +117,9 @@ module Generated_file = struct
 
     let compare a b =
       match a, b with
+      | Generated_source a, Generated_source b -> Basename.compare a b
+      | Generated_source _, _ -> -1
+      | _, Generated_source _ -> 1
       | Compiled a, Compiled b -> Compiled.compare a b
       | Compiled _, _ -> -1
       | _, Compiled _ -> 1
@@ -128,6 +135,7 @@ module Generated_file = struct
   module Set = Set.Make (T)
 
   let path = function
+    | Generated_source path -> path
     | Compiled compiled -> Compiled.path compiled
     | Linked_library linked_library -> Linked_library.path linked_library
     | Linked_executable path -> path
@@ -204,6 +212,25 @@ module File = struct
     ;;
   end
 
+  module Generated_source = struct
+    type 'type_ t =
+      { path : Basename.t
+      ; type_ : 'type_ File_type.t
+      }
+
+    let to_dyn { path; type_ } =
+      Dyn.record [ "path", Basename.to_dyn path; "type_", File_type.to_dyn type_ ]
+    ;;
+
+    let equal t { path; type_ } =
+      Basename.equal t.path path && File_type.equal t.type_ type_
+    ;;
+
+    let ml path = { path; type_ = Ml }
+    let path { path; _ } = path
+    let generated_file { path; _ } = Generated_file.Generated_source path
+  end
+
   module Compiled = struct
     type 'type_ t =
       { path : Basename.t
@@ -240,7 +267,9 @@ module File = struct
     let cmx_private path = of_path_checked path Cmx ".cmx" ~visibility:Private
     let cmx_public path = of_path_checked path Cmx ".cmx" ~visibility:Public
     let cmi_private path = of_path_checked path Cmi ".cmi" ~visibility:Private
+    let cmi_public path = of_path_checked path Cmi ".cmi" ~visibility:Public
     let o_private path = of_path_checked path O ".o" ~visibility:Private
+    let o_public path = of_path_checked path O ".o" ~visibility:Public
 
     let of_path_by_extension_private path =
       match Basename.extension path with
@@ -410,6 +439,53 @@ module Pack_library = struct
   ;;
 end
 
+module Generate_public_interface_to_open = struct
+  type t = { ml_output : ml File.Generated_source.t }
+
+  let equal t { ml_output } = File.Generated_source.equal t.ml_output ml_output
+
+  let to_dyn { ml_output } =
+    Dyn.record [ "ml_output", File.Generated_source.to_dyn ml_output ]
+  ;;
+end
+
+module Compile_generated_source = struct
+  type t =
+    { generated_source_input : ml File.Generated_source.t
+    ; cmx_output : cmx File.Compiled.t
+    ; cmi_output : cmi File.Compiled.t
+    ; o_output : o File.Compiled.t
+    }
+
+  let of_generated_source_input_public_outputs
+        (generated_source_input : ml File.Generated_source.t)
+    =
+    let open File.Compiled in
+    let basename = generated_source_input.path in
+    { generated_source_input
+    ; cmx_output = Basename.replace_extension basename ~ext:".cmx" |> cmx_public
+    ; cmi_output = Basename.replace_extension basename ~ext:".cmi" |> cmi_public
+    ; o_output = Basename.replace_extension basename ~ext:".o" |> o_public
+    }
+  ;;
+
+  let equal t { generated_source_input; cmx_output; cmi_output; o_output } =
+    File.Generated_source.equal t.generated_source_input generated_source_input
+    && File.Compiled.equal t.cmx_output cmx_output
+    && File.Compiled.equal t.cmi_output cmi_output
+    && File.Compiled.equal t.o_output o_output
+  ;;
+
+  let to_dyn { generated_source_input; cmx_output; cmi_output; o_output } =
+    Dyn.record
+      [ "generated_source_input", File.Generated_source.to_dyn generated_source_input
+      ; "cmx_output", File.Compiled.to_dyn cmx_output
+      ; "cmi_output", File.Compiled.to_dyn cmi_output
+      ; "o_output", File.Compiled.to_dyn o_output
+      ]
+  ;;
+end
+
 module Link_library = struct
   type t =
     { cmx_inputs : cmx File.Compiled.t list
@@ -457,6 +533,8 @@ type t =
   | Compile_source of Compile_source.t
   | Compile_interface of Compile_interface.t
   | Pack_library of Pack_library.t
+  | Generate_public_interface_to_open of Generate_public_interface_to_open.t
+  | Compile_generated_source of Compile_generated_source.t
   | Link_library of Link_library.t
   | Link_executable of Link_executable.t
 
@@ -468,6 +546,12 @@ let equal a b =
   | Compile_interface _, _ -> false
   | Pack_library a, Pack_library b -> Pack_library.equal a b
   | Pack_library _, _ -> false
+  | Generate_public_interface_to_open a, Generate_public_interface_to_open b ->
+    Generate_public_interface_to_open.equal a b
+  | Generate_public_interface_to_open _, _ -> false
+  | Compile_generated_source a, Compile_generated_source b ->
+    Compile_generated_source.equal a b
+  | Compile_generated_source _, _ -> false
   | Link_library a, Link_library b -> Link_library.equal a b
   | Link_library _, _ -> false
   | Link_executable a, Link_executable b -> Link_executable.equal a b
@@ -481,6 +565,14 @@ let to_dyn = function
     Dyn.variant "Compile_interface" [ Compile_interface.to_dyn compile_interface ]
   | Pack_library pack_library ->
     Dyn.variant "Pack_library" [ Pack_library.to_dyn pack_library ]
+  | Generate_public_interface_to_open generate_public_interface_to_open ->
+    Dyn.variant
+      "Generate_public_interface_to_open"
+      [ Generate_public_interface_to_open.to_dyn generate_public_interface_to_open ]
+  | Compile_generated_source compile_generated_source ->
+    Dyn.variant
+      "Compile_generated_source"
+      [ Compile_generated_source.to_dyn compile_generated_source ]
   | Link_library link_library ->
     Dyn.variant "Link_library" [ Link_library.to_dyn link_library ]
   | Link_executable link_executable ->
@@ -490,23 +582,28 @@ let to_dyn = function
 let source_input = function
   | Compile_source { source_input; _ } -> Some (File.Source.path source_input)
   | Compile_interface { interface_input; _ } -> Some (File.Source.path interface_input)
-  | Pack_library _ -> None
-  | Link_library _ -> None
+  | Pack_library _
+  | Generate_public_interface_to_open _
+  | Compile_generated_source _
+  | Link_library _
   | Link_executable _ -> None
 ;;
 
-let compiled_inputs t =
-  let to_compiled = File.Compiled.generated_file_compiled in
-  let cm_to_compiled = function
-    | `Cmx file -> to_compiled file
-    | `Cmi file -> to_compiled file
+let generated_inputs t =
+  let compiled_generated = File.Compiled.generated_file in
+  let cm_generated = function
+    | `Cmx file -> compiled_generated file
+    | `Cmi file -> compiled_generated file
   in
   match t with
-  | Compile_source { compiled_inputs; _ } -> List.map compiled_inputs ~f:cm_to_compiled
-  | Compile_interface { cmi_inputs; _ } -> List.map cmi_inputs ~f:to_compiled
-  | Pack_library { cmx_inputs; _ } -> List.map cmx_inputs ~f:to_compiled
-  | Link_library { cmx_inputs; _ } -> List.map cmx_inputs ~f:to_compiled
-  | Link_executable { cmx_inputs; _ } -> List.map cmx_inputs ~f:to_compiled
+  | Compile_source { compiled_inputs; _ } -> List.map compiled_inputs ~f:cm_generated
+  | Compile_interface { cmi_inputs; _ } -> List.map cmi_inputs ~f:compiled_generated
+  | Pack_library { cmx_inputs; _ } -> List.map cmx_inputs ~f:compiled_generated
+  | Generate_public_interface_to_open _ -> []
+  | Compile_generated_source { generated_source_input; _ } ->
+    [ File.Generated_source.generated_file generated_source_input ]
+  | Link_library { cmx_inputs; _ } -> List.map cmx_inputs ~f:compiled_generated
+  | Link_executable { cmx_inputs; _ } -> List.map cmx_inputs ~f:compiled_generated
 ;;
 
 let outputs = function
@@ -519,6 +616,10 @@ let outputs = function
        |> Option.to_list)
   | Compile_interface { cmi_output; _ } -> [ File.Compiled.generated_file cmi_output ]
   | Pack_library { pack; _ } -> [ File.Compiled.generated_file (Pack.cmx_file pack) ]
+  | Generate_public_interface_to_open { ml_output } ->
+    [ File.Generated_source.generated_file ml_output ]
+  | Compile_generated_source { cmx_output; _ } ->
+    [ File.Compiled.generated_file cmx_output ]
   | Link_library { cmxa_output; a_output; _ } ->
     [ File.Linked.generated_file cmxa_output; File.Linked.generated_file a_output ]
   | Link_executable { exe_output; _ } -> [ File.Linked.generated_file exe_output ]

@@ -8,14 +8,63 @@ module Build_plan = Build_graph.Build_plan
 module Generated_file = Typed_op.Generated_file
 module Package_with_deps = Dependency_graph.Package_with_deps
 
-let op_command op package_with_deps profile build_dir ocaml_compiler =
+module Generated_public_interface_to_open = struct
+  type t =
+    { output_path : Absolute_path.non_root_t
+    ; public_interface_to_open : Public_interface_to_open.t
+    }
+end
+
+module Action = struct
+  type t =
+    | Command of Command.t
+    | Generated_public_interface_to_open of Generated_public_interface_to_open.t
+
+  let run t env ~panic_context =
+    match t with
+    | Command command ->
+      let status =
+        match Alice_io.Process.Blocking.run_command command ~env with
+        | Ok status -> status
+        | Error `Prog_not_available ->
+          panic [ Pp.textf "Can't find program: %s" command.prog ]
+      in
+      (match status with
+       | Exited 0 -> ()
+       | _ ->
+         Alice_error.panic
+           (Pp.textf "Command failed: %s\n" (Command.to_string command)
+            :: panic_context ()))
+    | Generated_public_interface_to_open { output_path; public_interface_to_open } ->
+      Log.debug
+        [ Pp.textf
+            "Generating public interface source file: %s"
+            (Absolute_path.to_filename output_path)
+        ];
+      File_ops.write_text_file
+        output_path
+        (Public_interface_to_open.source_code public_interface_to_open)
+  ;;
+end
+
+let op_action op package_with_deps profile build_dir ocaml_compiler =
   let open Typed_op.File in
   let package = Package_with_deps.package package_with_deps in
-  let dep_libs =
+  let transitive_dep_libs =
     Package_with_deps.transitive_dependency_closure_excluding_package package_with_deps
   in
+  let immediate_dep_libs =
+    Package_with_deps.immediate_deps_in_dependency_order package_with_deps
+  in
+  let lib_open_args =
+    List.concat_map immediate_dep_libs ~f:(fun dep_lib ->
+      let module_name =
+        Package.Typed.name dep_lib |> Module_name.public_interface_to_open
+      in
+      [ "-open"; Module_name.to_string_uppercase_first_letter module_name ])
+  in
   let lib_include_args =
-    List.concat_map dep_libs ~f:(fun dep_lib ->
+    List.concat_map transitive_dep_libs ~f:(fun dep_lib ->
       let package_id = Package.Typed.package dep_lib |> Package.id in
       [ "-I"
       ; Build_dir.package_public_dir build_dir package_id profile
@@ -23,7 +72,7 @@ let op_command op package_with_deps profile build_dir ocaml_compiler =
       ])
   in
   let lib_cmxa_files =
-    List.map dep_libs ~f:(fun dep_lib ->
+    List.map transitive_dep_libs ~f:(fun dep_lib ->
       let package_id = Package.Typed.package dep_lib |> Package.id in
       let public = Build_dir.package_public_dir build_dir package_id profile in
       public / Linked.path Linked.lib_cmxa |> Absolute_path.to_filename)
@@ -40,37 +89,43 @@ let op_command op package_with_deps profile build_dir ocaml_compiler =
   let package_pack = Typed_op.Pack.of_package_name (Package.name package) in
   match (op : Typed_op.t) with
   | Compile_source { source_input; cmx_output; _ } ->
-    Profile.ocaml_compiler_command
-      profile
-      ocaml_compiler
-      ~args:
-        (lib_include_args
-         @ [ "-I"
-           ; Absolute_path.to_filename private_
-           ; "-c"
-           ; "-for-pack"
-           ; Typed_op.Pack.module_name package_pack |> Module_name.to_string
-           ; "-o"
-           ; compiled_absolute_filename cmx_output
-           ; "-impl"
-           ; Absolute_path.to_filename @@ Source.path source_input
-           ])
+    Action.Command
+      (Profile.ocaml_compiler_command
+         profile
+         ocaml_compiler
+         ~args:
+           (lib_include_args
+            @ lib_open_args
+            @ [ "-I"
+              ; Absolute_path.to_filename private_
+              ; "-c"
+              ; "-for-pack"
+              ; Typed_op.Pack.module_name package_pack
+                |> Module_name.to_string_uppercase_first_letter
+              ; "-o"
+              ; compiled_absolute_filename cmx_output
+              ; "-impl"
+              ; Absolute_path.to_filename @@ Source.path source_input
+              ]))
   | Compile_interface { interface_input; cmi_output; _ } ->
-    Profile.ocaml_compiler_command
-      profile
-      ocaml_compiler
-      ~args:
-        (lib_include_args
-         @ [ "-I"
-           ; Absolute_path.to_filename private_
-           ; "-c"
-           ; "-for-pack"
-           ; Typed_op.Pack.module_name package_pack |> Module_name.to_string
-           ; "-o"
-           ; compiled_absolute_filename cmi_output
-           ; "-intf"
-           ; Source.path interface_input |> Absolute_path.to_filename
-           ])
+    Command
+      (Profile.ocaml_compiler_command
+         profile
+         ocaml_compiler
+         ~args:
+           (lib_include_args
+            @ lib_open_args
+            @ [ "-I"
+              ; Absolute_path.to_filename private_
+              ; "-c"
+              ; "-for-pack"
+              ; Typed_op.Pack.module_name package_pack
+                |> Module_name.to_string_uppercase_first_letter
+              ; "-o"
+              ; compiled_absolute_filename cmi_output
+              ; "-intf"
+              ; Source.path interface_input |> Absolute_path.to_filename
+              ]))
   | Pack_library { cmx_inputs; pack; _ } ->
     if not (Typed_op.Pack.equal pack package_pack)
     then
@@ -81,30 +136,66 @@ let op_command op package_with_deps profile build_dir ocaml_compiler =
             (Package_name.to_string @@ Typed_op.Pack.package_name pack)
             (Package_name.to_string @@ Typed_op.Pack.package_name package_pack)
         ];
-    Profile.ocaml_compiler_command
-      profile
-      ocaml_compiler
-      ~args:
-        (List.map cmx_inputs ~f:compiled_absolute_filename
-         @ [ "-pack"; "-o"; compiled_absolute_filename (Typed_op.Pack.cmx_file pack) ])
+    Command
+      (Profile.ocaml_compiler_command
+         profile
+         ocaml_compiler
+         ~args:
+           (List.map cmx_inputs ~f:compiled_absolute_filename
+            @ [ "-pack"; "-o"; compiled_absolute_filename (Typed_op.Pack.cmx_file pack) ]
+           ))
+  | Generate_public_interface_to_open { ml_output } ->
+    let output_path =
+      Build_dir.package_generated_file
+        build_dir
+        package_id
+        profile
+        (Typed_op.File.Generated_source.generated_file ml_output)
+    in
+    let public_interface_to_open =
+      Public_interface_to_open.of_package_with_deps package_with_deps
+    in
+    Generated_public_interface_to_open { output_path; public_interface_to_open }
+  | Compile_generated_source { generated_source_input; cmx_output; _ } ->
+    let impl =
+      Build_dir.package_generated_source_dir build_dir package_id profile
+      / Typed_op.File.Generated_source.path generated_source_input
+    in
+    Action.Command
+      (Profile.ocaml_compiler_command
+         profile
+         ocaml_compiler
+         ~args:
+           [ "-I"
+           ; Absolute_path.to_filename public
+           ; "-c"
+           ; "-o"
+           ; compiled_absolute_filename cmx_output
+           ; "-impl"
+           ; Absolute_path.to_filename impl
+           ])
   | Link_library { cmx_inputs; cmxa_output; _ } ->
-    Profile.ocaml_compiler_command
-      profile
-      ocaml_compiler
-      ~args:
-        (lib_include_args
-         @ List.map cmx_inputs ~f:compiled_absolute_filename
-         @ [ "-a"; "-o"; Absolute_path.to_filename @@ (public / Linked.path cmxa_output) ]
-        )
+    Command
+      (Profile.ocaml_compiler_command
+         profile
+         ocaml_compiler
+         ~args:
+           (lib_include_args
+            @ List.map cmx_inputs ~f:compiled_absolute_filename
+            @ [ "-a"
+              ; "-o"
+              ; Absolute_path.to_filename @@ (public / Linked.path cmxa_output)
+              ]))
   | Link_executable { cmx_inputs; exe_output } ->
-    Profile.ocaml_compiler_command
-      profile
-      ocaml_compiler
-      ~args:
-        (lib_include_args
-         @ List.map cmx_inputs ~f:compiled_absolute_filename
-         @ lib_cmxa_files
-         @ [ "-o"; Absolute_path.to_filename @@ (executable / Linked.path exe_output) ])
+    Command
+      (Profile.ocaml_compiler_command
+         profile
+         ocaml_compiler
+         ~args:
+           (lib_cmxa_files
+            @ List.map cmx_inputs ~f:compiled_absolute_filename
+            @ [ "-o"; Absolute_path.to_filename @@ (executable / Linked.path exe_output) ]
+           ))
 ;;
 
 module Sequential = struct
@@ -113,36 +204,45 @@ module Sequential = struct
      any of its source dependencies. *)
   let files_to_build build_plan package_id profile build_dir =
     let rec loop build_plan =
-      let deps = Build_plan.deps build_plan in
-      let to_rebuild =
-        List.fold_left deps ~init:Generated_file.Set.empty ~f:(fun acc_to_rebuild dep ->
-          let to_rebuild = loop dep in
-          Generated_file.Set.union to_rebuild acc_to_rebuild)
-      in
-      match Generated_file.Set.is_empty to_rebuild with
-      | false ->
-        (* If any dependencies need rebuilding, all our out outputs need rebuilding too. *)
-        Generated_file.Set.union (Build_plan.outputs build_plan) to_rebuild
-      | true ->
-        (* Rebuild all the outputs which either don't exist, or whose mtime
+      if Build_plan.is_sensitive_to_dependencies build_plan
+      then
+        (* TODO: Currently we always rebuild in this case just in case the
+           dependencies have changed. In the future this information will be
+           propagated through the build system so it can be known at this point
+           whether any dependencies of the current package were just rebuilt.
+        *)
+        Build_plan.outputs build_plan
+      else (
+        let deps = Build_plan.deps build_plan in
+        let to_rebuild =
+          List.fold_left deps ~init:Generated_file.Set.empty ~f:(fun acc_to_rebuild dep ->
+            let to_rebuild = loop dep in
+            Generated_file.Set.union to_rebuild acc_to_rebuild)
+        in
+        match Generated_file.Set.is_empty to_rebuild with
+        | false ->
+          (* If any dependencies need rebuilding, all our out outputs need rebuilding too. *)
+          Generated_file.Set.union (Build_plan.outputs build_plan) to_rebuild
+        | true ->
+          (* Rebuild all the outputs which either don't exist, or whose mtime
            is earlier than the latest mtime among source files which the
            output depends on. *)
-        Generated_file.Set.filter (Build_plan.outputs build_plan) ~f:(fun output ->
-          let output_abs =
-            Build_dir.package_generated_file build_dir package_id profile output
-          in
-          match File_ops.exists output_abs with
-          | false ->
-            (* File doesn't exist. Build it! *)
-            true
-          | true ->
-            (* File exists. If it has a source file, compare the source
+          Generated_file.Set.filter (Build_plan.outputs build_plan) ~f:(fun output ->
+            let output_abs =
+              Build_dir.package_generated_file build_dir package_id profile output
+            in
+            match File_ops.exists output_abs with
+            | false ->
+              (* File doesn't exist. Build it! *)
+              true
+            | true ->
+              (* File exists. If it has a source file, compare the source
                  file's mtime with this file's mtime. *)
-            (match Build_plan.source_input build_plan with
-             | None ->
-               (* No source dependency, so no need ot rebuild. *)
-               false
-             | Some source -> File_ops.mtime output_abs < File_ops.mtime source))
+              (match Build_plan.source_input build_plan with
+               | None ->
+                 (* No source dependency, so no need ot rebuild. *)
+                 false
+               | Some source -> File_ops.mtime output_abs < File_ops.mtime source)))
     in
     loop build_plan
   ;;
@@ -198,13 +298,9 @@ module Sequential = struct
                   "Missing source file: %s\n"
                   (absolute_path_to_string source_input)
                 :: panic_context ()));
-        List.iter (Build_plan.compiled_inputs build_plan) ~f:(fun compiled ->
+        List.iter (Build_plan.generated_inputs build_plan) ~f:(fun generated_file ->
           let compiled_path =
-            Build_dir.package_generated_file_compiled
-              build_dir
-              package_id
-              profile
-              compiled
+            Build_dir.package_generated_file build_dir package_id profile generated_file
           in
           if not (File_ops.exists compiled_path)
           then
@@ -213,26 +309,15 @@ module Sequential = struct
                  "Missing file which should have been compiled by this point: %s\n"
                  (absolute_path_to_string compiled_path)
                :: panic_context ()));
-        let command =
-          op_command
+        let action =
+          op_action
             (Build_plan.op build_plan)
             package_with_deps
             profile
             build_dir
             ocaml_compiler
         in
-        (let status =
-           match Alice_io.Process.Blocking.run_command command ~env with
-           | Ok status -> status
-           | Error `Prog_not_available ->
-             panic [ Pp.textf "Can't find program: %s" command.prog ]
-         in
-         match status with
-         | Exited 0 -> ()
-         | _ ->
-           Alice_error.panic
-             (Pp.textf "Command failed: %s\n" (Command.to_string command)
-              :: panic_context ()));
+        Action.run action env ~panic_context;
         Generated_file.Set.diff acc_files_to_build (Build_plan.outputs build_plan)
     in
     Build_dir.package_dirs build_dir package_id profile |> List.iter ~f:File_ops.mkdir_p;

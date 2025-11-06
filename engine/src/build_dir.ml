@@ -21,6 +21,10 @@ let package_base_dir t package_id profile =
   package_dir t package_id / Basename.of_filename (Profile.name profile)
 ;;
 
+let package_generated_source_dir t package_id profile =
+  package_base_dir t package_id profile / Basename.of_filename "generated"
+;;
+
 let package_private_dir t package_id profile =
   package_base_dir t package_id profile / Basename.of_filename "private"
 ;;
@@ -34,7 +38,8 @@ let package_executable_dir t package_id profile =
 ;;
 
 let package_dirs t package_id profile =
-  [ package_public_dir t package_id profile
+  [ package_generated_source_dir t package_id profile
+  ; package_public_dir t package_id profile
   ; package_private_dir t package_id profile
   ; package_executable_dir t package_id profile
   ]
@@ -53,6 +58,7 @@ let package_generated_file_compiled t package_id profile compiled =
 let package_generated_file t package_id profile generated_file =
   let open Typed_op.Generated_file in
   match (generated_file : t) with
+  | Generated_source path -> package_generated_source_dir t package_id profile / path
   | Compiled compiled -> package_generated_file_compiled t package_id profile compiled
   | Linked_library linked_library ->
     package_public_dir t package_id profile / Linked_library.path linked_library
