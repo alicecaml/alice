@@ -8,7 +8,7 @@ open Climate
 let parse_manifest_path_opt =
   let open Arg_parser in
   named_opt
-    [ "manifest-path" ]
+    [ "m"; "manifest-path" ]
     file
     ~doc:
       (sprintf
@@ -87,7 +87,7 @@ let parse_project =
 
 let parse_profile =
   let open Arg_parser in
-  let+ release = flag [ "release" ] ~doc:"Build with optimizations." in
+  let+ release = flag [ "r"; "release" ] ~doc:"Build with optimizations." in
   match release with
   | true -> Profile.release
   | false -> Profile.debug

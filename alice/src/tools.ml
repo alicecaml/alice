@@ -523,9 +523,17 @@ let subcommand =
     "tools"
     (group
        ~doc:"Manage tools for building and developing OCaml projects."
-       [ subcommand "install" (singleton install)
-       ; subcommand "env" (singleton env)
-       ; subcommand "change" (singleton change)
-       ; subcommand "exec" (singleton exec)
+       [ subcommand "install" (singleton install ~doc:"Install OCaml development tools.")
+       ; subcommand
+           "env"
+           (singleton
+              env
+              ~doc:"Print a command which can be eval'd to add tools to PATH.")
+       ; subcommand "change" (singleton change ~doc:"Change the currently active root")
+       ; subcommand
+           "exec"
+           (singleton
+              exec
+              ~doc:"Run a command in an environment with access to the tools.")
        ])
 ;;
