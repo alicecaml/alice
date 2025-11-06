@@ -105,21 +105,21 @@ let to_string { major; minor; patch; pre_release; metadata } =
 
 let to_string_v t = String.cat "v" (to_string t)
 
-let equal { major; minor; patch; pre_release; metadata } t =
-  Int.equal major t.major
-  && Int.equal minor t.minor
-  && Int.equal patch t.patch
-  && Option.equal ~eq:Pre_release.equal pre_release t.pre_release
-  && Option.equal ~eq:Metadata.equal metadata t.metadata
+let equal t { major; minor; patch; pre_release; metadata } =
+  Int.equal t.major major
+  && Int.equal t.minor minor
+  && Int.equal t.patch patch
+  && Option.equal ~eq:Pre_release.equal t.pre_release pre_release
+  && Option.equal ~eq:Metadata.equal t.metadata metadata
 ;;
 
-let compare { major; minor; patch; pre_release; metadata } t =
+let compare t { major; minor; patch; pre_release; metadata } =
   let open Compare in
-  let= () = Int.compare major t.major in
-  let= () = Int.compare minor t.minor in
-  let= () = Int.compare patch t.patch in
-  let= () = Option.compare ~cmp:Pre_release.compare pre_release t.pre_release in
-  let= () = Option.compare ~cmp:Metadata.compare metadata t.metadata in
+  let= () = Int.compare t.major major in
+  let= () = Int.compare t.minor minor in
+  let= () = Int.compare t.patch patch in
+  let= () = Option.compare ~cmp:Pre_release.compare t.pre_release pre_release in
+  let= () = Option.compare ~cmp:Metadata.compare t.metadata metadata in
   0
 ;;
 
