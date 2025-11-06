@@ -55,7 +55,7 @@ Print the dependency graph of the project:
     "lib.cmxa" -> {"internal_modules_of_foo.cmx", "public_interface_to_open_of_foo.cmx"}
     "main.cmi" -> {"lib.cmx", "main.ml"}
     "main.cmx" -> {"lib.cmx", "main.ml"}
-    "public_interface_to_open_of_foo.cmx" -> {"public_interface_to_open_of_foo.ml"}
+    "public_interface_to_open_of_foo.cmx" -> {"internal_modules_of_foo.cmx", "public_interface_to_open_of_foo.ml"}
   }
 
 Test that the project can be built an run:
@@ -109,7 +109,6 @@ the dependency graph from this file to the output should be rebuilt:
    [INFO] [foo v0.1.0] Building targets: foo.cmx
    [INFO] [foo v0.1.0] Building targets: lib.cmi, lib.cmx
    [INFO] [foo v0.1.0] Building targets: internal_modules_of_foo.cmx
-   [INFO] [foo v0.1.0] Building targets: public_interface_to_open_of_foo.ml
    [INFO] [foo v0.1.0] Building targets: public_interface_to_open_of_foo.cmx
    [INFO] [foo v0.1.0] Building targets: lib.cmxa, lib.a
    [INFO] [foo v0.1.0] Building targets: main.cmi, main.cmx
@@ -125,9 +124,6 @@ Change a shallow dependency and rebuild. Only the final build steps should run:
    [INFO] [foo v0.1.0] Loading ocamldeps cache from: build/packages/foo-0.1.0/ocamldeps_cache.marshal
    [INFO] [foo v0.1.0] Analyzing dependencies of file: src/main.ml
    Compiling foo v0.1.0
-   [INFO] [foo v0.1.0] Building targets: public_interface_to_open_of_foo.ml
-   [INFO] [foo v0.1.0] Building targets: public_interface_to_open_of_foo.cmx
-   [INFO] [foo v0.1.0] Building targets: lib.cmxa, lib.a
    [INFO] [foo v0.1.0] Building targets: main.cmi, main.cmx
    [INFO] [foo v0.1.0] Building targets: foo
     Finished debug build of package: 'foo v0.1.0'
@@ -146,7 +142,6 @@ Change an interface and rebuild:
    [INFO] [foo v0.1.0] Building targets: foo.cmx
    [INFO] [foo v0.1.0] Building targets: lib.cmi, lib.cmx
    [INFO] [foo v0.1.0] Building targets: internal_modules_of_foo.cmx
-   [INFO] [foo v0.1.0] Building targets: public_interface_to_open_of_foo.ml
    [INFO] [foo v0.1.0] Building targets: public_interface_to_open_of_foo.cmx
    [INFO] [foo v0.1.0] Building targets: lib.cmxa, lib.a
    [INFO] [foo v0.1.0] Building targets: main.cmi, main.cmx

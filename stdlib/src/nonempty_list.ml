@@ -25,5 +25,6 @@ let map t ~f =
 ;;
 
 let equal ~eq a b = List.equal ~eq (to_list a) (to_list b)
+let compare ~cmp a b = List.compare ~cmp (to_list a) (to_list b)
 let last (x :: xs) = List.last xs |> Option.value ~default:x
 let split_last (x :: xs) = List.split_last xs |> Option.value ~default:([], x)

@@ -8,6 +8,18 @@ module Build_plan = Build_graph.Build_plan
 module Generated_file = Typed_op.Generated_file
 module Package_with_deps = Dependency_graph.Package_with_deps
 
+module Package_built = struct
+  type t =
+    | Rebuilt
+    | Not_rebuilt
+
+  let any_rebuilt ts =
+    List.exists ts ~f:(function
+      | Rebuilt -> true
+      | Not_rebuilt -> false)
+  ;;
+end
+
 module Generated_public_interface_to_open = struct
   type t =
     { output_path : Absolute_path.non_root_t
@@ -59,7 +71,7 @@ let op_action op package_with_deps profile build_dir ocaml_compiler =
   let lib_open_args =
     List.concat_map immediate_dep_libs ~f:(fun dep_lib ->
       let module_name =
-        Package.Typed.name dep_lib |> Module_name.public_interface_to_open
+        Package_with_deps.name dep_lib |> Module_name.public_interface_to_open
       in
       [ "-open"; Module_name.to_string_uppercase_first_letter module_name ])
   in
@@ -202,52 +214,51 @@ module Sequential = struct
   (* Determines which files need to be (re)built. A file needs to be rebuilt if
      any of its dependencies need to be rebuilt, or if its mtime is earlier than
      any of its source dependencies. *)
-  let files_to_build build_plan package_id profile build_dir =
+  let incremental_files_to_build build_plan package_id profile build_dir =
     let rec loop build_plan =
-      if Build_plan.is_sensitive_to_dependencies build_plan
-      then
-        (* TODO: Currently we always rebuild in this case just in case the
-           dependencies have changed. In the future this information will be
-           propagated through the build system so it can be known at this point
-           whether any dependencies of the current package were just rebuilt.
-        *)
-        Build_plan.outputs build_plan
-      else (
-        let deps = Build_plan.deps build_plan in
-        let to_rebuild =
-          List.fold_left deps ~init:Generated_file.Set.empty ~f:(fun acc_to_rebuild dep ->
-            let to_rebuild = loop dep in
-            Generated_file.Set.union to_rebuild acc_to_rebuild)
-        in
-        match Generated_file.Set.is_empty to_rebuild with
-        | false ->
-          (* If any dependencies need rebuilding, all our out outputs need rebuilding too. *)
-          Generated_file.Set.union (Build_plan.outputs build_plan) to_rebuild
-        | true ->
-          (* Rebuild all the outputs which either don't exist, or whose mtime
+      let deps = Build_plan.deps build_plan in
+      let to_rebuild =
+        List.fold_left deps ~init:Generated_file.Set.empty ~f:(fun acc_to_rebuild dep ->
+          let to_rebuild = loop dep in
+          Generated_file.Set.union to_rebuild acc_to_rebuild)
+      in
+      match Generated_file.Set.is_empty to_rebuild with
+      | false ->
+        (* If any dependencies need rebuilding, all our out outputs need rebuilding too. *)
+        Generated_file.Set.union (Build_plan.outputs build_plan) to_rebuild
+      | true ->
+        (* Rebuild all the outputs which either don't exist, or whose mtime
            is earlier than the latest mtime among source files which the
            output depends on. *)
-          Generated_file.Set.filter (Build_plan.outputs build_plan) ~f:(fun output ->
-            let output_abs =
-              Build_dir.package_generated_file build_dir package_id profile output
-            in
-            match File_ops.exists output_abs with
-            | false ->
-              (* File doesn't exist. Build it! *)
-              true
-            | true ->
-              (* File exists. If it has a source file, compare the source
+        Generated_file.Set.filter (Build_plan.outputs build_plan) ~f:(fun output ->
+          let output_abs =
+            Build_dir.package_generated_file build_dir package_id profile output
+          in
+          match File_ops.exists output_abs with
+          | false ->
+            (* File doesn't exist. Build it! *)
+            true
+          | true ->
+            (* File exists. If it has a source file, compare the source
                  file's mtime with this file's mtime. *)
-              (match Build_plan.source_input build_plan with
-               | None ->
-                 (* No source dependency, so no need ot rebuild. *)
-                 false
-               | Some source -> File_ops.mtime output_abs < File_ops.mtime source)))
+            (match Build_plan.source_input build_plan with
+             | None ->
+               (* No source dependency, so no need ot rebuild. *)
+               false
+             | Some source -> File_ops.mtime output_abs < File_ops.mtime source))
     in
     loop build_plan
   ;;
 
-  let eval_build_plans build_plans package_with_deps env profile build_dir ocaml_compiler =
+  let eval_build_plans
+        build_plans
+        package_with_deps
+        env
+        profile
+        build_dir
+        ocaml_compiler
+        ~any_dep_rebuilt
+    =
     let open Alice_ui in
     let package = Dependency_graph.Package_with_deps.package package_with_deps in
     let package_id = Package.id package in
@@ -322,22 +333,44 @@ module Sequential = struct
     in
     Build_dir.package_dirs build_dir package_id profile |> List.iter ~f:File_ops.mkdir_p;
     let files_to_build =
-      List.fold_left build_plans ~init:Generated_file.Set.empty ~f:(fun acc build_plan ->
-        files_to_build build_plan package_id profile build_dir
-        |> Generated_file.Set.union acc)
+      if any_dep_rebuilt
+      then
+        (* At least one of this package's dependencies was just rebuilt.
+           Rebuilt this entire package. *)
+        List.fold_left
+          build_plans
+          ~init:Generated_file.Set.empty
+          ~f:(fun acc build_plan ->
+            Generated_file.Set.union
+              acc
+              (Build_plan.transitive_closure_outputs build_plan))
+      else
+        (* No deps were rebuilt, so only rebuilt the artifacts which are
+           missing or whose inputs have changed since the last build. *)
+        List.fold_left
+          build_plans
+          ~init:Generated_file.Set.empty
+          ~f:(fun acc build_plan ->
+            incremental_files_to_build build_plan package_id profile build_dir
+            |> Generated_file.Set.union acc)
     in
-    let remaining_files_to_build =
-      List.fold_left
-        build_plans
-        ~init:files_to_build
-        ~f:(fun acc_files_to_build build_plan -> loop ~acc_files_to_build build_plan)
-    in
-    if not (Generated_file.Set.is_empty remaining_files_to_build)
-    then
-      Alice_error.panic
-        (Pp.textf
-           "Not all files were built. Missing files: %s"
-           (Generated_file.Set.to_dyn remaining_files_to_build |> Dyn.to_string)
-         :: panic_context ())
+    if Generated_file.Set.is_empty files_to_build
+    then Package_built.Not_rebuilt
+    else (
+      let remaining_files_to_build_should_be_empty =
+        List.fold_left
+          build_plans
+          ~init:files_to_build
+          ~f:(fun acc_files_to_build build_plan -> loop ~acc_files_to_build build_plan)
+      in
+      if not (Generated_file.Set.is_empty remaining_files_to_build_should_be_empty)
+      then
+        Alice_error.panic
+          (Pp.textf
+             "Not all files were built. Missing files: %s"
+             (Generated_file.Set.to_dyn remaining_files_to_build_should_be_empty
+              |> Dyn.to_string)
+           :: panic_context ());
+      Rebuilt)
   ;;
 end

@@ -144,12 +144,16 @@ end
 module Compile_public_interface_to_open : sig
   type t =
     { generated_source_input : ml File.Generated_source.t
+    ; internal_modules_pack : Pack.t
     ; cmx_output : cmx File.Compiled.t
     ; cmi_output : cmi File.Compiled.t
     ; o_output : o File.Compiled.t
     }
 
-  val of_generated_source_input : ml File.Generated_source.t -> t
+  val create
+    :  generated_source_input:ml File.Generated_source.t
+    -> internal_modules_pack:Pack.t
+    -> t
 end
 
 module Link_library : sig

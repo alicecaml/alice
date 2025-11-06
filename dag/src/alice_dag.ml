@@ -94,6 +94,8 @@ module Make (Node : Node) = struct
       }
 
     let node t = t.node
+    let dag t = t.dag
+    let name t = Node.name t.node
 
     let deps t =
       Node.dep_names t.node
@@ -101,6 +103,10 @@ module Make (Node : Node) = struct
       |> List.map ~f:(fun name ->
         let node = Node.Name.Map.find name t.dag in
         { t with node })
+    ;;
+
+    let transitive_closure t =
+      transitive_closure_in_dependency_order (dag t) ~start:(name t) ~include_start:true
     ;;
   end
 

@@ -105,10 +105,10 @@ module Build_plan = struct
   let generated_inputs t = Typed_op.generated_inputs (op t)
   let outputs t = Typed_op.outputs (op t) |> Typed_op.Generated_file.Set.of_list
 
-  let is_sensitive_to_dependencies t =
-    match op t with
-    | Generate_public_interface_to_open _ -> true
-    | _ -> false
+  let transitive_closure_outputs t =
+    transitive_closure t
+    |> List.map ~f:Build_node.name
+    |> Typed_op.Generated_file.Set.of_list
   ;;
 end
 
@@ -262,8 +262,9 @@ let create
       Generate_public_interface_to_open { ml_output = public_interface_to_open_ml }
     in
     let compile_public_interface_to_open =
-      Compile_public_interface_to_open.of_generated_source_input
-        public_interface_to_open_ml
+      Compile_public_interface_to_open.create
+        ~generated_source_input:public_interface_to_open_ml
+        ~internal_modules_pack:pack
     in
     let compile_public_interface_to_open_op =
       Compile_public_interface_to_open compile_public_interface_to_open

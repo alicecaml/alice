@@ -5,6 +5,9 @@ type t =
   ; version : Semantic_version.t
   }
 
+module Set : Set.S with type elt = t
+module Map : Map.S with type key = t
+
 val to_dyn : t -> Dyn.t
 val equal : t -> t -> bool
 val name : t -> Package_name.t

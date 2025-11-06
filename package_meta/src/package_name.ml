@@ -10,6 +10,7 @@ end
 include T
 
 let equal = String.equal
+let compare = String.compare
 
 module Set = Set.Make (T)
 module Map = Map.Make (T)

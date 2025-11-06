@@ -33,6 +33,14 @@ module Pre_release = struct
       | String _, _ -> false
     ;;
 
+    let compare a b =
+      match a, b with
+      | Int a, Int b -> Int.compare a b
+      | Int _, _ -> -1
+      | _, Int _ -> 1
+      | String a, String b -> String.compare a b
+    ;;
+
     let of_string s =
       match int_of_string_round_trip_check s with
       | `Not_int | `Int_no_round_trip _ ->
@@ -53,6 +61,7 @@ module Pre_release = struct
   ;;
 
   let equal = Nonempty_list.equal ~eq:Part.equal
+  let compare = Nonempty_list.compare ~cmp:Part.compare
 end
 
 module Metadata = struct
@@ -61,6 +70,7 @@ module Metadata = struct
   let to_dyn = Nonempty_list.to_dyn Dyn.string
   let to_string t = Nonempty_list.to_list t |> String.concat ~sep:"."
   let equal = Nonempty_list.equal ~eq:String.equal
+  let compare = Nonempty_list.compare ~cmp:String.compare
 end
 
 type t =
@@ -99,6 +109,16 @@ let equal { major; minor; patch; pre_release; metadata } t =
   && Int.equal patch t.patch
   && Option.equal ~eq:Pre_release.equal pre_release t.pre_release
   && Option.equal ~eq:Metadata.equal metadata t.metadata
+;;
+
+let compare { major; minor; patch; pre_release; metadata } t =
+  let open Compare in
+  let= () = Int.compare major t.major in
+  let= () = Int.compare minor t.minor in
+  let= () = Int.compare patch t.patch in
+  let= () = Option.compare ~cmp:Pre_release.compare pre_release t.pre_release in
+  let= () = Option.compare ~cmp:Metadata.compare metadata t.metadata in
+  0
 ;;
 
 let of_string_res s =

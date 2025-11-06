@@ -7,6 +7,7 @@ type t
 
 val to_dyn : t -> Dyn.t
 val equal : t -> t -> bool
+val compare : t -> t -> int
 val to_string : t -> string
 val of_string_res : string -> t user_result
 

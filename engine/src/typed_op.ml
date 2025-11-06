@@ -452,31 +452,51 @@ end
 module Compile_public_interface_to_open = struct
   type t =
     { generated_source_input : ml File.Generated_source.t
+    ; internal_modules_pack : Pack.t
     ; cmx_output : cmx File.Compiled.t
     ; cmi_output : cmi File.Compiled.t
     ; o_output : o File.Compiled.t
     }
 
-  let of_generated_source_input (generated_source_input : ml File.Generated_source.t) =
+  let create ~(generated_source_input : ml File.Generated_source.t) ~internal_modules_pack
+    =
     let open File.Compiled in
     let basename = generated_source_input.path in
     { generated_source_input
+    ; internal_modules_pack
     ; cmx_output = Basename.replace_extension basename ~ext:".cmx" |> cmx_public
     ; cmi_output = Basename.replace_extension basename ~ext:".cmi" |> cmi_public
     ; o_output = Basename.replace_extension basename ~ext:".o" |> o_public
     }
   ;;
 
-  let equal t { generated_source_input; cmx_output; cmi_output; o_output } =
+  let equal
+        t
+        { generated_source_input
+        ; internal_modules_pack
+        ; cmx_output
+        ; cmi_output
+        ; o_output
+        }
+    =
     File.Generated_source.equal t.generated_source_input generated_source_input
+    && Pack.equal t.internal_modules_pack internal_modules_pack
     && File.Compiled.equal t.cmx_output cmx_output
     && File.Compiled.equal t.cmi_output cmi_output
     && File.Compiled.equal t.o_output o_output
   ;;
 
-  let to_dyn { generated_source_input; cmx_output; cmi_output; o_output } =
+  let to_dyn
+        { generated_source_input
+        ; internal_modules_pack
+        ; cmx_output
+        ; cmi_output
+        ; o_output
+        }
+    =
     Dyn.record
       [ "generated_source_input", File.Generated_source.to_dyn generated_source_input
+      ; "internal_modules_pack", Pack.to_dyn internal_modules_pack
       ; "cmx_output", File.Compiled.to_dyn cmx_output
       ; "cmi_output", File.Compiled.to_dyn cmi_output
       ; "o_output", File.Compiled.to_dyn o_output
@@ -598,8 +618,11 @@ let generated_inputs t =
   | Compile_interface { cmi_inputs; _ } -> List.map cmi_inputs ~f:compiled_generated
   | Pack_library { cmx_inputs; _ } -> List.map cmx_inputs ~f:compiled_generated
   | Generate_public_interface_to_open _ -> []
-  | Compile_public_interface_to_open { generated_source_input; _ } ->
-    [ File.Generated_source.generated_file generated_source_input ]
+  | Compile_public_interface_to_open { generated_source_input; internal_modules_pack; _ }
+    ->
+    [ File.Generated_source.generated_file generated_source_input
+    ; Pack.cmx_file internal_modules_pack |> File.Compiled.generated_file
+    ]
   | Link_library { cmx_inputs; _ } -> List.map cmx_inputs ~f:compiled_generated
   | Link_executable { cmx_inputs; _ } -> List.map cmx_inputs ~f:compiled_generated
 ;;

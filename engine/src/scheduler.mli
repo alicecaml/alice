@@ -1,6 +1,12 @@
 open! Alice_stdlib
 open Alice_package
 
+module Package_built : sig
+  type t
+
+  val any_rebuilt : t list -> bool
+end
+
 module Sequential : sig
   val eval_build_plans
     :  Build_graph.Build_plan.t list
@@ -9,5 +15,6 @@ module Sequential : sig
     -> Profile.t
     -> Build_dir.t
     -> Alice_which.Ocaml_compiler.t
-    -> unit
+    -> any_dep_rebuilt:bool
+    -> Package_built.t
 end

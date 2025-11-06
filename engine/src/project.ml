@@ -31,9 +31,10 @@ let build_single_package
     -> Alice_env.Os_type.t
     -> Alice_env.Env.t
     -> Alice_which.Ocaml_compiler.t
-    -> unit
+    -> any_dep_rebuilt:bool
+    -> Scheduler.Package_built.t
   =
-  fun t package_with_deps profile os_type env ocaml_compiler ->
+  fun t package_with_deps profile os_type env ocaml_compiler ~any_dep_rebuilt ->
   let package_typed = Package_with_deps.package_typed package_with_deps in
   let build_graph =
     Build_graph.create package_typed t.build_dir os_type env ocaml_compiler
@@ -52,15 +53,59 @@ let build_single_package
     profile
     t.build_dir
     ocaml_compiler
+    ~any_dep_rebuilt
 ;;
 
 let build_dependency_graph t dependency_graph profile os_type env ocaml_compiler =
-  let open Dependency_graph in
-  transitive_dependency_closure_in_dependency_order dependency_graph
-  |> List.iter ~f:(fun package_with_deps ->
-    build_single_package t package_with_deps profile os_type env ocaml_compiler);
-  let root = root_package_with_deps dependency_graph in
-  build_single_package t root profile os_type env ocaml_compiler
+  let build_single_package package_with_deps ~any_dep_rebuilt =
+    build_single_package
+      t
+      package_with_deps
+      profile
+      os_type
+      env
+      ocaml_compiler
+      ~any_dep_rebuilt
+  in
+  let rec build_package_building_deps_first
+    : type exe lib.
+      (exe, lib) Package_with_deps.t
+      -> already_built_packages:Scheduler.Package_built.t Package_id.Map.t
+      -> Scheduler.Package_built.t * Scheduler.Package_built.t Package_id.Map.t
+    =
+    fun package_with_deps ~already_built_packages ->
+    let package_id = Package_with_deps.id package_with_deps in
+    match Package_id.Map.find_opt package_id already_built_packages with
+    | Some package_built -> package_built, already_built_packages
+    | None ->
+      let deps = Package_with_deps.immediate_deps_in_dependency_order package_with_deps in
+      let deps_built, already_built_packages =
+        List.fold_left
+          deps
+          ~init:([], already_built_packages)
+          ~f:(fun (deps_built, already_built_packages) dep ->
+            let dep_built, already_built_packages =
+              build_package_building_deps_first dep ~already_built_packages
+            in
+            dep_built :: deps_built, already_built_packages)
+      in
+      let package_built =
+        build_single_package
+          package_with_deps
+          ~any_dep_rebuilt:(Scheduler.Package_built.any_rebuilt deps_built)
+      in
+      let already_built_packages =
+        Package_id.Map.add already_built_packages ~key:package_id ~data:package_built
+      in
+      package_built, already_built_packages
+  in
+  let _root_package_built : Scheduler.Package_built.t =
+    build_package_building_deps_first
+      (Dependency_graph.root_package_with_deps dependency_graph)
+      ~already_built_packages:Package_id.Map.empty
+    |> fst
+  in
+  ()
 ;;
 
 let build_package_typed t package_typed profile env ocaml_compiler =

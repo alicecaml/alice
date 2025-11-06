@@ -48,6 +48,8 @@ module Make (Node : Node) : sig
   val all_nodes_in_dependency_order : t -> Node.t list
 
   module Traverse : sig
+    type dag := t
+
     (** Helper for traversing a DAG. Traversals begin at output nodes. A
         traversal is a node in the DAG which knows how to expand the
         dependencies of the node. Doesn't attempt to prevent visiting nodes
@@ -55,7 +57,10 @@ module Make (Node : Node) : sig
     type t
 
     val node : t -> Node.t
+    val name : t -> Node.Name.t
+    val dag : t -> dag
     val deps : t -> t list
+    val transitive_closure : t -> Node.t list
   end
 
   (** [traverse t ~name] returns a traversal of [t] starting at the node named

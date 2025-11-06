@@ -11,10 +11,7 @@ module Build_plan : sig
   val source_input : t -> Absolute_path.non_root_t option
   val generated_inputs : t -> Typed_op.Generated_file.t list
   val outputs : t -> Typed_op.Generated_file.Set.t
-
-  (** The outputs of this step need to be rebuilt if the package's dependencies
-      have changed. *)
-  val is_sensitive_to_dependencies : t -> bool
+  val transitive_closure_outputs : t -> Typed_op.Generated_file.Set.t
 end
 
 (** A DAG that knows how to build a collection of interdependent files and the

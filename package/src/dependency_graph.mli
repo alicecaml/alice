@@ -1,4 +1,5 @@
 open! Alice_stdlib
+open Alice_package_meta
 
 (** The type arguments determine what type of package is at the root of the
     dependency graph. This is mostly for convenience, since then a dependency
@@ -12,10 +13,13 @@ val dot : (_, _) t -> string
 
 module Package_with_deps : sig
   type ('exe, 'lib) t
+  type lib_only_t = (Type_bool.false_t, Type_bool.true_t) t
 
   val package_typed : ('exe, 'lib) t -> ('exe, 'lib) Package.Typed.t
   val package : (_, _) t -> Package.t
-  val immediate_deps_in_dependency_order : (_, _) t -> Package.Typed.lib_only_t list
+  val name : (_, _) t -> Package_name.t
+  val id : (_, _) t -> Package_id.t
+  val immediate_deps_in_dependency_order : (_, _) t -> lib_only_t list
 
   val transitive_dependency_closure_excluding_package
     :  (_, _) t
@@ -27,6 +31,6 @@ end
     dependency is a library package, while the root package may not be. *)
 val transitive_dependency_closure_in_dependency_order
   :  (_, _) t
-  -> (Type_bool.false_t, Type_bool.true_t) Package_with_deps.t list
+  -> Package_with_deps.lib_only_t list
 
 val root_package_with_deps : ('exe, 'lib) t -> ('exe, 'lib) Package_with_deps.t

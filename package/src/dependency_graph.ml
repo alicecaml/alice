@@ -150,8 +150,12 @@ module Package_with_deps = struct
     ; is_root : bool
     }
 
+  type lib_only_t = (Type_bool.false_t, Type_bool.true_t) t
+
   let package_typed { package_typed; _ } = package_typed
   let package t = package_typed t |> Package.Typed.package
+  let name t = package t |> Package.name
+  let id t = package t |> Package.id
 
   let immediate_deps_in_dependency_order { package_typed; dependency_dag; _ } =
     let immediate_dep_names =
@@ -159,8 +163,10 @@ module Package_with_deps = struct
       |> Package.dependency_names
       |> Package_name.Set.of_list
     in
-    List.filter dependency_dag.all_nodes_in_dependency_order ~f:(fun node ->
-      Node.Name.Set.mem (Node.name node) immediate_dep_names)
+    List.filter_map dependency_dag.all_nodes_in_dependency_order ~f:(fun node ->
+      if Node.Name.Set.mem (Node.name node) immediate_dep_names
+      then Some { package_typed = node; dependency_dag; is_root = false }
+      else None)
   ;;
 
   let transitive_dependency_closure_excluding_package
