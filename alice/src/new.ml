@@ -41,10 +41,7 @@ let make_project name path kind =
         ];
   let manifest =
     Package_meta.create
-      ~id:
-        { name
-        ; version = Semantic_version.of_string_res "0.1.0" |> User_error.get_or_panic
-        }
+      ~id:{ name; version = Semantic_version.of_string_exn "0.1.0" }
       ~dependencies:None
   in
   File_ops.mkdir_p src_path;

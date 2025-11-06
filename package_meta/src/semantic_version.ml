@@ -103,6 +103,8 @@ let to_string { major; minor; patch; pre_release; metadata } =
   | Some metadata -> sprintf "%s+%s" with_pre_release (Metadata.to_string metadata)
 ;;
 
+let to_string_v t = String.cat "v" (to_string t)
+
 let equal { major; minor; patch; pre_release; metadata } t =
   Int.equal major t.major
   && Int.equal minor t.minor
@@ -121,7 +123,7 @@ let compare { major; minor; patch; pre_release; metadata } t =
   0
 ;;
 
-let of_string_res s =
+let of_string s =
   let open Result.O in
   let int_of_component_res s =
     match int_of_string_round_trip_check s with
@@ -227,7 +229,7 @@ let of_string_res s =
 ;;
 
 let of_string_exn s =
-  match of_string_res s with
+  match of_string s with
   | Ok t -> t
   | Error pps -> Alice_error.user_exn pps
 ;;

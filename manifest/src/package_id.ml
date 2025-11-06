@@ -39,11 +39,7 @@ let of_toml ~manifest_path_for_messages toml_table =
       | Toml.Types.TString version -> `Ok version
       | _ -> `Expected "string")
   in
-  let version =
-    match Semantic_version.of_string_res version with
-    | Ok version -> version
-    | Error pps -> error pps
-  in
+  let version = Semantic_version.of_string_exn version in
   { name; version }
 ;;
 
