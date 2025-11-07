@@ -1,56 +1,174 @@
-# Alice the Caml - An OCaml build system experiment
+# [Alice the Caml](https://www.alicecaml.org)
 
 [![test](https://github.com/alicecaml/alice/actions/workflows/test.yml/badge.svg)](https://github.com/alicecaml/alice/actions/workflows/test.yml)
 
-The goal of this project is to explore a radically different approach to OCaml
-build systems and package management, breaking from the Opam/Dune-based ecosystem
-completely. No attempt will be made to keep compatibility with Opam packages,
-though it should be possible to manually port simple packages. The UX is
-inspired mostly by Cargo.
-
-Concrete differences from Opam/Dune:
- - No S-expressions or custom metadata formats. TOML only. This avoids the need
-   to write custom parser logic, and for editors to understand new syntaxes and
-   auto-formatting rules.
- - The OCaml compiler and dev tools are not packages, and will be provided as
-   binary downloads, managed by this tool.
- - Packages that build with alice do not depend on alice. This allows alice to
-   depend on packages from its own ecosystem (once it's bootstrapped).
- - Users cannot define build rules. alice will know how to compile OCaml and C
-   executables and libraries. This lets us keep the config file format simple.
- - Discourage open upper/lower bounds on dependency versions. Packages
-   (including ports of Opam packages) will be versioned with semver.
- - Packages will be namespaced with github (and possibly other forge) usernames.
-   Anyone can release a package instantly by pushing a tag.
- - Strong opinion about how code is organized. By default code lives in a `src`
-   directory, with entry points named `main.ml` or `lib.ml` for executables or
-   libraries respectively. These defaults can be overridden, mostly to simplify
-   porting. This will make it easy to initialize new projects and to navigate
-   the source code of unfamiliar projects.
- - The build/install commands of a package cannot be configured.
- - Packages have the same dependencies regardless of environment.
-
-I'm one of the core Dune developers for my day job. Dune is a mature and widely
-used OCaml build system which makes it difficult to make large structural
-changes to its UI and packaging philosophy. Alice is an experiment exploring
-the design space of OCaml build systems when these constraints are lifted.
+Alice is a radical, experimental OCaml build system, package manager, and
+toolchain manager for Windows, MacOS, and Linux. Its goal is to allow anyone to
+program in OCaml with as little friction as possible.
 
 Its name comes from an [Australian children's
 song](https://www.youtube.com/watch?v=XM7Jnetdf0I).
 
-## Dev Environment Notes
+## Installation
+
+The easiest way to install Alice is by running its install script and following
+the prompts:
+```sh
+curl -fsSL https://alicecaml.org/install.sh | sh
+```
+
+Alice needs an OCaml toolchain, specifically the program `ocamlopt.opt`. You
+can use an existing toolchain installation from Opam or your system package
+manager, or install the OCaml tools when prompted by Alice's install script.
+Otherwise, you can install the OCaml tools with Alice by running:
+```sh
+alice tools install
+```
+
+The `alice` executable will be installed to `~/.alice/alice/bin`, and any OCaml
+tools installed by Alice or its install script will be installed to
+`~/.alice/roots` and symlinked into `~/.alice/current`. To uninstall Alice,
+delete the `~/.alice` directory.
+
+The install script also offers to update your shell config file to add the
+`~/.alice/alice/bin` directory to your `PATH` variable to make the `alice`
+command available in your shell.
+
+### Shell Completion
+
+The install script will install shell completions for Alice, but if you need to
+generate a completion script for Alice manually you can do so by running `alice
+internal completions bash`. Store the output in a file and source it from your
+shell to install completion scripts. Currently only bash and zsh (via bash
+compatibility) are supported.
+
+### Nix
+
+Install Alice with the flake `github:alicecaml/alice`. The default package in
+that flake contains the `alice` executable as well as an OCaml toolchain,
+`ocamllsp`, and `ocamlformat`. There's also a package named `alice` with just
+the `alice` executable, and a package with `tools` with just the tools
+excluding `alice`.
+
+For example to enter a transient shell with `alice` and all the OCaml tools, run:
+```
+nix shell github:alicecaml/alice
+```
+
+## Tutorial
+
+### Your First Package
+
+Alice organizes code into _packages_. To make your first package, run:
+```sh
+alice new hello
+```
+
+This will create a new directory named `hello`, containing a package manifest
+`Alice.toml` and a `src` directory which will contain all the package's source
+code. Currently there is just a single file `src/main.ml`.
+
+If a package has a `main.ml` file then it is considered by Alice to be _executable_.
+Executable packages can be executed with the command `alice run`.
+
+Let's try it now:
+```
+$ alice run
+ Compiling hello v0.1.0
+   Running hello/build/packages/hello-0.1.0/debug/executable/hello
+
+Hello, World!
+```
+
+### Your Second Package
+
+Alice packages can be either _executables_, _libraries_, or both.
+In the previous section we made an executable package. In a separate directory,
+outside the `hello` directory from the previous step, make a library package
+named `foo` by running:
+```
+alice new --lib foo
+```
+
+The structure of this package is identical to the previous package, however
+instead of a `main.ml` file there is a `lib.ml` file, indicating to Alice that
+this package is a _library_. A package may also have both a `main.ml` and
+`lib.ml` file, in which case Alice considers it to be both a library and an
+executable package.
+
+Modify the package's `src/lib.ml` package to have the following contents:
+```ocaml
+let message = "Hello, Alice!"
+```
+
+Build the project with `alice build`. Since it's a library we can't run it,
+however we can modify the `hello` package from earlier to _depend_ on it.
+Go back to the `hello` package directory and make `hello` depend on the `foo`
+package we just created.
+
+Modify `hello`'s `Alice.toml` file to look like this:
+```toml
+[package]
+name = "hello"
+version = "0.1.0"
+
+[dependencies]
+foo = { path = "../foo" } # replace "../foo" with the relative path to the foo package
+```
+
+Modify `hello`'s `src/main.ml` file to look like this:
+```ocaml
+let () = print_endline Foo.message
+```
+
+Now run `alice run` again from the `hello` directory:
+```
+$ alice run
+ Compiling foo v0.1.0
+ Compiling hello v0.1.0
+   Running hello/build/packages/hello-0.1.0/debug/executable/hello
+
+Hello, Alice!
+```
+
+### Visualizing Dependencies
+
+Alice can print [graphviz](https://graphviz.org) dot files representing the
+dependency graph of a package's transitive dependency closure with the command
+`alice dot artifacts`. The `hello` package has a single dependency, so the
+graph is quite simple:
+```
+$ alice dot packages
+digraph {
+  "hello v0.1.0" -> {"foo v0.1.0"}
+}
+```
+
+If you have graphviz installed, you can visualize this by running:
+```
+alice dot packages | dot -Tsvg > packages.svg
+```
+
+![A graph of hello's package dependencies](assets/packages.svg)
+
+You can also visualize the build graph Alice would use to build a package. This
+can be helpful for debugging or just to better understand how Alice will build
+your project.
+```
+alice dot artifacts | dot -Tsvg > artifacts.svg
+```
+
+![A graph of hello's artifacts](assets/artifacts.svg)
+
+## Development Environment Notes
 
 It's recommended to use direnv with the following .envrc while working on this:
-```
-export PATH=$HOME/.alice/current/bin:$PATH
+```sh
+export PATH=$PWD/scripts:$HOME/.alice/current/bin:$HOME/.dune/bin:$PATH
 export DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled
 export DUNE_CONFIG__PKG_BUILD_PROGRESS=enabled
+export DUNE_CONFIG__LOCK_DEV_TOOL=disabled
 ```
 
 Run the script in `boot` for your system to bootstrap an environment with the
-tools needed to build alice.
-
-### NixOS
-
-On NixOS, use the musl-static builds of the binaries, and add `use nix` to
-`.envrc` to install the musl libraries via `shell.nix`.
+tools needed to build Alice.
