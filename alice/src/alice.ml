@@ -2,25 +2,13 @@ open! Alice_stdlib
 open Climate
 module Tools = Tools
 
-module Version = struct
-  open Alice_package_meta.Semantic_version
-
-  let version () =
-    match of_string "0.1.0-rc2" with
-    | Ok v -> v
-    | Error e ->
-      Alice_error.User_error.eprint e;
-      exit 1
-  ;;
-
-  let string () = to_string_v (version ())
-end
+let version = "0.1.0-rc3"
 
 let command =
   let default_arg_parser =
     let open Arg_parser in
-    let+ version = flag [ "version" ] ~doc:"Print the version and exit." in
-    if version then print_endline (sprintf "Alice %s" (Version.string ()))
+    let+ version_ = flag [ "version" ] ~doc:"Print the version and exit." in
+    if version_ then print_endline (sprintf "Alice %s" version)
   in
   let open Command in
   group
@@ -40,9 +28,7 @@ let command =
 Internal.command_for_completion_script := Some command
 
 let () =
-  match
-    Command.run command ~program_name:(Literal "alice") ~version:(Version.string ())
-  with
+  match Command.run command ~program_name:(Literal "alice") ~version with
   | () -> ()
   | exception Alice_error.User_error.E error ->
     Alice_error.User_error.eprint (error @ [ Pp.newline ]);
