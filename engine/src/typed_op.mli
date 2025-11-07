@@ -115,7 +115,7 @@ end
 module Compile_source : sig
   type t =
     { source_input : ml File.Source.t
-    ; compiled_inputs : [ `Cmx of cmx File.Compiled.t | `Cmi of cmi File.Compiled.t ] list
+    ; compiled_inputs : Generated_file.Compiled.t list
     ; cmx_output : cmx File.Compiled.t
     ; o_output : o File.Compiled.t
     ; interface_output_if_no_matching_mli_is_present : cmi File.Compiled.t option
@@ -125,7 +125,7 @@ end
 module Compile_interface : sig
   type t =
     { interface_input : mli File.Source.t
-    ; cmi_inputs : cmi File.Compiled.t list
+    ; compiled_inputs : Generated_file.Compiled.t list
     ; cmi_output : cmi File.Compiled.t
     }
 end
