@@ -19,3 +19,7 @@
  (name alice)
  (synopsis "Radical OCaml build system and environment manager")
  (depends ocaml climate sha dyn fileutils pp re xdg toml))
+
+(package
+ (name alice_tests)
+ (depends ppx_inline_test ppx_expect))

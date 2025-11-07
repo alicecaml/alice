@@ -1,0 +1,7 @@
+(library
+ (name alice_package_meta_unit_tests)
+ (package alice_tests)
+ (inline_tests)
+ (preprocess
+  (pps ppx_inline_test ppx_expect))
+ (libraries alice_package_meta))
