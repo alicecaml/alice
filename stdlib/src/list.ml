@@ -14,3 +14,5 @@ let rec split_last = function
   | _ :: xs -> split_last xs
 ;;
 
+let all t = for_all t ~f:Fun.id
+let any t = exists t ~f:Fun.id
