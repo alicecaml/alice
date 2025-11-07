@@ -43,6 +43,7 @@ RUN mkdir -p $(cat name.txt)/share/bash-completion/completions
 RUN opam exec scripts/generate_minified_bash_completion_script.sh > $(cat name.txt)/share/bash-completion/completions/alice
 RUN cp -v extra/alice-bin/* $(cat name.txt)
 RUN tar czf $(cat name.txt).tar.gz $(cat name.txt)
+RUN opam exec dune clean
 
 FROM scratch
 COPY --from=builder /home/user/alice .
