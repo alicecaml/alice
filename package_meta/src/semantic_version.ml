@@ -105,6 +105,12 @@ let to_string { major; minor; patch; pre_release; metadata } =
 
 let to_string_v t = String.cat "v" (to_string t)
 
+let pre_release_string { pre_release; _ } =
+  Option.map pre_release ~f:Pre_release.to_string
+;;
+
+let metadata_string { metadata; _ } = Option.map metadata ~f:Metadata.to_string
+
 let equal t { major; minor; patch; pre_release; metadata } =
   Int.equal t.major major
   && Int.equal t.minor minor
@@ -113,13 +119,25 @@ let equal t { major; minor; patch; pre_release; metadata } =
   && Option.equal ~eq:Metadata.equal t.metadata metadata
 ;;
 
-let compare t { major; minor; patch; pre_release; metadata } =
+let compare_for_precedence t { major; minor; patch; pre_release; metadata = _ } =
   let open Compare in
   let= () = Int.compare t.major major in
   let= () = Int.compare t.minor minor in
   let= () = Int.compare t.patch patch in
-  let= () = Option.compare ~cmp:Pre_release.compare t.pre_release pre_release in
-  let= () = Option.compare ~cmp:Metadata.compare t.metadata metadata in
+  match t.pre_release, pre_release with
+  | None, None -> 0
+  | Some _, None ->
+    (* Pre-release versions are less than non-pre-release versions with the
+       same number. *)
+    -1
+  | None, Some _ -> 1
+  | Some a, Some b -> Pre_release.compare a b
+;;
+
+let compare a b =
+  let open Compare in
+  let= () = compare_for_precedence a b in
+  let= () = Option.compare ~cmp:Metadata.compare a.metadata b.metadata in
   0
 ;;
 
@@ -189,7 +207,7 @@ let of_string s =
   in
   let major_minor_patch, pre_release_s =
     match String.lsplit2 without_metadata ~on:'-' with
-    | None -> s, None
+    | None -> without_metadata, None
     | Some (s, pre_release_s) -> s, Some pre_release_s
   in
   let* major_s, minor_patch =
