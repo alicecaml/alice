@@ -7,6 +7,8 @@
 (source
  (github alicecaml/alice))
 
+(homepage https://alicecaml.org)
+
 (license MIT)
 
 (authors "Stephen Sherratt <stephen@sherra.tt>")
@@ -18,6 +20,8 @@
 (package
  (name alice)
  (synopsis "Radical OCaml build system and environment manager")
+ (description
+  "Alice is a radical, experimental OCaml build system, package manager, and toolchain manager for Windows, MacOS, and Linux. Its goal is to allow anyone to program in OCaml with as little friction as possible.")
  (depends ocaml climate sha dyn fileutils pp re xdg toml))
 
 (package
