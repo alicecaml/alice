@@ -48,7 +48,7 @@ let absolute_path_to_string : type is_root. is_root Absolute_path.t -> string =
        (* The start of the path will always be a period. Skip it. *)
        let components =
          match Filename.to_components filename with
-         | `Absolute (_, components) | `Relative components -> components
+         | Absolute { root = _; rest } | Relative rest -> rest
        in
        if List.is_empty components then "." else String.concat ~sep:"/" components)
 ;;

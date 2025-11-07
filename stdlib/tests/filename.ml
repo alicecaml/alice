@@ -23,7 +23,7 @@ let%test "normalize_error" =
 let%test "normalize" =
   let f a b =
     let norm = normalize a |> Result.get_ok in
-    if equal norm b
+    if equal_components norm b
     then true
     else (
       print_endline
@@ -50,7 +50,7 @@ let%test "normalize" =
 let%test "chop_prefix" =
   let f ~prefix a b =
     let chopped = chop_prefix a ~prefix in
-    if equal chopped b
+    if equal_components chopped b
     then true
     else (
       print_endline
