@@ -152,7 +152,6 @@ let run t profile os_type env ocaml_compiler ~args =
   let exe_path =
     Build_dir.package_executable_dir t.build_dir (Package.id t.package) profile / exe_name
   in
-  let args = Basename.to_filename exe_name :: args in
   let exe_filename = Absolute_path.to_filename exe_path in
   println (verb_message `Running (absolute_path_to_string exe_path));
   print_newline ();
