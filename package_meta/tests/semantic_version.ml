@@ -68,8 +68,7 @@ let%test "precedence rules" =
       print_endline (sprintf "%s should be less than %s but it is not." a b);
       false
   in
-  List.for_all
-    ~f:Fun.id
+  List.all
     [ lt "0.0.0" "0.0.1"
     ; lt "0.1.0" "0.2.0"
     ; lt "1.0.0" "2.0.0"
@@ -85,4 +84,3 @@ let%test "precedence rules" =
 let%test "metadata doesn't affect precedence" =
   compare_for_precedence (of_string_exn "1.0.0") (of_string_exn "1.0.0+foo") == 0
 ;;
-
