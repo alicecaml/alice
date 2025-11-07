@@ -31,6 +31,24 @@ let add_extension t ~ext =
 
 let is_root t = (not (is_relative t)) && equal (dirname t) t
 
+module Components = struct
+  type nonrec t =
+    | Relative of t list
+    | Absolute of
+        { root : t
+        ; rest : t list
+        }
+
+  let equal a b =
+    match a, b with
+    | Relative a, Relative b -> List.equal ~eq:equal a b
+    | Relative _, _ -> false
+    | Absolute { root = a_root; rest = a_rest }, Absolute { root = b_root; rest = b_rest }
+      -> equal a_root b_root && List.equal ~eq:equal a_rest b_rest
+    | Absolute _, _ -> false
+  ;;
+end
+
 let to_components t =
   let rec loop t =
     if equal t (dirname t)
@@ -43,9 +61,9 @@ let to_components t =
   in
   let (first :: rest) = loop t |> Nonempty_list.rev in
   if equal current_dir_name first
-  then `Relative rest
+  then Components.Relative rest
   else if is_root first
-  then `Absolute (first, rest)
+  then Absolute { root = first; rest }
   else
     failwith
       (Printf.sprintf
@@ -54,12 +72,14 @@ let to_components t =
          t)
 ;;
 
+let equal_components a b = Components.equal (to_components a) (to_components b)
+
 let of_components components =
   let first, rest =
-    match components with
-    | `Relative [] -> current_dir_name, []
-    | `Relative (first :: rest) -> first, rest
-    | `Absolute (root, rest) -> root, rest
+    match (components : Components.t) with
+    | Relative [] -> current_dir_name, []
+    | Relative (first :: rest) -> first, rest
+    | Absolute { root; rest } -> root, rest
   in
   List.fold_left rest ~init:first ~f:concat
 ;;
@@ -80,9 +100,10 @@ let chop_prefix_opt ~prefix t =
       if String.equal components_hd prefix_hd then loop components_tl prefix_tl else None
   in
   match to_components t, to_components prefix with
-  | `Absolute (t_root, t_rest), `Absolute (prefix_root, prefix_rest) ->
+  | ( Absolute { root = t_root; rest = t_rest }
+    , Absolute { root = prefix_root; rest = prefix_rest } ) ->
     if String.equal t_root prefix_root then loop t_rest prefix_rest else None
-  | `Relative t, `Relative prefix -> loop t prefix
+  | Relative t, Relative prefix -> loop t prefix
   | _ -> None
 ;;
 
@@ -109,19 +130,19 @@ let normalize_components components =
       else loop path_xs (path_x :: non_parent_stack) parent_prefix_count
   in
   let loop components = loop components [] 0 in
-  match components with
-  | `Relative components ->
+  match (components : Components.t) with
+  | Relative components ->
     let non_parent_stack, parent_prefix_count = loop components in
     let output_components = List.rev non_parent_stack in
     let parent_prefix =
       List.init ~len:parent_prefix_count ~f:(Fun.const parent_dir_name)
     in
-    Ok (`Relative (parent_prefix @ output_components))
-  | `Absolute (root, rest) ->
+    Ok (Components.Relative (parent_prefix @ output_components))
+  | Absolute { root; rest } ->
     let non_parent_stack, parent_prefix_count = loop rest in
     if parent_prefix_count > 0
     then Error `Would_traverse_beyond_the_start_of_absolute_path
-    else Ok (`Absolute (root, List.rev non_parent_stack))
+    else Ok (Absolute { root; rest = List.rev non_parent_stack })
 ;;
 
 let normalize t = Result.map (normalize_components (to_components t)) ~f:of_components

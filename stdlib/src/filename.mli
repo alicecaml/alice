@@ -16,15 +16,23 @@ val replace_extension : t -> ext:string -> t option
 
 val add_extension : t -> ext:string -> t
 
-type components :=
-  [ `Absolute of string * string list
-  | `Relative of string list
-  ]
+module Components : sig
+  type nonrec t =
+    | Relative of t list
+    | Absolute of
+        { root : t
+        ; rest : t list
+        }
+end
 
 (** Split a path into the sequence of names that make it up. The sequence of
     components will never be empty, either begining with the filesystem root or
     the current directory. *)
-val to_components : t -> components
+val to_components : t -> Components.t
+
+(** The two paths are made up of equal components, even if they differ on their
+    path separators. *)
+val equal_components : t -> t -> bool
 
 val chop_prefix_opt : prefix:t -> t -> t option
 val chop_prefix : prefix:t -> t -> t
