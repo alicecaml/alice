@@ -7,7 +7,7 @@ jobs:
     steps:
 
       # Checkout the project
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # Install mingw64
       - uses: msys2/setup-msys2@v2
@@ -71,7 +71,7 @@ jobs:
             name: x86_64-linux-gnu
     steps:
       # Checkout the project
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - if: matrix.os == 'macos-15-intel'
         uses: tecolicom/actions-use-homebrew-tools@v1
@@ -107,8 +107,8 @@ jobs:
     name: Test that the nix flake can be built
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: cachix/install-nix-action@v30
+      - uses: actions/checkout@v5
+      - uses: cachix/install-nix-action@v31
       - run: nix build
       - run: nix build .#alice
       - run: nix build .#tools
@@ -118,13 +118,12 @@ jobs:
     name: Test that alice works within its nix shell
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: cachix/install-nix-action@v30
-      - uses: workflow/nix-shell-action@v3
-        with:
-          flakes: .#full
-          script: |
-            cd $(mktemp -d)
-            alice new --exe foo
-            cd foo
-            alice run
+      - uses: actions/checkout@v5
+      - uses: cachix/install-nix-action@v31
+      - name: Set up a project and build it with alice in a nix shell
+        shell: nix shell .#full -c bash -e {0}
+        run: |
+          cd $(mktemp -d)
+          alice new --exe foo
+          cd foo
+          alice run
