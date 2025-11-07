@@ -347,7 +347,7 @@ end
 module Compile_source = struct
   type t =
     { source_input : ml File.Source.t
-    ; compiled_inputs : [ `Cmx of cmx File.Compiled.t | `Cmi of cmi File.Compiled.t ] list
+    ; compiled_inputs : Generated_file.Compiled.t list
     ; cmx_output : cmx File.Compiled.t
     ; o_output : o File.Compiled.t
     ; interface_output_if_no_matching_mli_is_present : cmi File.Compiled.t option
@@ -363,12 +363,7 @@ module Compile_source = struct
         }
     =
     File.Source.equal t.source_input source_input
-    && List.equal t.compiled_inputs compiled_inputs ~eq:(fun a b ->
-      match a, b with
-      | `Cmx a, `Cmx b -> File.Compiled.equal a b
-      | `Cmx _, _ -> false
-      | `Cmi a, `Cmi b -> File.Compiled.equal a b
-      | `Cmi _, _ -> false)
+    && List.equal t.compiled_inputs compiled_inputs ~eq:Generated_file.Compiled.equal
     && File.Compiled.equal t.cmx_output cmx_output
     && File.Compiled.equal t.o_output o_output
     && Option.equal
@@ -387,12 +382,7 @@ module Compile_source = struct
     =
     Dyn.record
       [ "source_input", File.Source.to_dyn source_input
-      ; ( "compiled_inputs"
-        , Dyn.list
-            (function
-              | `Cmx file -> Dyn.variant "Cmx" [ File.Compiled.to_dyn file ]
-              | `Cmi file -> Dyn.variant "Cmi" [ File.Compiled.to_dyn file ])
-            compiled_inputs )
+      ; "compiled_inputs", Dyn.list Generated_file.Compiled.to_dyn compiled_inputs
       ; "cmx_output", File.Compiled.to_dyn cmx_output
       ; "o_output", File.Compiled.to_dyn o_output
       ; ( "interface_output_if_no_matching_mli_is_present"
@@ -404,20 +394,20 @@ end
 module Compile_interface = struct
   type t =
     { interface_input : mli File.Source.t
-    ; cmi_inputs : cmi File.Compiled.t list
+    ; compiled_inputs : Generated_file.Compiled.t list
     ; cmi_output : cmi File.Compiled.t
     }
 
-  let equal t { interface_input; cmi_inputs; cmi_output } =
+  let equal t { interface_input; compiled_inputs; cmi_output } =
     File.Source.equal t.interface_input interface_input
-    && List.equal t.cmi_inputs cmi_inputs ~eq:File.Compiled.equal
+    && List.equal t.compiled_inputs compiled_inputs ~eq:Generated_file.Compiled.equal
     && File.Compiled.equal t.cmi_output cmi_output
   ;;
 
-  let to_dyn { interface_input; cmi_inputs; cmi_output } =
+  let to_dyn { interface_input; compiled_inputs; cmi_output } =
     Dyn.record
       [ "interface_input", File.Source.to_dyn interface_input
-      ; "cmi_inputs", Dyn.list File.Compiled.to_dyn cmi_inputs
+      ; "compiled_inputs", Dyn.list Generated_file.Compiled.to_dyn compiled_inputs
       ; "cmi_output", File.Compiled.to_dyn cmi_output
       ]
   ;;
@@ -609,13 +599,9 @@ let source_input = function
 
 let generated_inputs t =
   let compiled_generated = File.Compiled.generated_file in
-  let cm_generated = function
-    | `Cmx file -> compiled_generated file
-    | `Cmi file -> compiled_generated file
-  in
   match t with
-  | Compile_source { compiled_inputs; _ } -> List.map compiled_inputs ~f:cm_generated
-  | Compile_interface { cmi_inputs; _ } -> List.map cmi_inputs ~f:compiled_generated
+  | Compile_source { compiled_inputs; _ } | Compile_interface { compiled_inputs; _ } ->
+    List.map compiled_inputs ~f:(fun compiled -> Generated_file.Compiled compiled)
   | Pack_library { cmx_inputs; _ } -> List.map cmx_inputs ~f:compiled_generated
   | Generate_public_interface_to_open _ -> []
   | Compile_public_interface_to_open { generated_source_input; internal_modules_pack; _ }

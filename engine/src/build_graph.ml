@@ -142,8 +142,8 @@ let compilation_ops dir package_id build_dir env ocaml_compiler =
       let compiled_inputs =
         List.map deps.inputs ~f:(fun dep ->
           match File.Compiled.of_path_by_extension_private dep with
-          | Ok (`Cmx cmx) -> `Cmx cmx
-          | Ok (`Cmi cmi) -> `Cmi cmi
+          | Ok (`Cmx cmx) -> File.Compiled.generated_file_compiled cmx
+          | Ok (`Cmi cmi) -> File.Compiled.generated_file_compiled cmi
           | Ok _ ->
             panic
               [ Pp.textf
@@ -186,10 +186,11 @@ let compilation_ops dir package_id build_dir env ocaml_compiler =
         ; interface_output_if_no_matching_mli_is_present
         }
     | Ok (`Mli interface_input) ->
-      let cmi_inputs =
+      let compiled_inputs =
         List.map deps.inputs ~f:(fun dep ->
           match File.Compiled.of_path_by_extension_private dep with
-          | Ok (`Cmi cmi) -> cmi
+          | Ok (`Cmx cmx) -> File.Compiled.generated_file_compiled cmx
+          | Ok (`Cmi cmi) -> File.Compiled.generated_file_compiled cmi
           | Ok _ ->
             panic
               [ Pp.textf
@@ -212,7 +213,7 @@ let compilation_ops dir package_id build_dir env ocaml_compiler =
         |> Basename.replace_extension ~ext:".cmi"
         |> File.Compiled.cmi_private
       in
-      Compile_interface { interface_input; cmi_inputs; cmi_output })
+      Compile_interface { interface_input; compiled_inputs; cmi_output })
 ;;
 
 type ('exe, 'lib) t =
