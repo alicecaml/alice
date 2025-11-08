@@ -44,11 +44,29 @@
             };
           })
         ];
-        alice = pkgs.ocamlPackages.buildDunePackage {
+        aliceMin = pkgs.ocamlPackages.buildDunePackage {
           pname = "alice";
           version = "0.1-dev";
           src = ./.;
           buildInputs = deps;
+        };
+        aliceBashCompletion = pkgs.runCommand "alice-bash-completion" { } ''
+          mkdir -p $out/share/bash-completion/completions
+          ${aliceMin}/bin/alice internal completions bash \
+            --program-name=alice \
+            --program-exe-for-reentrant-query=alice \
+            --global-symbol-prefix=__alice \
+            --no-command-hash-in-function-names \
+            --no-comments \
+            --no-whitespace \
+            --minify-global-names \
+            --minify-local-variables \
+            --optimize-case-statements > $out/share/bash-completion/completions/alice
+        '';
+        alice = pkgs.symlinkJoin {
+          name = "alice";
+          version = aliceMin.version;
+          paths = [ aliceMin aliceBashCompletion ];
         };
         full = pkgs.symlinkJoin {
           name = "alice-and-ocaml-tools";
