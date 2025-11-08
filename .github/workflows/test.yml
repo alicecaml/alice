@@ -93,7 +93,7 @@ jobs:
 
       # Install OCaml
       - run: echo $HOME/.alice/current/bin >> $GITHUB_PATH
-      - run: curl -fsSL https://alicecaml.org/install.sh | sh -s -- --no-prompt --install-tools --no-update-shell-config
+      - run: curl -fsSL https://alicecaml.org/install.sh | sh -s -- 0.0.0 --no-prompt --install-tools --no-update-shell-config
       - run: which ocamlopt.opt
 
       # Build the project
