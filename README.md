@@ -3,7 +3,7 @@
 [![test](https://github.com/alicecaml/alice/actions/workflows/test.yml/badge.svg)](https://github.com/alicecaml/alice/actions/workflows/test.yml)
 
 Alice is a radical, experimental OCaml build system, package manager, and
-toolchain manager for Windows, MacOS, and Linux. Its goal is to allow anyone to
+toolchain manager for Windows, macOS, and Linux. Its goal is to allow anyone to
 program in OCaml with as little friction as possible.
 
 Its name comes from an [Australian children's
@@ -27,16 +27,27 @@ Alice is very early in development and is missing some important features:
 Alice is an experiment to see what building OCaml packages could be like if the
 conventions set by Opam are ignored. It's not intended to replace Dune or Opam
 or to split the OCaml packaging ecosystem. I don't recommend using Alice to
-build real OCaml projects, and instead I recommend using
+build real OCaml projects at this time, and instead I recommend using
 [Dune](https://dune.build).
 
 ## Installation
 
-The easiest way to install Alice is by running its install script and following
-the prompts:
+A binary release of Alice can be downloaded from its [releases
+page](https://github.com/alicecaml/alice/releases).
+Download the archive appropriate to your platform,
+extract it, and copy the contained `bin/alice` (or `bin/alice.exe` on
+Windows) to a directory listed in your `PATH` variable.
+
+Alternatively, on Linux and macOS you can run this install script to
+automatically install the latest stable binary release for your platform, and
+follow the prompts:
 ```sh
 curl -fsSL https://alicecaml.org/install.sh | sh
 ```
+
+Nix users can install Alice with the flake `github:alicecaml/alice`.
+
+### OCaml Toolchain
 
 Alice needs an OCaml toolchain, specifically the program `ocamlopt.opt`. You
 can use an existing toolchain installation from Opam or your system package
@@ -54,6 +65,15 @@ delete the `~/.alice` directory.
 The install script also offers to update your shell config file to add the
 `~/.alice/alice/bin` directory to your `PATH` variable to make the `alice`
 command available in your shell.
+
+### C Compiler
+
+If you installed the OCaml toolchain with your system package manager or Opam
+then you probably already have a C compiler, but if you installed the toolchain
+with Alice itself or Alice's install script then you might need to install a C
+compiler before you'll be able to build OCaml projects with Alice. On Linux and
+macOS, either gcc or clang will work. On Windows I recommend using
+[msys2](https://www.msys2.org).
 
 ### Shell Completion
 
