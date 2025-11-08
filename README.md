@@ -68,11 +68,12 @@ command available in your shell.
 
 ### C Compiler
 
-If you installed the OCaml toolchain with your system package manager or Opam
-then you probably already have a C compiler, but if you installed the toolchain
-with Alice itself or Alice's install script then you might need to install a C
-compiler before you'll be able to build OCaml projects with Alice. On Linux and
-macOS, either gcc or clang will work. On Windows I recommend using
+The OCaml toolchain implicitly depends on a C compiler. If you installed the
+OCaml toolchain with your system package manager or Opam then you probably
+already have a C compiler, but if you installed the toolchain with Alice itself
+or Alice's install script then you might need to install a C compiler before
+you'll be able to build OCaml projects with Alice. On Linux and macOS, either
+gcc or clang will work. On Windows I recommend using
 [msys2](https://www.msys2.org).
 
 ### Shell Completion
