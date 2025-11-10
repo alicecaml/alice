@@ -1,6 +1,5 @@
 open! Alice_stdlib
 open Alice_hierarchy
-open Alice_env
 module Log = Alice_log
 
 module Status = struct

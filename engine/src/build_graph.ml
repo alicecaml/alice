@@ -235,7 +235,7 @@ let create
     (exe, lib) Package.Typed.t
     -> Build_dir.t
     -> Alice_env.Os_type.t
-    -> Alice_env.Env.t
+    -> Env.t
     -> Alice_which.Ocaml_compiler.t
     -> (exe, lib) t
   =
