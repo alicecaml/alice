@@ -10,7 +10,7 @@ homepage: "https://alicecaml.org"
 bug-reports: "https://github.com/alicecaml/alice/issues"
 depends: [
   "dune" {>= "3.20"}
-  "ocaml"
+  "ocaml" {>= "5.1"}
   "climate"
   "sha"
   "dyn"
@@ -18,9 +18,11 @@ depends: [
   "pp"
   "re"
   "xdg"
-  "toml"
+  "toml" {>= "0.7"}
   "odoc" {with-doc}
 ]
+dev-repo: "git+https://github.com/alicecaml/alice.git"
+x-maintenance-intent: ["(latest)"]
 build: [
   ["dune" "subst"] {dev}
   [
@@ -31,9 +33,9 @@ build: [
     "-j"
     jobs
     "@install"
-    "@runtest" {with-test}
+    # Tests depend on the compile error format, so only run tests for a single
+    # compiler version.
+    "@runtest" {with-test & ocaml:version >= "5.3" & ocaml:version < "5.4"}
     "@doc" {with-doc}
   ]
 ]
-dev-repo: "git+https://github.com/alicecaml/alice.git"
-x-maintenance-intent: ["(latest)"]
