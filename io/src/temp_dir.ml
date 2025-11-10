@@ -3,12 +3,19 @@ open Alice_hierarchy
 
 let rng = lazy (Random.State.make_self_init ())
 
+(* Make a new directory in the system's temporary directory returning its
+   path. Does not attempt to clean up after itself. *)
 let mkdir ~prefix ~suffix =
   let perms = 0o755 in
   let rng = Lazy.force rng in
   let temp_dir_base = Filename.get_temp_dir_name () in
   let rec loop () =
-    let rand_int = Random.State.bits rng land 0xFFFFFFFF in
+    let max_8_hex_digit_int =
+      (* Don't use 0xFFFFFFFF because on 32-bit machines OCaml uses 31-bit
+         integers. *)
+      0x7FFFFFFF
+    in
+    let rand_int = Random.State.bits rng land max_8_hex_digit_int in
     let dir_name = sprintf "%s%08x%s" prefix rand_int suffix in
     let path = Filename.concat temp_dir_base dir_name in
     if Sys.file_exists path then loop () else path
