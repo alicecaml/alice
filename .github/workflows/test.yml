@@ -118,6 +118,7 @@ jobs:
 
       # Install the alice we just built
       - run: cp -vlf _build/install/default/bin/alice $HOME/.local/bin
+      - run: which alice
       - run: alice --version
 
       # Test that alice works without the root in $Env:Path
