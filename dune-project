@@ -33,7 +33,7 @@
   re
   xdg
   (toml
-   (>= 0.7))))
+   (>= "0.7"))))
 
 (package
  (name alice_tests)
