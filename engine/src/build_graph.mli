@@ -24,7 +24,6 @@ val create
   :  ('exe, 'lib) Package.Typed.t
   -> Build_dir.t
   -> Alice_env.Os_type.t
-  -> Env.t
   -> Alice_which.Ocaml_compiler.t
   -> ('exe, 'lib) t
 
@@ -35,7 +34,6 @@ val create_exe_plan
   :  (true_t, _) Package.Typed.t
   -> Build_dir.t
   -> Alice_env.Os_type.t
-  -> Env.t
   -> Alice_which.Ocaml_compiler.t
   -> Build_plan.t
 
@@ -43,7 +41,6 @@ val create_lib_plan
   :  (_, true_t) Package.Typed.t
   -> Build_dir.t
   -> Alice_env.Os_type.t
-  -> Env.t
   -> Alice_which.Ocaml_compiler.t
   -> Build_plan.t
 

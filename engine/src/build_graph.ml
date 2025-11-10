@@ -112,7 +112,7 @@ module Build_plan = struct
   ;;
 end
 
-let compilation_ops dir package_id build_dir env ocaml_compiler =
+let compilation_ops dir package_id build_dir ocaml_compiler =
   let ocamldep_cache = Ocamldep_cache.load build_dir package_id in
   let deps =
     Dir_non_root.contents dir
@@ -123,7 +123,7 @@ let compilation_ops dir package_id build_dir env ocaml_compiler =
     |> List.sort ~cmp:File_non_root.compare_by_path
     |> List.map ~f:(fun (file : File_non_root.t) ->
       ( file.path
-      , Ocamldep_cache.get_deps ocamldep_cache env ocaml_compiler ~source_path:file.path ))
+      , Ocamldep_cache.get_deps ocamldep_cache ocaml_compiler ~source_path:file.path ))
     |> Absolute_path.Non_root_map.of_list_exn
   in
   Ocamldep_cache.store ocamldep_cache deps;
@@ -235,16 +235,15 @@ let create
     (exe, lib) Package.Typed.t
     -> Build_dir.t
     -> Alice_env.Os_type.t
-    -> Env.t
     -> Alice_which.Ocaml_compiler.t
     -> (exe, lib) t
   =
-  fun package_typed build_dir os_type env ocaml_compiler ->
+  fun package_typed build_dir os_type ocaml_compiler ->
   let open Typed_op in
   let package = Package.Typed.package package_typed in
   let src_dir = Package.src_dir_exn package in
   let compilation_ops =
-    compilation_ops src_dir (Package.id package) build_dir env ocaml_compiler
+    compilation_ops src_dir (Package.id package) build_dir ocaml_compiler
   in
   let build_dag_compilation_only = Build_dag.of_ops compilation_ops in
   let link_library () =
@@ -318,12 +317,12 @@ let plan_lib ({ build_dag; _ } : (_, Type_bool.true_t) t) =
   Build_dag.traverse build_dag ~output:(Typed_op.Generated_file.Linked_library Cmxa)
 ;;
 
-let create_exe_plan package_typed build_dir os_type env ocaml_compiler =
-  create package_typed build_dir os_type env ocaml_compiler |> plan_exe
+let create_exe_plan package_typed build_dir os_type ocaml_compiler =
+  create package_typed build_dir os_type ocaml_compiler |> plan_exe
 ;;
 
-let create_lib_plan package_typed build_dir os_type env ocaml_compiler =
-  create package_typed build_dir os_type env ocaml_compiler |> plan_lib
+let create_lib_plan package_typed build_dir os_type ocaml_compiler =
+  create package_typed build_dir os_type ocaml_compiler |> plan_lib
 ;;
 
 let dot t =

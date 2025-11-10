@@ -8,20 +8,12 @@ open Alice_hierarchy
 type t
 
 val of_package : Package.t -> t
-
-val build
-  :  t
-  -> Profile.t
-  -> Alice_env.Os_type.t
-  -> Env.t
-  -> Alice_which.Ocaml_compiler.t
-  -> unit
+val build : t -> Profile.t -> Alice_env.Os_type.t -> Alice_which.Ocaml_compiler.t -> unit
 
 val run
   :  t
   -> Profile.t
   -> Alice_env.Os_type.t
-  -> Env.t
   -> Alice_which.Ocaml_compiler.t
   -> args:string list
   -> unit
@@ -31,7 +23,6 @@ val clean : t -> unit
 val dot_build_artifacts
   :  t
   -> Alice_env.Os_type.t
-  -> Env.t
   -> Alice_which.Ocaml_compiler.t
   -> string
 

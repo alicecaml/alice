@@ -33,13 +33,11 @@ module Blocking : sig
     -> ?stdout:Unix.file_descr
     -> ?stderr:Unix.file_descr
     -> Command.t
-    -> env:Env.t
     -> (Status.t, [ `Prog_not_available ]) result
 
   val run_command_capturing_stdout_lines
     :  ?stdin:Unix.file_descr
     -> ?stderr:Unix.file_descr
     -> Command.t
-    -> env:Env.t
     -> (Status.t * string list, [ `Prog_not_available ]) result
 end

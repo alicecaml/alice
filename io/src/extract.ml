@@ -1,7 +1,7 @@
 open! Alice_stdlib
 open Alice_hierarchy
 
-let tar ~tarball_file ~output_dir =
+let tar env ~tarball_file ~output_dir =
   let args =
     [ "-x"
     ; "-C"
@@ -10,11 +10,11 @@ let tar ~tarball_file ~output_dir =
     ; Absolute_path.to_filename tarball_file
     ]
   in
-  Command.create "tar" ~args
+  Command.create "tar" ~args env
 ;;
 
 let extract env ~tarball_file ~output_dir =
-  match tar ~tarball_file ~output_dir |> Process.Blocking.run_command ~env with
+  match tar env ~tarball_file ~output_dir |> Process.Blocking.run_command with
   | Ok (Process.Status.Exited 0) -> ()
   | _ ->
     Alice_error.panic
