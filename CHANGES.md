@@ -8,6 +8,7 @@
   Alice has installed an OCaml toolchain. This fixes an issue where the OCaml
   compiler couldn't find flexlink on Windows unless the current Alice root was
   in the PATH variable. (#2, fixes #1)
+- Fixed compile error on 32-bit machines due to unrepresentable integer literal.
 
 ## 0.1.0
 
