@@ -30,7 +30,8 @@
   dyn
   fileutils
   pp
-  re
+  (re
+   (>= "1.12"))
   xdg
   (toml
    (>= "7"))))
