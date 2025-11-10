@@ -180,7 +180,7 @@ let arg_parser =
   and+ linked =
     named_opt [ "linked" ] Linked.conv ~doc:"Choose between static and dynamic linking."
   in
-  let polled = poll (Alice_env.Os_type.current ()) (Alice_env.Env.current ()) in
+  let polled = poll (Alice_env.Os_type.current ()) (Alice_env.current_env ()) in
   { os = Option.value os ~default:polled.os
   ; arch = Option.value arch ~default:polled.arch
   ; linked = Option.value linked ~default:polled.linked

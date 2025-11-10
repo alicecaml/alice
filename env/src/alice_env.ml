@@ -2,6 +2,7 @@ open! Alice_stdlib
 open Alice_hierarchy
 
 let initial_cwd = Absolute_path.of_filename (Sys.getcwd ())
+let current_env () = Unix.environment () |> Env.of_raw
 
 module Os_type = struct
   type t =
@@ -44,58 +45,6 @@ module Os_type = struct
   ;;
 end
 
-module Variable = struct
-  type t =
-    { name : string
-    ; value : string
-    }
-
-  let parse s =
-    match String.lsplit2 s ~on:'=' with
-    | None -> { name = s; value = "" }
-    | Some (name, value) -> { name; value }
-  ;;
-
-  let to_string { name; value } = sprintf "%s=%s" name value
-
-  let to_dyn { name; value } =
-    Dyn.record [ "name", Dyn.string name; "value", Dyn.string value ]
-  ;;
-end
-
-module Env = struct
-  type t = Variable.t list
-  type raw = string array
-
-  let empty = []
-  let to_dyn = Dyn.list Variable.to_dyn
-  let of_raw raw = Array.to_list raw |> List.map ~f:Variable.parse
-  let to_raw t = List.map t ~f:Variable.to_string |> Array.of_list
-  let current () = Unix.environment () |> of_raw
-
-  let get_opt t ~name =
-    List.find_map t ~f:(fun (variable : Variable.t) ->
-      if String.equal variable.name name then Some variable.value else None)
-  ;;
-
-  let find_name_opt t ~f =
-    List.find_opt t ~f:(fun (variable : Variable.t) -> f variable.name)
-  ;;
-
-  let contains t ~name =
-    List.exists t ~f:(fun (variable : Variable.t) -> String.equal variable.name name)
-  ;;
-
-  let set t ~name ~value =
-    let variable = { Variable.name; value } in
-    if contains t ~name
-    then
-      List.map t ~f:(fun (v : Variable.t) ->
-        if String.equal v.name name then variable else v)
-    else variable :: t
-  ;;
-end
-
 module Path_variable = struct
   type t = Absolute_path.Root_or_non_root.t list
 
@@ -126,7 +75,7 @@ module Path_variable = struct
 
   let get_opt os_type env =
     Env.find_name_opt ~f:(is_path_variable_name os_type) env
-    |> Option.map ~f:(fun (variable : Variable.t) -> of_raw os_type variable.value)
+    |> Option.map ~f:(of_raw os_type)
   ;;
 
   let get_or_empty os_type env = get_opt os_type env |> Option.value ~default:[]

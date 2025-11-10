@@ -7,7 +7,7 @@ val tar
   -> Command.t
 
 val extract
-  :  Alice_env.Env.t
+  :  Env.t
   -> tarball_file:Absolute_path.non_root_t
   -> output_dir:Absolute_path.non_root_t
   -> unit

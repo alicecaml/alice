@@ -2,6 +2,7 @@ module Ansi_style = Ansi_style
 module Command = Command
 module Compare = Compare
 module Dyn = Dyn
+module Env = Env
 module Filename = Filename
 module Fileutils = FileUtil
 module List = List

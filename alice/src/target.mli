@@ -42,5 +42,5 @@ val to_string : t -> string
 module Set : Set.S with type elt = t
 module Map : Map.S with type key = t
 
-val poll : Alice_env.Os_type.t -> Alice_env.Env.t -> t
+val poll : Alice_env.Os_type.t -> Env.t -> t
 val arg_parser : t Arg_parser.t
