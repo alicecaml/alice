@@ -434,7 +434,7 @@ let install =
       [ "g"; "global" ]
       ~doc:"Install tools to this directory rather than '~/.alice'."
   and+ target = Target.arg_parser in
-  let env = Alice_env.Env.current () in
+  let env = Alice_env.current_env () in
   let os_type = Alice_env.Os_type.current () in
   let install_dir = Alice_install_dir.create os_type env in
   Root.install root env install_dir ~target ~compiler_only ~global;
@@ -465,7 +465,7 @@ let env =
     | Some shell -> shell
     | None -> Bash
   in
-  let env = Alice_env.Env.current () in
+  let env = Alice_env.current_env () in
   let os_type = Alice_env.Os_type.current () in
   let install_dir = Alice_install_dir.create os_type env in
   print_endline (Shell.update_path shell install_dir ~root)
@@ -475,7 +475,7 @@ let change =
   let open Arg_parser in
   let+ () = Common.set_globals_from_flags
   and+ root = pos_req 0 Root.conv in
-  let env = Alice_env.Env.current () in
+  let env = Alice_env.current_env () in
   let os_type = Alice_env.Os_type.current () in
   let install_dir = Alice_install_dir.create os_type env in
   if Root.is_installed root install_dir
@@ -498,7 +498,7 @@ let exec =
   in
   let open Alice_ui in
   let open Alice_env in
-  let env = Env.current () in
+  let env = Alice_env.current_env () in
   let os_type = Os_type.current () in
   let path_variable = Path_variable.get_or_empty os_type env in
   let install_dir = Alice_install_dir.create os_type env in

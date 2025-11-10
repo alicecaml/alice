@@ -17,7 +17,7 @@ end
     ([Deps.inputs]). Returned paths are relative to the directory containing
     [file]. *)
 val native_deps
-  :  Alice_env.Env.t
+  :  Env.t
   -> Alice_which.Ocaml_compiler.t
   -> Absolute_path.non_root_t
   -> Deps.t

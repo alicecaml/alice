@@ -29,7 +29,7 @@ let build_single_package
     -> (exe, lib) Package_with_deps.t
     -> Profile.t
     -> Alice_env.Os_type.t
-    -> Alice_env.Env.t
+    -> Env.t
     -> Alice_which.Ocaml_compiler.t
     -> any_dep_rebuilt:bool
     -> Scheduler.Package_built.t

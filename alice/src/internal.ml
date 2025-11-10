@@ -125,7 +125,7 @@ end
 let setup =
   let open Arg_parser in
   let+ () = Common.set_globals_from_flags in
-  let env = Alice_env.Env.current () in
+  let env = Alice_env.current_env () in
   let os_dir = Alice_env.Os_type.current () in
   let install_dir = Alice_install_dir.create os_dir env in
   Env_script.make_all install_dir;
