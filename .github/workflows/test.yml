@@ -116,6 +116,14 @@ jobs:
       # Run tests
       - run: PATH="$HOME/.alice/current/bin:$PATH" dune test
 
+      # Install the alice we just built
+      - run: cp -vlf _build/install/default/bin/alice $HOME/.local/bin
+      - run: alice --version
+
+      # Test that alice works without the root in $Env:Path
+      - run: alice new --exe hello
+      - run: alice run --manifest-path hello/Alice.toml
+
   test-flake-build:
     name: Test that the nix flake can be built
     runs-on: ubuntu-latest
