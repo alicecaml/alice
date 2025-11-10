@@ -18,7 +18,7 @@ depends: [
   "pp"
   "re"
   "xdg"
-  "toml" {>= "0.7"}
+  "toml" {>= "7"}
   "odoc" {with-doc}
 ]
 dev-repo: "git+https://github.com/alicecaml/alice.git"
