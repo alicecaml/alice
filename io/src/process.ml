@@ -85,8 +85,7 @@ module Blocking = struct
         ?(stdin = Unix.stdin)
         ?(stdout = Unix.stdout)
         ?(stderr = Unix.stderr)
-        { Command.prog; args }
-        ~env
+        { Command.prog; args; env }
     =
     run ~stdin ~stdout ~stderr prog ~args ~env
   ;;
@@ -94,8 +93,7 @@ module Blocking = struct
   let run_command_capturing_stdout_lines
         ?(stdin = Unix.stdin)
         ?(stderr = Unix.stderr)
-        { Command.prog; args }
-        ~env
+        { Command.prog; args; env }
     =
     run_capturing_stdout_lines ~stdin ~stderr prog ~args ~env
   ;;

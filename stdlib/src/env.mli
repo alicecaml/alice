@@ -4,6 +4,7 @@ type t
 type raw = string array
 
 val empty : t
+val equal : t -> t -> bool
 val to_dyn : t -> Dyn.t
 val of_raw : raw -> t
 val to_raw : t -> raw

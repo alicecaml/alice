@@ -32,11 +32,11 @@ module Action = struct
     | Command of Command.t
     | Generated_public_interface_to_open of Generated_public_interface_to_open.t
 
-  let run t env =
+  let run t =
     match t with
     | Command command ->
       let status =
-        match Alice_io.Process.Blocking.run_command command ~env with
+        match Alice_io.Process.Blocking.run_command command with
         | Ok status -> status
         | Error `Prog_not_available ->
           panic [ Pp.textf "Can't find program: %s" command.prog ]
@@ -45,7 +45,7 @@ module Action = struct
        | Exited 0 -> ()
        | _ ->
          Alice_error.user_exn
-           [ Pp.textf "Command failed: %s" (Command.to_string command) ])
+           [ Pp.textf "Command failed: %s" (Command.to_string_ignore_env command) ])
     | Generated_public_interface_to_open { output_path; public_interface_to_open } ->
       Log.debug
         [ Pp.textf
@@ -252,7 +252,6 @@ module Sequential = struct
   let eval_build_plans
         build_plans
         package_with_deps
-        env
         profile
         build_dir
         ocaml_compiler
@@ -317,7 +316,7 @@ module Sequential = struct
             build_dir
             ocaml_compiler
         in
-        Action.run action env;
+        Action.run action;
         Generated_file.Set.diff acc_files_to_build (Build_plan.outputs build_plan)
     in
     Build_dir.package_dirs build_dir package_id profile |> List.iter ~f:File_ops.mkdir_p;

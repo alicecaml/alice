@@ -3,14 +3,12 @@ open Alice_hierarchy
 open Alice_error
 
 let command ocaml_compiler args =
-  Command.create
-    (Alice_which.Ocaml_compiler.to_filename ocaml_compiler)
-    ~args:("-depend" :: args)
+  Alice_which.Ocaml_compiler.command ocaml_compiler ~args:("-depend" :: args)
 ;;
 
-let run_lines env ocaml_compiler args =
+let run_lines ocaml_compiler args =
   let command = command ocaml_compiler args in
-  match Alice_io.Process.Blocking.run_command_capturing_stdout_lines command ~env with
+  match Alice_io.Process.Blocking.run_command_capturing_stdout_lines command with
   | Ok (status, output) ->
     Alice_io.Process.Status.panic_unless_exit_0 status;
     output
@@ -18,8 +16,8 @@ let run_lines env ocaml_compiler args =
     user_exn
       [ Pp.textf
           "Program %S not found while trynig to run command: %s"
-          (Alice_which.Ocaml_compiler.to_filename ocaml_compiler)
-          (Command.to_string command)
+          (Alice_which.Ocaml_compiler.filename ocaml_compiler)
+          (Command.to_string_ignore_env command)
       ]
 ;;
 
@@ -65,13 +63,12 @@ module Deps = struct
   ;;
 end
 
-let native_deps env ocaml_compiler path =
+let native_deps ocaml_compiler path =
   if not (Alice_io.File_ops.exists path)
   then
     panic [ Pp.textf "File does not exist: %s" (Alice_ui.absolute_path_to_string path) ];
   match
     run_lines
-      env
       ocaml_compiler
       [ "-one-line"
       ; "-native"
