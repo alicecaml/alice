@@ -49,12 +49,19 @@ jobs:
       - run: alice tools install
       - run: alice tools exec -- Get-Command ocamlopt.opt
 
+      # Save the environment so we can remove the root from $Env:Path after building.
+      - run: Copy-Item "$env:GITHUB_PATH" old-path.txt
+      - run: echo "$HOME\.alice\current\bin" >> $env:GITHUB_PATH
+
       # Build the project
       - run: echo DUNE_CONFIG__PKG_BUILD_PROGRESS=enabled >> $env:GITHUB_ENV
       - run: dune build
 
       # Run tests
       - run: dune test
+
+      # Restore the environment
+      - run: Copy-Item old-path.txt "$env:GITHUB_PATH"
 
   test-unix:
     name: Test for ${{ matrix.name }}
@@ -97,10 +104,10 @@ jobs:
 
       # Build the project
       - run: echo DUNE_CONFIG__PKG_BUILD_PROGRESS=enabled >> $GITHUB_ENV
-      - run: dune build
+      - run: PATH="$HOME/.alice/current/bin:$PATH" dune build
 
       # Run tests
-      - run: dune test
+      - run: PATH="$HOME/.alice/current/bin:$PATH" dune test
 
   test-flake-build:
     name: Test that the nix flake can be built
