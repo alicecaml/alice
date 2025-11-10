@@ -62,6 +62,14 @@ jobs:
       # Restore the environment
       - run: Copy-Item old-path.txt "$env:GITHUB_PATH"
 
+      # Install the alice we just built
+      - run: Copy-Item -Recurse -Force _build\install\default\bin\alice.exe ${{ github.workspace }}\.local\bin
+      - run: alice --version
+
+      # Test that alice works without the root in $Env:Path
+      - run: alice new --exe hello
+      - run: alice run --manifest-path hello/Alice.toml
+
   test-unix:
     name: Test for ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
