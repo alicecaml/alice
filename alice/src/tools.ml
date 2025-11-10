@@ -529,7 +529,7 @@ let subcommand =
            (singleton
               env
               ~doc:"Print a command which can be eval'd to add tools to PATH.")
-       ; subcommand "change" (singleton change ~doc:"Change the currently active root")
+       ; subcommand "change" (singleton change ~doc:"Change the currently active root.")
        ; subcommand
            "exec"
            (singleton
