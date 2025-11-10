@@ -18,7 +18,10 @@ module Path_variable : sig
 
   val to_dyn : t -> Dyn.t
   val get_or_empty : Os_type.t -> Env.t -> t
-  val get_result : Os_type.t -> Env.t -> (t, [ `Variable_not_defined of string ]) result
+  val get_result : Os_type.t -> Env.t -> (t, [ `Variable_not_defined ]) result
+  val contains : t -> Absolute_path.Root_or_non_root.t -> bool
+
+  (** [set t os env] replaces the PATH variable in [env] with [t]. *)
   val set : t -> Os_type.t -> Env.t -> Env.t
 end
 

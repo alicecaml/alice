@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- External commands are run in an environment containing the OCaml toolchain if
+  Alice has installed an OCaml toolchain. This fixes an issue where the OCaml
+  compiler couldn't find flexlink on Windows unless the current Alice root was
+  in the PATH variable. (#2, fixes #1)
+
 ## 0.1.0
 
 ### Added
