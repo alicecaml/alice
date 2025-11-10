@@ -3,9 +3,14 @@ open Alice_hierarchy
 open Alice_env
 
 module Ocaml_compiler = struct
-  type t = Filename.t
+  type t =
+    { filename : Filename.t
+    ; env : Env.t
+    }
 
-  let to_filename t = t
+  let filename { filename; _ } = filename
+  let env { env; _ } = env
+  let command { filename; env } ~args = Command.create filename ~args env
 end
 
 let find_in_search_path exe_name search_paths =
@@ -69,4 +74,8 @@ let current_sys_exe_name os_type exe_name_without_extension =
 ;;
 
 let ocamlopt_name os_type = current_sys_exe_name os_type "ocamlopt.opt"
-let ocamlopt os_type env = try_which os_type env (ocamlopt_name os_type)
+
+let ocamlopt os_type env =
+  let filename = try_which os_type env (ocamlopt_name os_type) in
+  { Ocaml_compiler.filename; env }
+;;

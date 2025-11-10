@@ -2,18 +2,20 @@ open! Alice_stdlib
 open Alice_error
 
 let run_uname env args =
-  let command = Command.create "uname" ~args in
-  match Process.Blocking.run_command_capturing_stdout_lines command ~env with
+  let command = Command.create "uname" ~args env in
+  match Process.Blocking.run_command_capturing_stdout_lines command with
   | Ok (Process.Status.Exited 0, [ output ]) -> output
   | Ok (Process.Status.Exited 0, []) ->
-    panic [ Pp.textf "No output from %s" (Command.to_string_backticks command) ]
+    panic
+      [ Pp.textf "No output from %s" (Command.to_string_ignore_env_backticks command) ]
   | Ok (Process.Status.Exited 0, _) ->
     panic
       [ Pp.textf
           "Multiple lines output from %s expectedly"
-          (Command.to_string_backticks command)
+          (Command.to_string_ignore_env_backticks command)
       ]
-  | _ -> panic [ Pp.textf "Failed to run %s" (Command.to_string_backticks command) ]
+  | _ ->
+    panic [ Pp.textf "Failed to run %s" (Command.to_string_ignore_env_backticks command) ]
 ;;
 
 let uname env arg =

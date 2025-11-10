@@ -11,6 +11,7 @@ module Variable = struct
   ;;
 
   let to_string { name; value } = Printf.sprintf "%s=%s" name value
+  let equal t { name; value } = String.equal t.name name && String.equal t.value value
 
   let to_dyn { name; value } =
     Dyn.record [ "name", Dyn.string name; "value", Dyn.string value ]
@@ -21,6 +22,7 @@ type t = Variable.t list
 type raw = string array
 
 let empty = []
+let equal = List.equal ~eq:Variable.equal
 let to_dyn = Dyn.list Variable.to_dyn
 let of_raw raw = Array.to_list raw |> List.map ~f:Variable.parse
 let to_raw t = List.map t ~f:Variable.to_string |> Array.of_list

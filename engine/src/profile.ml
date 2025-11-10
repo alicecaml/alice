@@ -11,7 +11,8 @@ let release = { optimization_level = Some `O2; debug = false; name = "release" }
 let name { name; _ } = name
 
 let ocaml_compiler_command t ocaml_compiler ~args =
-  let prog = Alice_which.Ocaml_compiler.to_filename ocaml_compiler in
+  let prog = Alice_which.Ocaml_compiler.filename ocaml_compiler in
+  let env = Alice_which.Ocaml_compiler.env ocaml_compiler in
   let args =
     (if t.debug then [ "-g" ] else [])
     @ (match t.optimization_level with
@@ -20,5 +21,5 @@ let ocaml_compiler_command t ocaml_compiler ~args =
        | Some `O3 -> [ "-O3" ])
     @ args
   in
-  Command.create prog ~args
+  Command.create prog ~args env
 ;;
