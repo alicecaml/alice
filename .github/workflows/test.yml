@@ -30,7 +30,6 @@ jobs:
       - run: Remove-Item -Recurse -Force "$env:DUNE_NAME.tar.gz"
 
       # Install Alice (used to bootstrap environment)
-      - run: echo "$HOME\.alice\current\bin" >> $env:GITHUB_PATH
       - run: echo ALICE_IN_VERSION="0.0.0" >> $env:GITHUB_ENV
       - run: echo ALICE_IN_NAME="alice-$env:ALICE_IN_VERSION-x86_64-windows" >> $env:GITHUB_ENV
       - run: echo "https://github.com/alicecaml/alice/releases/download/$env:ALICE_IN_VERSION/$env:ALICE_IN_NAME.tar.gz"
@@ -48,7 +47,7 @@ jobs:
 
       # Use Alice to bootstrap OCaml environment
       - run: alice tools install
-      - run: Get-Command ocamlopt.opt
+      - run: alice tools exec -- Get-Command ocamlopt.opt
 
       # Build the project
       - run: echo DUNE_CONFIG__PKG_BUILD_PROGRESS=enabled >> $env:GITHUB_ENV
@@ -92,9 +91,9 @@ jobs:
       - run: dune --version
 
       # Install OCaml
-      - run: echo $HOME/.alice/current/bin >> $GITHUB_PATH
+      - run: echo $HOME/.alice/alice/bin >> $GITHUB_PATH
       - run: curl -fsSL https://alicecaml.org/install.sh | sh -s -- 0.0.0 --no-prompt --install-tools --no-update-shell-config
-      - run: which ocamlopt.opt
+      - run: alice tools exec -- which ocamlopt.opt
 
       # Build the project
       - run: echo DUNE_CONFIG__PKG_BUILD_PROGRESS=enabled >> $GITHUB_ENV
