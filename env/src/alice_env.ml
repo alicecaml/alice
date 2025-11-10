@@ -82,11 +82,18 @@ module Path_variable = struct
 
   let get_result os_type env =
     match get_opt os_type env with
-    | None -> Error (`Variable_not_defined "todo")
+    | None -> Error `Variable_not_defined
     | Some t -> Ok t
   ;;
 
-  let set t os_type env = Env.set env ~name:"PATH" ~value:(to_raw os_type t)
+  let contains t path = List.exists t ~f:(Absolute_path.Root_or_non_root.equal path)
+
+  let set t os_type env =
+    (* Set the PATH variable. Note that on Windows, the PATH variable is
+       sometimes referred to in non-uppercase, however it's case insensitive on
+       Windows so setting it by an all uppercase name should be fine. *)
+    Env.set env ~name:"PATH" ~value:(to_raw os_type t)
+  ;;
 end
 
 module Xdg = struct
