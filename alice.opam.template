@@ -1,0 +1,16 @@
+build: [
+  ["dune" "subst"] {dev}
+  [
+    "dune"
+    "build"
+    "-p"
+    name
+    "-j"
+    jobs
+    "@install"
+    # Tests depend on the compile error format, so only run tests for a single
+    # compiler version.
+    "@runtest" {with-test & ocaml:version >= "5.3" & ocaml:version < "5.4"}
+    "@doc" {with-doc}
+  ]
+]
