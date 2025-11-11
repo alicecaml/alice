@@ -11,7 +11,7 @@ bug-reports: "https://github.com/alicecaml/alice/issues"
 depends: [
   "dune" {>= "3.20"}
   "ocaml" {>= "5.1"}
-  "climate"
+  "climate" {>= "0.8.6"}
   "sha"
   "dyn"
   "fileutils"
