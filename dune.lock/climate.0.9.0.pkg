@@ -1,4 +1,4 @@
-(version 0.8.6)
+(version 0.9.0)
 
 (build
  (all_platforms
@@ -13,6 +13,6 @@
 
 (source
  (fetch
-  (url https://github.com/gridbugs/climate/archive/refs/tags/0.8.6.tar.gz)
+  (url https://github.com/gridbugs/climate/archive/refs/tags/0.9.0.tar.gz)
   (checksum
-   sha256=80476a1ae422e1cbb151a7d90227a3e5661600d1eb969d202e92c7f866c0b543)))
+   sha256=b291ef5c30eb11d81571fd3146bd404ab91698bd1606bf41c79cd0a5bfccd80c)))

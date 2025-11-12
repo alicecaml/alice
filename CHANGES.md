@@ -9,6 +9,7 @@
   compiler couldn't find flexlink on Windows unless the current Alice root was
   in the PATH variable. (#2, fixes #1)
 - Fixed compile error on 32-bit machines due to unrepresentable integer literal.
+- Wrap text in help messages.
 
 ## 0.1.0
 

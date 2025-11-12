@@ -28,7 +28,11 @@ let command =
 Internal.command_for_completion_script := Some command
 
 let () =
-  match Command.run command ~program_name:(Literal "alice") ~version with
+  let help_style =
+    let open Help_style in
+    { default with margin = Some 100 }
+  in
+  match Command.run command ~program_name:(Literal "alice") ~version ~help_style with
   | () -> ()
   | exception Alice_error.User_error.E error ->
     Alice_error.User_error.eprint (error @ [ Pp.newline ]);
