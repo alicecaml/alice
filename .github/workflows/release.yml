@@ -189,7 +189,7 @@ jobs:
       - run: echo $HOME/.local/bin >> $GITHUB_PATH
 
       - name: Install Dune
-      - run: |
+        run: |
           curl -fsSL https://github.com/ocaml-dune/dune-bin-install/releases/download/v2/install.sh | sh -s 3.20.1 --install-root $HOME/.local --no-update-shell-config
           which dune
           dune --version
