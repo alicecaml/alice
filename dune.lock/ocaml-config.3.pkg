@@ -5,7 +5,7 @@
   ((action (substitute gen_ocaml_config.ml.in gen_ocaml_config.ml)))))
 
 (depends
- (all_platforms (ocaml-base-compiler)))
+ (all_platforms (ocaml-system)))
 
 (extra_sources
  (gen_ocaml_config.ml.in

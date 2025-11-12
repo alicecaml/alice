@@ -2,26 +2,31 @@
 
 (dependency_hash 3fb344d89d769c6be5b338aef056fe39)
 
-(ocaml ocaml-base-compiler)
+(ocaml ocaml-system)
 
 (repositories
  (complete true)
  (used
   ((source
+    https://github.com/ocaml/opam-repository.git#e4e631bfa1de346c5c18d3bb460fd03366bcb0e6))
+  ((source
     https://github.com/ocaml-dune/opam-overlays.git#2a9543286ff0e0656058fee5c0da7abc16b8717d))
   ((source
-    https://github.com/ocaml/opam-repository.git#e4e631bfa1de346c5c18d3bb460fd03366bcb0e6))))
+    https://github.com/alicecaml/alice-opam-repo#781db10863f3b7a3507842e88d0d3beeebd264ad))))
 
 (solved_for_platforms
  ((arch x86_64)
-  (os linux))
+  (os linux)
+  (sys-ocaml-version 5.3.1+relocatable))
  ((arch arm64)
-  (os linux))
+  (os linux)
+  (sys-ocaml-version 5.3.1+relocatable))
  ((arch x86_64)
-  (os macos))
+  (os macos)
+  (sys-ocaml-version 5.3.1+relocatable))
  ((arch arm64)
-  (os macos))
+  (os macos)
+  (sys-ocaml-version 5.3.1+relocatable))
  ((arch x86_64)
-  (os win32))
- ((arch arm64)
-  (os win32)))
+  (os win32)
+  (sys-ocaml-version 5.3.1+relocatable)))
