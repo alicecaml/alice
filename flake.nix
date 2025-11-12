@@ -36,11 +36,11 @@
           }))
           (buildDunePackage {
             pname = "climate";
-            version = "0.8.6";
+            version = "0.9.0";
             src = fetchGit {
               url = "https://github.com/gridbugs/climate";
-              ref = "0.8.6";
-              rev = "37e00ce3fa7e1c9fcf110d3cd35bd7f5d18e780e";
+              ref = "0.9.0";
+              rev = "49e24c3f063ba8877d9ed0b332e1b1c5fec41d12";
             };
           })
         ];
