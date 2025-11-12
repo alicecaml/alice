@@ -182,7 +182,8 @@ jobs:
     steps:
       - run: echo ALICE_OUT_NAME=alice-${{ github.ref_name }}-hermetic-source >> $GITHUB_ENV
       - uses: actions/checkout@v4
-        path: alice
+        with:
+          path: alice
 
       # Set up local root directory for installing tools into
       - run: echo $HOME/.local/bin >> $GITHUB_PATH
