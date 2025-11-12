@@ -12,7 +12,7 @@
 (repository
  (name upstream_frozen)
  (url
-  git+https://github.com/ocaml/opam-repository.git#21f97b2e6d7c617fc0a79cc8e59b2e10690960e1))
+  git+https://github.com/ocaml/opam-repository.git#e4e631bfa1de346c5c18d3bb460fd03366bcb0e6))
 
 (repository
  (name overlay_frozen)

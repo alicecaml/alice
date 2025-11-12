@@ -26,7 +26,7 @@
   (ocaml
    (>= "5.1"))
   (climate
-   (>= "0.8.6"))
+   (>= "0.9"))
   sha
   dyn
   fileutils
