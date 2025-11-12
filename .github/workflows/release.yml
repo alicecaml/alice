@@ -175,3 +175,37 @@ jobs:
         with:
           allowUpdates: true
           artifacts: "out/*.tar.gz"
+
+  release-hermetic-source:
+    name: Make a source archive that can be built without ocaml-system
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ALICE_OUT_NAME=alice-${{ github.ref_name }}-hermetic-source >> $GITHUB_ENV
+      - uses: actions/checkout@v4
+        path: alice
+
+      # Set up local root directory for installing tools into
+      - run: echo $HOME/.local/bin >> $GITHUB_PATH
+
+      - name: Install Dune
+      - run: |
+          curl -fsSL https://github.com/ocaml-dune/dune-bin-install/releases/download/v2/install.sh | sh -s 3.20.1 --install-root $HOME/.local --no-update-shell-config
+          which dune
+          dune --version
+
+      - name: Relock the project without dune-workspace
+        run: |
+          cd alice
+          rm dune-workspace
+          DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock
+          rm -rf _build
+          cd ..
+          mv alice $ALICE_OUT_NAME
+
+      - name: Create a source archive
+        run: tar czf $ALICE_OUT_NAME.tar.gz $ALICE_OUT_NAME
+
+      - uses: ncipollo/release-action@v1
+        with:
+          allowUpdates: true
+          artifacts: "*.tar.gz"
