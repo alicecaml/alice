@@ -1,4 +1,4 @@
-(version 5.3.1+relocatable)
+(version 5.4.0)
 
 (build
  (all_platforms
@@ -10,12 +10,12 @@
      (run
       ocaml
       %{pkg:ocaml-config:share}/gen_ocaml_config.ml
-      5.3.1
+      %{pkg-self:version}
       %{pkg-self:name}))))))
 
 (depends
  (all_platforms
-  (ocaml-config ocaml-system)))
+  (ocaml-config ocaml-base-compiler)))
 
 (exported_env
  (+= OCAMLTOP_INCLUDE_PATH "\%{toplevel}%")

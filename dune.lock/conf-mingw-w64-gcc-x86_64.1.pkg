@@ -1,0 +1,21 @@
+(version 1)
+
+(build
+ (choice
+  ((((arch x86_64) (os win32)))
+   ((action (run x86_64-w64-mingw32-gcc --version))))))
+
+(depexts
+ ((mingw64-x86_64-gcc-core)
+  (and_absorb_undefined_var
+   (= %{os} win32)
+   (= %{os_distribution} cygwin)))
+ ((mingw-w64-x86_64-gcc)
+  (and_absorb_undefined_var
+   (= %{os} win32)
+   (= %{os_distribution} msys2))))
+
+(enabled_on_platforms
+ (only
+  ((arch x86_64)
+   (os win32))))

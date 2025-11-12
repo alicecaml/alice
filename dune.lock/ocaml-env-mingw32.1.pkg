@@ -1,0 +1,10 @@
+(version 1)
+
+(depends
+ (choice
+  ((((arch arm64) (os win32))) (conf-mingw-w64-gcc-i686))))
+
+(enabled_on_platforms
+ (only
+  ((arch arm64)
+   (os win32))))
