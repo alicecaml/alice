@@ -5,7 +5,7 @@ module Log = Alice_log
 let curl env ~url ~output_file =
   let args =
     [ "-L" (* --location: Handle the case when a page has moved. *)
-    ; "-s" (* --show-error: Show an error when the download fails. *)
+    ; "-S" (* --show-error: Show an error when the download fails. *)
     ; "-o" (* --output: Store the result in a file *)
     ; Absolute_path.to_filename output_file
     ; "--"
