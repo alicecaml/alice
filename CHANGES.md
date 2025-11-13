@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Switch to github for hosting tool archives.
+- Display progress bar while downloading tools.
+
 ## 0.1.1
 
 ### Fixed
