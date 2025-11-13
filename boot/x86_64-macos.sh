@@ -5,7 +5,7 @@
 
 set -eux
 
-BASE_URL="https://s3.g.s4.mega.io/ycsnsngpe2elgjdd2uzbdpyj6s54q5itlvy6g/alice/tools/5.3.1"
+BASE_URL="https://github.com/alicecaml/alice-tools/releases/download/5.3.1+relocatable"
 OCAML="ocaml-5.3.1+relocatable-x86_64-macos"
 OCAMLLSP="ocamllsp-1.22.0-built-with-ocaml-5.3.1+relocatable-x86_64-macos"
 OCAMLFORMAT="ocamlformat-0.27.0-built-with-ocaml-5.3.1+relocatable-x86_64-macos"
