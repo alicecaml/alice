@@ -6,6 +6,7 @@ let curl env ~url ~output_file =
   let args =
     [ "-L" (* --location: Handle the case when a page has moved. *)
     ; "-S" (* --show-error: Show an error when the download fails. *)
+    ; "-#" (* --progress-bar: Show a progress bar *)
     ; "-o" (* --output: Store the result in a file *)
     ; Absolute_path.to_filename output_file
     ; "--"
