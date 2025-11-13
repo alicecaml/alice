@@ -72,7 +72,7 @@ module Remote_tarballs = struct
   let all { compiler; ocamllsp; ocamlformat } = [ compiler; ocamllsp; ocamlformat ]
 
   let url_base_5_3_1 =
-    "https://s3.g.s4.mega.io/ycsnsngpe2elgjdd2uzbdpyj6s54q5itlvy6g/alice/tools/5.3.1/"
+    "https://github.com/alicecaml/alice-tools/releases/download/5.3.1+relocatable/"
   ;;
 
   (* Just hard-code these for now to keep things simple! *)
