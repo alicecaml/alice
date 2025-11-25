@@ -2,8 +2,8 @@
 
 [![test](https://github.com/alicecaml/alice/actions/workflows/test.yml/badge.svg)](https://github.com/alicecaml/alice/actions/workflows/test.yml)
 
-Alice is a radical, experimental OCaml build system, package manager, and
-toolchain manager for Windows, macOS, and Linux. Its goal is to allow anyone to
+[Alice](https://www.alicecaml.org) is a radical, experimental OCaml build
+system, package manager, and toolchain manager. Its goal is to allow anyone to
 program in OCaml with as little friction as possible.
 
 Its name comes from an [Australian children's
