@@ -7,6 +7,12 @@
 - Switch to github for hosting tool archives.
 - Display progress bar while downloading tools.
 
+## 0.1.2
+
+### Added
+
+- Release a zip archive on windows with just alice.exe
+
 ## 0.1.1
 
 ### Fixed
