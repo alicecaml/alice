@@ -67,10 +67,11 @@ jobs:
           scripts/generate_minified_bash_completion_script.sh > "$env:ALICE_OUT_NAME/share/bash-completion/completions/alice"
       - run: Copy-Item extra/alice-bin/* "$env:ALICE_OUT_NAME"
       - run: tar czf "$env:ALICE_OUT_NAME.tar.gz" "$env:ALICE_OUT_NAME"
+      - run: Compress-Archive -Path "_build\install\default\bin\alice.exe" -DestinationPath "$env:ALICE_OUT_NAME.zip" -Force
       - uses: ncipollo/release-action@v1
         with:
           allowUpdates: true
-          artifacts: "*.tar.gz"
+          artifacts: "*.tar.gz,*.zip"
 
   release-unix:
     name: Build for ${{ matrix.name }}
