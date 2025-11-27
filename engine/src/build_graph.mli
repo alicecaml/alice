@@ -29,19 +29,5 @@ val create
 
 val plan_exe : (true_t, _) t -> Build_plan.t
 val plan_lib : (_, true_t) t -> Build_plan.t
-
-val create_exe_plan
-  :  (true_t, _) Package.Typed.t
-  -> Build_dir.t
-  -> Alice_env.Os_type.t
-  -> Alice_which.Ocaml_compiler.t
-  -> Build_plan.t
-
-val create_lib_plan
-  :  (_, true_t) Package.Typed.t
-  -> Build_dir.t
-  -> Alice_env.Os_type.t
-  -> Alice_which.Ocaml_compiler.t
-  -> Build_plan.t
-
+val plan_lsp : (_, true_t) t -> Build_plan.t
 val dot : (_, _) t -> string

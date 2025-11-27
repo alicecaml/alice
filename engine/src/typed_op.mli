@@ -2,17 +2,28 @@ open! Alice_stdlib
 open Alice_hierarchy
 
 module Visibility : sig
+  (** How a compiled file will be visible to other files during compilation.
+      Note that this is orthogonal to OCaml's own visibility mechanism via .mli
+      files. Each of these visibility levels corresponds to a directory in a
+      package's build directory. *)
   type t =
     | Public
     | Private
+    | Public_for_lsp
 end
 
 module Generated_file : sig
   module Compiled : sig
     type t
 
+    val equal : t -> t -> bool
     val path : t -> Basename.t
     val visibility : t -> Visibility.t
+    val lib_cmx : t
+    val lib_cmi : t
+
+    (** Rename the file, preserving its extension. *)
+    val rename : t -> name_without_extension:string -> Visibility.t -> t
   end
 
   module Linked_library : sig
@@ -36,6 +47,9 @@ module Generated_file : sig
   module Map : Map.S with type key = t
 
   val path : t -> Basename.t
+  val lib_cmx : t
+  val lib_cmi : t
+  val cmt_for_lsp : Alice_package.Package_name.t -> t
 end
 
 module File_type : sig
@@ -43,6 +57,8 @@ module File_type : sig
   type mli
   type cmx
   type cmi
+  type cmt
+  type cmti
   type o
   type exe
   type a
@@ -77,6 +93,9 @@ module File : sig
     val cmx_private : Basename.t -> cmx t
     val cmi_private : Basename.t -> cmi t
     val o_private : Basename.t -> o t
+    val cmt_public_for_lsp : Basename.t -> cmt t
+    val cmti_public_for_lsp : Basename.t -> cmti t
+    val cmi_public_for_lsp : Basename.t -> cmi t
 
     val of_path_by_extension_private
       :  Basename.t
@@ -88,6 +107,13 @@ module File : sig
     val generated_file_compiled : _ t -> Generated_file.Compiled.t
     val lib_cmx : cmx t
     val exe_cmx : cmx t
+    val rename : 'a t -> name_without_extension:string -> Visibility.t -> 'a t
+
+    (** The .o file with the same name as a .cmx file (besides its extension)
+        with the same visibility. *)
+    val o_of_cmx : cmx t -> o t
+
+    val visibility : _ t -> Visibility.t
   end
 
   module Linked : sig
@@ -117,8 +143,8 @@ module Compile_source : sig
     { source_input : ml File.Source.t
     ; compiled_inputs : Generated_file.Compiled.t list
     ; cmx_output : cmx File.Compiled.t
-    ; o_output : o File.Compiled.t
     ; interface_output_if_no_matching_mli_is_present : cmi File.Compiled.t option
+    ; stop_after_typing : bool
     }
 end
 
@@ -127,6 +153,7 @@ module Compile_interface : sig
     { interface_input : mli File.Source.t
     ; compiled_inputs : Generated_file.Compiled.t list
     ; cmi_output : cmi File.Compiled.t
+    ; stop_after_typing : bool
     }
 end
 
@@ -147,7 +174,6 @@ module Compile_public_interface_to_open : sig
     ; internal_modules_pack : Pack.t
     ; cmx_output : cmx File.Compiled.t
     ; cmi_output : cmi File.Compiled.t
-    ; o_output : o File.Compiled.t
     }
 
   val create

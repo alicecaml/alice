@@ -33,6 +33,10 @@ let package_public_dir t package_id profile =
   package_base_dir t package_id profile / Basename.of_filename "public"
 ;;
 
+let package_public_for_lsp_dir t package_id profile =
+  package_base_dir t package_id profile / Basename.of_filename "public_for_lsp"
+;;
+
 let package_executable_dir t package_id profile =
   package_base_dir t package_id profile / Basename.of_filename "executable"
 ;;
@@ -40,6 +44,7 @@ let package_executable_dir t package_id profile =
 let package_dirs t package_id profile =
   [ package_generated_source_dir t package_id profile
   ; package_public_dir t package_id profile
+  ; package_public_for_lsp_dir t package_id profile
   ; package_private_dir t package_id profile
   ; package_executable_dir t package_id profile
   ]
@@ -51,6 +56,7 @@ let package_generated_file_compiled t package_id profile compiled =
     match Compiled.visibility compiled with
     | Private -> package_private_dir t package_id profile
     | Public -> package_public_dir t package_id profile
+    | Public_for_lsp -> package_public_for_lsp_dir t package_id profile
   in
   base / Compiled.path compiled
 ;;

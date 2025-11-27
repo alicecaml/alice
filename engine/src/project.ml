@@ -39,9 +39,12 @@ let build_single_package
   let build_plans =
     match Package.Typed.type_ package_typed with
     | Exe_only -> [ Build_graph.plan_exe build_graph ]
-    | Lib_only -> [ Build_graph.plan_lib build_graph ]
+    | Lib_only -> [ Build_graph.plan_lib build_graph; Build_graph.plan_lsp build_graph ]
     | Exe_and_lib ->
-      [ Build_graph.plan_lib build_graph; Build_graph.plan_exe build_graph ]
+      [ Build_graph.plan_lib build_graph
+      ; Build_graph.plan_lsp build_graph
+      ; Build_graph.plan_exe build_graph
+      ]
   in
   Scheduler.Sequential.eval_build_plans
     build_plans

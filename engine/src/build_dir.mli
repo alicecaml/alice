@@ -17,6 +17,19 @@ val package_generated_source_dir
 
 val package_private_dir : t -> Package_id.t -> Profile.t -> Absolute_path.non_root_t
 val package_public_dir : t -> Package_id.t -> Profile.t -> Absolute_path.non_root_t
+
+(** Directory for files generated for consumption by LSP. If package internals
+    were made visible to LSP then it would suggest completions that aren't
+    valid due to package hygiene. Instead, just the public interface to a
+    library is made visible to LSP by way of this directory. The regular public
+    directory can't be used for this purpose because of the generated public
+    interface. *)
+val package_public_for_lsp_dir
+  :  t
+  -> Package_id.t
+  -> Profile.t
+  -> Absolute_path.non_root_t
+
 val package_executable_dir : t -> Package_id.t -> Profile.t -> Absolute_path.non_root_t
 val package_dirs : t -> Package_id.t -> Profile.t -> Absolute_path.non_root_t list
 

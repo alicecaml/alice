@@ -91,6 +91,9 @@ let op_action op package_with_deps profile build_dir ocaml_compiler =
   let package_id = Package.id package in
   let private_ = Build_dir.package_private_dir build_dir package_id profile in
   let public = Build_dir.package_public_dir build_dir package_id profile in
+  let public_for_lsp =
+    Build_dir.package_public_for_lsp_dir build_dir package_id profile
+  in
   let compiled_absolute_filename compiled =
     let compiled = Typed_op.File.Compiled.generated_file_compiled compiled in
     Build_dir.package_generated_file_compiled build_dir package_id profile compiled
@@ -98,8 +101,37 @@ let op_action op package_with_deps profile build_dir ocaml_compiler =
   in
   let executable = Build_dir.package_executable_dir build_dir package_id profile in
   let package_pack = Typed_op.Pack.of_package_name (Package.name package) in
+  let stop_after_typing_args = [ "-stop-after"; "typing" ] in
   match (op : Typed_op.t) with
-  | Compile_source { source_input; cmx_output; _ } ->
+  | Compile_source { source_input; cmx_output; stop_after_typing; _ } ->
+    let stop_after_typing_args =
+      if stop_after_typing then stop_after_typing_args else []
+    in
+    let lsp_output_args =
+      match Typed_op.File.Compiled.visibility cmx_output with
+      | Public_for_lsp ->
+        [ (* Open this package's own internal module pack so modules with the same name
+             as the package are still visible when generating a different (and largely
+             unrelated!) module also named after the package. *)
+          "-open"
+        ; Module_name.internal_modules (Package.name package)
+          |> Module_name.to_string_uppercase_first_letter
+        ; (* The package's own public directory must be part of the search
+             path so its internal module package can be opened. *)
+          "-I"
+        ; Absolute_path.to_filename public
+        ; (* Include the public_for_lsp directory in the search path so packages
+             with a lib.mli file can have their <package>.cmx file compiled
+             against an already-existing <package>.cmi file in public_for_lsp. *)
+          "-I"
+        ; Absolute_path.to_filename public_for_lsp
+        ]
+      | _ ->
+        [ "-for-pack"
+        ; Typed_op.Pack.module_name package_pack
+          |> Module_name.to_string_uppercase_first_letter
+        ]
+    in
     Action.Command
       (Profile.ocaml_compiler_command
          profile
@@ -107,19 +139,30 @@ let op_action op package_with_deps profile build_dir ocaml_compiler =
          ~args:
            (lib_include_args
             @ lib_open_args
+            @ stop_after_typing_args
+            @ lsp_output_args
             @ [ "-I"
               ; Absolute_path.to_filename private_
               ; "-c"
               ; "-bin-annot" (* Needed for LSP *)
-              ; "-for-pack"
-              ; Typed_op.Pack.module_name package_pack
-                |> Module_name.to_string_uppercase_first_letter
               ; "-o"
               ; compiled_absolute_filename cmx_output
               ; "-impl"
               ; Absolute_path.to_filename @@ Source.path source_input
               ]))
-  | Compile_interface { interface_input; cmi_output; _ } ->
+  | Compile_interface { interface_input; cmi_output; stop_after_typing; _ } ->
+    let stop_after_typing_args =
+      if stop_after_typing then stop_after_typing_args else []
+    in
+    let lsp_output_args =
+      match Typed_op.File.Compiled.visibility cmi_output with
+      | Public_for_lsp -> []
+      | _ ->
+        [ "-for-pack"
+        ; Typed_op.Pack.module_name package_pack
+          |> Module_name.to_string_uppercase_first_letter
+        ]
+    in
     Command
       (Profile.ocaml_compiler_command
          profile
@@ -127,13 +170,12 @@ let op_action op package_with_deps profile build_dir ocaml_compiler =
          ~args:
            (lib_include_args
             @ lib_open_args
+            @ stop_after_typing_args
+            @ lsp_output_args
             @ [ "-I"
               ; Absolute_path.to_filename private_
               ; "-c"
               ; "-bin-annot" (* Needed for LSP *)
-              ; "-for-pack"
-              ; Typed_op.Pack.module_name package_pack
-                |> Module_name.to_string_uppercase_first_letter
               ; "-o"
               ; compiled_absolute_filename cmi_output
               ; "-intf"
