@@ -1,0 +1,63 @@
+diff --git i/dune.lock/lock.dune w/dune.lock/lock.dune
+index fb60208..e5c012d 100644
+--- i/dune.lock/lock.dune
++++ w/dune.lock/lock.dune
+@@ -17,16 +17,16 @@
+ (solved_for_platforms
+  ((arch x86_64)
+   (os linux)
+-  (sys-ocaml-version 5.3.1+relocatable))
++  (sys-ocaml-version %%COMPILER_VERSION%%))
+  ((arch arm64)
+   (os linux)
+-  (sys-ocaml-version 5.3.1+relocatable))
++  (sys-ocaml-version %%COMPILER_VERSION%%))
+  ((arch x86_64)
+   (os macos)
+-  (sys-ocaml-version 5.3.1+relocatable))
++  (sys-ocaml-version %%COMPILER_VERSION%%))
+  ((arch arm64)
+   (os macos)
+-  (sys-ocaml-version 5.3.1+relocatable))
++  (sys-ocaml-version %%COMPILER_VERSION%%))
+  ((arch x86_64)
+   (os win32)
+-  (sys-ocaml-version 5.3.1+relocatable)))
++  (sys-ocaml-version %%COMPILER_VERSION%%)))
+diff --git i/dune.lock/ocaml-system.5.3.1+relocatable.pkg w/dune.lock/ocaml-system.5.3.1+relocatable.pkg
+index 752572d..5ee08d1 100644
+--- i/dune.lock/ocaml-system.5.3.1+relocatable.pkg
++++ w/dune.lock/ocaml-system.5.3.1+relocatable.pkg
+@@ -1,12 +1 @@
+-(version 5.3.1+relocatable)
+-
+-(build
+- (all_platforms ((action (run ocaml gen_ocaml_config.ml)))))
+-
+-(extra_sources
+- (gen_ocaml_config.ml
+-  (fetch
+-   (url
+-    https://raw.githubusercontent.com/alicecaml/alice-opam-repo/refs/heads/main/packages/ocaml-system/ocaml-system.5.3.1%2Brelocatable/gen_ocaml_config.ml)
+-   (checksum
+-    sha256=8b09a982824d7f2407867c24a7609eafc3eb57a19bcc5c66330a629f0d68e468))))
++(version %%COMPILER_VERSION%%)
+diff --git i/dune.lock/ocaml.5.3.1+relocatable.pkg w/dune.lock/ocaml.5.3.1+relocatable.pkg
+index d30db21..b4ec95d 100644
+--- i/dune.lock/ocaml.5.3.1+relocatable.pkg
++++ w/dune.lock/ocaml.5.3.1+relocatable.pkg
+@@ -1,4 +1,4 @@
+-(version 5.3.1+relocatable)
++(version %%COMPILER_VERSION%%)
+ 
+ (build
+  (all_platforms
+@@ -10,7 +10,7 @@
+      (run
+       ocaml
+       %{pkg:ocaml-config:share}/gen_ocaml_config.ml
+-      5.3.1
++      %%COMPILER_VERSION%%
+       %{pkg-self:name}))))))
+ 
+ (depends

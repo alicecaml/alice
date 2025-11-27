@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.3
+
+### Added
+
+- Add a patch that replaces the locked compiler version with a template string to simplify packaging
+
 ## 0.1.2
 
 ### Added
