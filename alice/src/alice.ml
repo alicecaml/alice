@@ -2,7 +2,7 @@ open! Alice_stdlib
 open Climate
 module Tools = Tools
 
-let version = "0.1.2"
+let version = "0.1.3"
 
 let command =
   let default_arg_parser =
