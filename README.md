@@ -3,8 +3,9 @@
 [![test](https://github.com/alicecaml/alice/actions/workflows/test.yml/badge.svg)](https://github.com/alicecaml/alice/actions/workflows/test.yml)
 
 [Alice](https://www.alicecaml.org) is a radical, experimental OCaml build
-system, package manager, and toolchain manager. Its goal is to allow anyone to
-program in OCaml with as little friction as possible.
+system, package manager, and toolchain manager for Windows and Unix-based OSes.
+Its goal is to allow anyone to program in OCaml with as little friction as
+possible.
 
 Its name comes from an [Australian children's
 song](https://www.youtube.com/watch?v=XM7Jnetdf0I).
@@ -32,20 +33,7 @@ build real OCaml projects at this time, and instead I recommend using
 
 ## Installation
 
-A binary release of Alice can be downloaded from its [releases
-page](https://github.com/alicecaml/alice/releases).
-Download the archive appropriate to your platform,
-extract it, and copy the contained `bin/alice` (or `bin/alice.exe` on
-Windows) to a directory listed in your `PATH` variable.
-
-Alternatively, on Linux and macOS you can run this install script to
-automatically install the latest stable binary release for your platform, and
-follow the prompts:
-```sh
-curl -fsSL https://alicecaml.org/install.sh | sh
-```
-
-Nix users can install Alice with the flake `github:alicecaml/alice`.
+Follow the installation instructions [here](https://www.alicecaml.org/install/).
 
 ### OCaml Toolchain
 
