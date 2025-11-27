@@ -15,6 +15,7 @@
           paths = with pkgs; [
             ocaml
             ocamlPackages.ocaml-lsp
+            ocamlPackages.dot-merlin-reader
             ocamlformat_0_27_0
           ];
         };

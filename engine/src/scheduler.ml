@@ -110,6 +110,7 @@ let op_action op package_with_deps profile build_dir ocaml_compiler =
             @ [ "-I"
               ; Absolute_path.to_filename private_
               ; "-c"
+              ; "-bin-annot" (* Needed for LSP *)
               ; "-for-pack"
               ; Typed_op.Pack.module_name package_pack
                 |> Module_name.to_string_uppercase_first_letter
@@ -129,6 +130,7 @@ let op_action op package_with_deps profile build_dir ocaml_compiler =
             @ [ "-I"
               ; Absolute_path.to_filename private_
               ; "-c"
+              ; "-bin-annot" (* Needed for LSP *)
               ; "-for-pack"
               ; Typed_op.Pack.module_name package_pack
                 |> Module_name.to_string_uppercase_first_letter

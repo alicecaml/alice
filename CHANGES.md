@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+- Generate files necessary to support ocamllsp.
+
 ### Changed
 
 - Switch to github for hosting tool archives.
