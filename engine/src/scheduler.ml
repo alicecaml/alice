@@ -102,6 +102,27 @@ let op_action op package_with_deps profile build_dir ocaml_compiler =
   let executable = Build_dir.package_executable_dir build_dir package_id profile in
   let package_pack = Typed_op.Pack.of_package_name (Package.name package) in
   let stop_after_typing_args = [ "-stop-after"; "typing" ] in
+  let compile_args_common_not_lsp =
+    [ "-I"
+    ; Absolute_path.to_filename private_
+    ; "-for-pack"
+    ; Typed_op.Pack.module_name package_pack
+      |> Module_name.to_string_uppercase_first_letter
+    ]
+  in
+  let compile_args_common_lsp =
+    [ (* Open this package's own internal module pack so modules with the same name
+         as the package are still visible when generating a different (and largely
+         unrelated!) module also named after the package. *)
+      "-open"
+    ; Module_name.internal_modules (Package.name package)
+      |> Module_name.to_string_uppercase_first_letter
+    ; (* The package's own public directory must be part of the search
+         path so its internal module package can be opened. *)
+      "-I"
+    ; Absolute_path.to_filename public
+    ]
+  in
   match (op : Typed_op.t) with
   | Compile_source { source_input; cmx_output; stop_after_typing; _ } ->
     let stop_after_typing_args =
@@ -110,27 +131,14 @@ let op_action op package_with_deps profile build_dir ocaml_compiler =
     let lsp_output_args =
       match Typed_op.File.Compiled.visibility cmx_output with
       | Public_for_lsp ->
-        [ (* Open this package's own internal module pack so modules with the same name
-             as the package are still visible when generating a different (and largely
-             unrelated!) module also named after the package. *)
-          "-open"
-        ; Module_name.internal_modules (Package.name package)
-          |> Module_name.to_string_uppercase_first_letter
-        ; (* The package's own public directory must be part of the search
-             path so its internal module package can be opened. *)
-          "-I"
-        ; Absolute_path.to_filename public
-        ; (* Include the public_for_lsp directory in the search path so packages
-             with a lib.mli file can have their <package>.cmx file compiled
-             against an already-existing <package>.cmi file in public_for_lsp. *)
-          "-I"
-        ; Absolute_path.to_filename public_for_lsp
-        ]
-      | _ ->
-        [ "-for-pack"
-        ; Typed_op.Pack.module_name package_pack
-          |> Module_name.to_string_uppercase_first_letter
-        ]
+        compile_args_common_lsp
+        @ [ (* Include the public_for_lsp directory in the search path so packages
+               with a lib.mli file can have their <package>.cmx file compiled
+               against an already-existing <package>.cmi file in public_for_lsp. *)
+            "-I"
+          ; Absolute_path.to_filename public_for_lsp
+          ]
+      | _ -> compile_args_common_not_lsp
     in
     Action.Command
       (Profile.ocaml_compiler_command
@@ -141,9 +149,7 @@ let op_action op package_with_deps profile build_dir ocaml_compiler =
             @ lib_open_args
             @ stop_after_typing_args
             @ lsp_output_args
-            @ [ "-I"
-              ; Absolute_path.to_filename private_
-              ; "-c"
+            @ [ "-c"
               ; "-bin-annot" (* Needed for LSP *)
               ; "-o"
               ; compiled_absolute_filename cmx_output
@@ -156,23 +162,8 @@ let op_action op package_with_deps profile build_dir ocaml_compiler =
     in
     let lsp_output_args =
       match Typed_op.File.Compiled.visibility cmi_output with
-      | Public_for_lsp ->
-        [ (* Open this package's own internal module pack so modules with the same name
-             as the package are still visible when generating a different (and largely
-             unrelated!) module also named after the package. *)
-          "-open"
-        ; Module_name.internal_modules (Package.name package)
-          |> Module_name.to_string_uppercase_first_letter
-        ; (* The package's own public directory must be part of the search
-             path so its internal module package can be opened. *)
-          "-I"
-        ; Absolute_path.to_filename public
-        ]
-      | _ ->
-        [ "-for-pack"
-        ; Typed_op.Pack.module_name package_pack
-          |> Module_name.to_string_uppercase_first_letter
-        ]
+      | Public_for_lsp -> compile_args_common_lsp
+      | _ -> compile_args_common_not_lsp
     in
     Command
       (Profile.ocaml_compiler_command
@@ -183,9 +174,7 @@ let op_action op package_with_deps profile build_dir ocaml_compiler =
             @ lib_open_args
             @ stop_after_typing_args
             @ lsp_output_args
-            @ [ "-I"
-              ; Absolute_path.to_filename private_
-              ; "-c"
+            @ [ "-c"
               ; "-bin-annot" (* Needed for LSP *)
               ; "-o"
               ; compiled_absolute_filename cmi_output
