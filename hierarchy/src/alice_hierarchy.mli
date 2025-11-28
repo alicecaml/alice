@@ -91,6 +91,7 @@ module Absolute_path : sig
   val parent : non_root_t -> Root_or_non_root.t
   val basename : non_root_t -> Basename.t
   val is_root : 'is_root t -> 'is_root Type_bool.t
+  val chop_prefix : _ t -> prefix:_ t -> Relative_path.t
 end
 
 module Either_path : sig

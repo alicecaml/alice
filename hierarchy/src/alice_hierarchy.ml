@@ -161,6 +161,11 @@ module Absolute_path = struct
     | Non_root _ -> False
   ;;
 
+  let chop_prefix t ~prefix =
+    let filename = Filename.chop_prefix (to_filename t) ~prefix:(to_filename prefix) in
+    Relative_path.of_filename filename
+  ;;
+
   module Non_root = struct
     type t = non_root_t
 

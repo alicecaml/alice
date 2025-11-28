@@ -23,6 +23,17 @@ let of_package package =
   { build_dir; package }
 ;;
 
+let dot_merlin_path { package; _ } =
+  Absolute_path.Root_or_non_root.concat_basename
+    (Package.root package)
+    Dot_merlin.basename
+;;
+
+let write_dot_merlin t root_package_with_deps profile =
+  let text = Dot_merlin.dot_merlin_text root_package_with_deps t.build_dir profile in
+  File_ops.write_text_file (dot_merlin_path t) text
+;;
+
 let build_single_package
   : type exe lib.
     t
@@ -108,6 +119,7 @@ let build_dependency_graph t dependency_graph profile os_type ocaml_compiler =
 
 let build_package_typed t package_typed profile ocaml_compiler =
   let dependency_graph = Dependency_graph.compute package_typed in
+  write_dot_merlin t (Dependency_graph.root_package_with_deps dependency_graph) profile;
   build_dependency_graph t dependency_graph profile ocaml_compiler
 ;;
 
