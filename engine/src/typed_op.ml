@@ -675,9 +675,7 @@ let outputs = function
       { cmx_output; interface_output_if_no_matching_mli_is_present; stop_after_typing; _ }
     ->
     (if stop_after_typing then [] else [ File.Compiled.generated_file cmx_output ])
-    @ [ File.Compiled.cmt_of_cmx cmx_output |> File.Compiled.generated_file
-      ; File.Compiled.o_of_cmx cmx_output |> File.Compiled.generated_file
-      ]
+    @ [ File.Compiled.cmt_of_cmx cmx_output |> File.Compiled.generated_file ]
     @ (Option.map
          interface_output_if_no_matching_mli_is_present
          ~f:File.Compiled.generated_file
