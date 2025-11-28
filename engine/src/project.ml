@@ -34,6 +34,23 @@ let write_dot_merlin t root_package_with_deps profile =
   File_ops.write_text_file (dot_merlin_path t) text
 ;;
 
+module Dot_gitignore = struct
+  let path root =
+    Absolute_path.Root_or_non_root.concat_basename
+      root
+      (Basename.of_filename ".gitignore")
+  ;;
+
+  let text () =
+    let files = [ build_dir_path_relative_to_project_root; Dot_merlin.basename ] in
+    List.map files ~f:Basename.to_filename |> String.concat ~sep:"\n"
+  ;;
+
+  let write root = File_ops.write_text_file (path root) (text ())
+end
+
+let write_dot_gitignore = Dot_gitignore.write
+
 let build_single_package
   : type exe lib.
     t
