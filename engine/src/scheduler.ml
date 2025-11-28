@@ -156,7 +156,18 @@ let op_action op package_with_deps profile build_dir ocaml_compiler =
     in
     let lsp_output_args =
       match Typed_op.File.Compiled.visibility cmi_output with
-      | Public_for_lsp -> []
+      | Public_for_lsp ->
+        [ (* Open this package's own internal module pack so modules with the same name
+             as the package are still visible when generating a different (and largely
+             unrelated!) module also named after the package. *)
+          "-open"
+        ; Module_name.internal_modules (Package.name package)
+          |> Module_name.to_string_uppercase_first_letter
+        ; (* The package's own public directory must be part of the search
+             path so its internal module package can be opened. *)
+          "-I"
+        ; Absolute_path.to_filename public
+        ]
       | _ ->
         [ "-for-pack"
         ; Typed_op.Pack.module_name package_pack
