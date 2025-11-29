@@ -1,0 +1,18 @@
+open! Alice_stdlib
+
+type t
+
+val aarch64_linux_musl_static_5_3_1 : t
+val aarch64_linux_gnu_5_3_1 : t
+val aarch64_macos_5_3_1 : t
+val x86_64_linux_musl_static_5_3_1 : t
+val x86_64_linux_gnu_5_3_1 : t
+val x86_64_macos_5_3_1 : t
+val x86_64_windows_5_3_1 : t
+val get_all : t -> Alice_stdlib.Env.t -> dst:'a Alice_hierarchy.Absolute_path.t -> unit
+
+val get_compiler
+  :  t
+  -> Alice_stdlib.Env.t
+  -> dst:'a Alice_hierarchy.Absolute_path.t
+  -> unit
