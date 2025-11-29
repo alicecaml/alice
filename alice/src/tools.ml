@@ -53,8 +53,8 @@ module Root = struct
       Alice_io.File_ops.mkdir_p dst;
       let remote_tarballs = choose_remote_tarballs t ~target in
       if compiler_only
-      then Remote_tarballs.get_compiler remote_tarballs env ~dst
-      else Remote_tarballs.get_all remote_tarballs env ~dst
+      then Remote_tarballs.install_compiler remote_tarballs env ~dst
+      else Remote_tarballs.install_all remote_tarballs env ~dst
     in
     match (global : Absolute_path.Root_or_non_root.t option) with
     | Some (`Non_root dst) -> install_to dst

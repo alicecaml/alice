@@ -36,7 +36,7 @@ module Remote_tarball = struct
         ]
   ;;
 
-  let get { name; version; url_base; url_file; top_level_dir; sha256 } env ~dst =
+  let install { name; version; url_base; url_file; top_level_dir; sha256 } env ~dst =
     let url = String.cat url_base url_file in
     let open Alice_ui in
     Temp_dir.with_ ~prefix:"alice." ~suffix:".tools" ~f:(fun dir ->
@@ -294,5 +294,8 @@ let x86_64_windows_5_3_1 =
   }
 ;;
 
-let get_all t env ~dst = List.iter (all t) ~f:(fun rt -> Remote_tarball.get rt env ~dst)
-let get_compiler { compiler; _ } env ~dst = Remote_tarball.get compiler env ~dst
+let install_all t env ~dst =
+  List.iter (all t) ~f:(fun rt -> Remote_tarball.install rt env ~dst)
+;;
+
+let install_compiler { compiler; _ } env ~dst = Remote_tarball.install compiler env ~dst
