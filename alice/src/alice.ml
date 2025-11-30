@@ -5,14 +5,24 @@ module Tools = Tools
 let version = "0.2.0-rc1"
 
 let command =
+  let tagline = "Alice is a build system for OCaml projects." in
   let default_arg_parser =
     let open Arg_parser in
     let+ version_ = flag [ "version" ] ~doc:"Print the version and exit." in
-    if version_ then print_endline (sprintf "Alice %s" version)
+    if version_
+    then print_endline (sprintf "Alice %s" version)
+    else (
+      print_endline
+        (sprintf
+           {|%s
+
+Run `alice --help` for usage information.|}
+           tagline);
+      exit 1)
   in
   let open Command in
   group
-    ~doc:"Alice is a build system for OCaml projects."
+    ~doc:tagline
     ~default_arg_parser
     [ Build.subcommand
     ; Clean.subcommand
