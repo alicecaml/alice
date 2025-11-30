@@ -70,18 +70,9 @@ internal completions bash`. Store the output in a file and source it from your
 shell to install completion scripts. Currently only bash and zsh (via bash
 compatibility) are supported.
 
-### Nix
+### Language Server Protocol (LSP)
 
-Install Alice with the flake `github:alicecaml/alice`. The default package in
-that flake contains the `alice` executable as well as an OCaml toolchain,
-`ocamllsp`, and `ocamlformat`. There's also a package named `alice` with just
-the `alice` executable, and a package with `tools` with just the tools
-excluding `alice`.
-
-For example to enter a transient shell with `alice` and all the OCaml tools, run:
-```
-nix shell github:alicecaml/alice
-```
+Read about how to use LSP in Alice projects [here](https://www.alicecaml.org/lsp/).
 
 ## Tutorial
 
