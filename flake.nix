@@ -47,7 +47,7 @@
         ];
         aliceMin = pkgs.ocamlPackages.buildDunePackage {
           pname = "alice";
-          version = "0.1-dev";
+          version = "0.2-dev";
           src = ./.;
           buildInputs = deps;
         };
