@@ -29,3 +29,7 @@ end
     ([Deps.inputs]). Returned paths are relative to the directory containing
     [file]. *)
 val depends_native : t -> Absolute_path.non_root_t -> Deps.t
+
+(** Returns the "standard_library" path from the output of running the compiler
+    with "-config". *)
+val standard_library : t -> Absolute_path.non_root_t
