@@ -4,6 +4,7 @@ open Climate
 module File_ops = Alice_io.File_ops
 open Alice_error
 open Alice_package
+module Project = Alice_engine.Project
 
 let make_project name path kind =
   let src_path = Absolute_path.Root_or_non_root.concat_basename path Package.src in
@@ -45,17 +46,19 @@ let make_project name path kind =
       ~dependencies:None
   in
   File_ops.mkdir_p src_path;
-  Alice_engine.Project.write_dot_gitignore path;
+  (match kind with
+   | `Exe ->
+     File_ops.write_text_file
+       (src_path / Package.exe_root_ml)
+       "let () = print_endline \"Hello, World!\""
+   | `Lib ->
+     File_ops.write_text_file
+       (src_path / Package.lib_root_ml)
+       "let add lhs rhs = lhs + rhs");
   Alice_manifest.write_package_manifest ~manifest_path manifest;
-  match kind with
-  | `Exe ->
-    File_ops.write_text_file
-      (src_path / Package.exe_root_ml)
-      "let () = print_endline \"Hello, World!\""
-  | `Lib ->
-    File_ops.write_text_file
-      (src_path / Package.lib_root_ml)
-      "let add lhs rhs = lhs + rhs"
+  let project = Project.of_package (Package.read_root path) in
+  Project.write_dot_merlin_initial project;
+  Project.write_dot_gitignore project
 ;;
 
 let new_ =

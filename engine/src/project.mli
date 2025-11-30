@@ -28,4 +28,5 @@ val dot_build_artifacts
 
 val dot_dependencies : t -> string
 val build_dir_path_relative_to_project_root : Basename.t
-val write_dot_gitignore : Absolute_path.Root_or_non_root.t -> unit
+val write_dot_merlin_initial : t -> unit
+val write_dot_gitignore : t -> unit

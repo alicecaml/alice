@@ -29,6 +29,11 @@ let dot_merlin_path { package; _ } =
     Dot_merlin.basename
 ;;
 
+let write_dot_merlin_initial t =
+  let text = Dot_merlin.dot_merlin_text_initial () in
+  File_ops.write_text_file (dot_merlin_path t) text
+;;
+
 let write_dot_merlin t root_package_with_deps profile =
   let text = Dot_merlin.dot_merlin_text root_package_with_deps t.build_dir profile in
   File_ops.write_text_file (dot_merlin_path t) text
@@ -49,7 +54,7 @@ module Dot_gitignore = struct
   let write root = File_ops.write_text_file (path root) (text ())
 end
 
-let write_dot_gitignore = Dot_gitignore.write
+let write_dot_gitignore { package; _ } = Dot_gitignore.write (Package.root package)
 
 let build_single_package
   : type exe lib.
