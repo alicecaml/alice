@@ -43,9 +43,15 @@ let dot_merlin_text package_with_deps build_dir profile ~ocamllib_path =
     | `Non_root prefix -> to_relative_paths ~prefix
   in
   let source_rel_path = Relative_path.of_basename Alice_package.Package.src in
+  let ocamllib_path_line =
+    (* It's probably more correct to specify the OCaml library path with
+       "FLG -ocamllib-path" however this doesn't seem to work on Windows, so
+       just use a "B" directive instead. *)
+    sprintf "B %s" (Absolute_path.to_filename ocamllib_path)
+  in
   let lines =
     sprintf "S %s" (Relative_path.to_filename source_rel_path)
-    :: sprintf "FLG -ocamllib-path %s" (Absolute_path.to_filename ocamllib_path)
+    :: ocamllib_path_line
     :: List.map build_rel_paths ~f:(fun build_rel_path ->
       sprintf "B %s" (Relative_path.to_filename build_rel_path))
   in
