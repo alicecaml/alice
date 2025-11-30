@@ -4,6 +4,7 @@ open Climate
 
 module Root = struct
   open Alice_io
+  open Remote_tarballs.Root_5_3_1
 
   type t =
     { name : Basename.t
@@ -15,19 +16,14 @@ module Root = struct
     ; remote_tarballs_by_target =
         Target.Map.of_list_exn
           [ ( Target.create ~os:Linux ~arch:Aarch64 ~linked:Static
-            , Remote_tarballs.aarch64_linux_musl_static_5_3_1 )
-          ; ( Target.create ~os:Linux ~arch:Aarch64 ~linked:Dynamic
-            , Remote_tarballs.aarch64_linux_gnu_5_3_1 )
-          ; ( Target.create ~os:Macos ~arch:Aarch64 ~linked:Dynamic
-            , Remote_tarballs.aarch64_macos_5_3_1 )
+            , aarch64_linux_musl_static_5_3_1 )
+          ; Target.create ~os:Linux ~arch:Aarch64 ~linked:Dynamic, aarch64_linux_gnu_5_3_1
+          ; Target.create ~os:Macos ~arch:Aarch64 ~linked:Dynamic, aarch64_macos_5_3_1
           ; ( Target.create ~os:Linux ~arch:X86_64 ~linked:Static
-            , Remote_tarballs.x86_64_linux_musl_static_5_3_1 )
-          ; ( Target.create ~os:Linux ~arch:X86_64 ~linked:Dynamic
-            , Remote_tarballs.x86_64_linux_gnu_5_3_1 )
-          ; ( Target.create ~os:Macos ~arch:X86_64 ~linked:Dynamic
-            , Remote_tarballs.x86_64_macos_5_3_1 )
-          ; ( Target.create ~os:Windows ~arch:X86_64 ~linked:Dynamic
-            , Remote_tarballs.x86_64_windows_5_3_1 )
+            , x86_64_linux_musl_static_5_3_1 )
+          ; Target.create ~os:Linux ~arch:X86_64 ~linked:Dynamic, x86_64_linux_gnu_5_3_1
+          ; Target.create ~os:Macos ~arch:X86_64 ~linked:Dynamic, x86_64_macos_5_3_1
+          ; Target.create ~os:Windows ~arch:X86_64 ~linked:Dynamic, x86_64_windows_5_3_1
           ]
     }
   ;;
