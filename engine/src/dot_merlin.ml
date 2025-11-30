@@ -18,7 +18,7 @@ let dot_merlin_text_initial () =
   sprintf "%s\nS %s" header_comment (Relative_path.to_filename source_rel_path)
 ;;
 
-let dot_merlin_text package_with_deps build_dir profile =
+let dot_merlin_text package_with_deps build_dir profile ~ocamllib_path =
   let build_abs_paths_for_deps =
     Package_with_deps.immediate_deps_in_dependency_order package_with_deps
     |> List.concat_map ~f:(fun dep ->
@@ -45,6 +45,7 @@ let dot_merlin_text package_with_deps build_dir profile =
   let source_rel_path = Relative_path.of_basename Alice_package.Package.src in
   let lines =
     sprintf "S %s" (Relative_path.to_filename source_rel_path)
+    :: sprintf "FLG -ocamllib-path %s" (Absolute_path.to_filename ocamllib_path)
     :: List.map build_rel_paths ~f:(fun build_rel_path ->
       sprintf "B %s" (Relative_path.to_filename build_rel_path))
   in

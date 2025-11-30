@@ -1,4 +1,6 @@
 open! Alice_stdlib
+open Alice_error
+open Alice_hierarchy
 
 type t =
   { filename : Filename.t
@@ -11,9 +13,6 @@ let env { env; _ } = env
 let command { filename; env } ~args = Command.create filename ~args env
 
 module Depend = struct
-  open Alice_hierarchy
-  open Alice_error
-
   let command ocaml_compiler args = command ocaml_compiler ~args:("-depend" :: args)
 
   let run_lines ocaml_compiler args =
@@ -98,3 +97,45 @@ end
 module Deps = Depend.Deps
 
 let depends_native = Depend.native_deps
+
+module Config = struct
+  let command ocaml_compiler = command ocaml_compiler ~args:[ "-config" ]
+
+  let run_lines ocaml_compiler =
+    let command = command ocaml_compiler in
+    match Alice_io.Process.Blocking.run_command_capturing_stdout_lines command with
+    | Ok (status, output) ->
+      Alice_io.Process.Status.panic_unless_exit_0 status;
+      output
+    | Error `Prog_not_available ->
+      user_exn
+        [ Pp.textf
+            "Program %S not found while trynig to run command: %s"
+            (filename ocaml_compiler)
+            (Command.to_string_ignore_env command)
+        ]
+  ;;
+
+  let standard_library ocaml_compiler =
+    let lines = run_lines ocaml_compiler in
+    let path_opt =
+      List.find_map lines ~f:(fun line ->
+        match String.lsplit2 line ~on:' ' with
+        | None -> None
+        | Some (left, right) ->
+          if String.equal left "standard_library:"
+          then Some (Absolute_path.of_filename_assert_non_root right)
+          else None)
+    in
+    match path_opt with
+    | Some path -> path
+    | None ->
+      user_exn
+        [ Pp.textf
+            "No \"stardard_library\" field in output of `%s -config`."
+            ocaml_compiler.filename
+        ]
+  ;;
+end
+
+let standard_library = Config.standard_library
