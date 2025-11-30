@@ -9,5 +9,5 @@
   alice_dag
   alice_package
   alice_which
-  alice_ocamldep
+  alice_ocaml_compiler
   alice_graphviz))

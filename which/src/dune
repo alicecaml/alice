@@ -7,4 +7,5 @@
   alice_io
   alice_log
   alice_install_dir
-  alice_env))
+  alice_env
+  alice_ocaml_compiler))

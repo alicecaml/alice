@@ -1,5 +1,6 @@
 open! Alice_stdlib
 open Alice_package
+open Alice_ocaml_compiler
 
 module Package_built : sig
   type t
@@ -16,7 +17,7 @@ module Sequential : sig
     -> (_, _) Dependency_graph.Package_with_deps.t
     -> Profile.t
     -> Build_dir.t
-    -> Alice_which.Ocaml_compiler.t
+    -> Ocaml_compiler.t
     -> any_dep_rebuilt:bool
     -> Package_built.t
 end

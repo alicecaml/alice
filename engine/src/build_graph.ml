@@ -1,6 +1,7 @@
 open! Alice_stdlib
 open Alice_hierarchy
 open Alice_package
+open Alice_ocaml_compiler
 
 module Build_node = struct
   module Name = Typed_op.Generated_file
@@ -138,7 +139,7 @@ let compilation_ops dir package_id build_dir ocaml_compiler =
   in
   Ocamldep_cache.store ocamldep_cache deps;
   Absolute_path.Non_root_map.to_list deps
-  |> List.map ~f:(fun (source_path, (deps : Alice_ocamldep.Deps.t)) ->
+  |> List.map ~f:(fun (source_path, (deps : Ocaml_compiler.Deps.t)) ->
     let open Typed_op in
     let open Alice_error in
     match File.Source.of_path_by_extension source_path with
@@ -348,7 +349,7 @@ let create
     (exe, lib) Package.Typed.t
     -> Build_dir.t
     -> Alice_env.Os_type.t
-    -> Alice_which.Ocaml_compiler.t
+    -> Ocaml_compiler.t
     -> (exe, lib) t
   =
   fun package_typed build_dir os_type ocaml_compiler ->

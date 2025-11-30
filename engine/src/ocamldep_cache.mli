@@ -1,8 +1,9 @@
 open! Alice_stdlib
 open Alice_hierarchy
 open Alice_package
+open Alice_ocaml_compiler
 
-type dep_table = Alice_ocamldep.Deps.t Absolute_path.Non_root_map.t
+type dep_table = Ocaml_compiler.Deps.t Absolute_path.Non_root_map.t
 
 (** Cache which is serialized in the build directory to avoid running ocamldep
     when it's output is guaranteed to be the same as the previous time it was
@@ -20,6 +21,6 @@ val store : t -> dep_table -> unit
     run in the event of a cache miss. *)
 val get_deps
   :  t
-  -> Alice_which.Ocaml_compiler.t
+  -> Ocaml_compiler.t
   -> source_path:Absolute_path.non_root_t
-  -> Alice_ocamldep.Deps.t
+  -> Ocaml_compiler.Deps.t

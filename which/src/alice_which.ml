@@ -2,17 +2,6 @@ open! Alice_stdlib
 open Alice_hierarchy
 open Alice_env
 
-module Ocaml_compiler = struct
-  type t =
-    { filename : Filename.t
-    ; env : Env.t
-    }
-
-  let filename { filename; _ } = filename
-  let env { env; _ } = env
-  let command { filename; env } ~args = Command.create filename ~args env
-end
-
 let find_in_search_path exe_name search_paths =
   List.find_map search_paths ~f:(fun search_path ->
     let exe_path = Absolute_path.Root_or_non_root.concat_basename search_path exe_name in
@@ -95,5 +84,5 @@ let ocamlopt_name os_type =
 let ocamlopt os_type env =
   let env = add_install_dir_to_path_variable os_type env in
   let filename = try_which os_type env (ocamlopt_name os_type) in
-  { Ocaml_compiler.filename; env }
+  Alice_ocaml_compiler.Ocaml_compiler.create filename env
 ;;
