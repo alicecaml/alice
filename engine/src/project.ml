@@ -4,6 +4,7 @@ open Alice_hierarchy
 open Alice_error
 module File_ops = Alice_io.File_ops
 module Package_with_deps = Dependency_graph.Package_with_deps
+open Alice_ocaml_compiler
 
 type t =
   { build_dir : Build_dir.t
@@ -62,7 +63,7 @@ let build_single_package
     -> (exe, lib) Package_with_deps.t
     -> Profile.t
     -> Alice_env.Os_type.t
-    -> Alice_which.Ocaml_compiler.t
+    -> Ocaml_compiler.t
     -> any_dep_rebuilt:bool
     -> Scheduler.Package_built.t
   =
@@ -190,7 +191,7 @@ let run t profile os_type ocaml_compiler ~args =
     Alice_io.Process.Blocking.run
       exe_filename
       ~args
-      ~env:(Alice_which.Ocaml_compiler.env ocaml_compiler)
+      ~env:(Ocaml_compiler.env ocaml_compiler)
   with
   | Error `Prog_not_available ->
     panic

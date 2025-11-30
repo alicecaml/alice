@@ -3,8 +3,9 @@ open Alice_hierarchy
 open Alice_package
 module File_ops = Alice_io.File_ops
 module Log = Alice_log
+open Alice_ocaml_compiler
 
-type dep_table = Alice_ocamldep.Deps.t Absolute_path.Non_root_map.t
+type dep_table = Ocaml_compiler.Deps.t Absolute_path.Non_root_map.t
 
 type t =
   { dep_table : dep_table
@@ -55,7 +56,7 @@ let get_deps t ocaml_compiler ~source_path =
           "Analyzing dependencies of file: %s"
           (Alice_ui.absolute_path_to_string source_path)
       ];
-    Alice_ocamldep.native_deps ocaml_compiler source_path
+    Ocaml_compiler.depends_native ocaml_compiler source_path
   in
   if source_mtime > t.mtime
   then

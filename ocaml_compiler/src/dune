@@ -1,10 +1,9 @@
 (library
  (package alice)
- (name alice_ocamldep)
+ (name alice_ocaml_compiler)
  (libraries
   alice_stdlib
   alice_error
   alice_hierarchy
   alice_io
-  alice_which
   alice_ui))

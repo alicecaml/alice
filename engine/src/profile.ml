@@ -1,4 +1,5 @@
 open! Alice_stdlib
+open Alice_ocaml_compiler
 
 type t =
   { optimization_level : [ `O2 | `O3 ] option
@@ -11,8 +12,8 @@ let release = { optimization_level = Some `O2; debug = false; name = "release" }
 let name { name; _ } = name
 
 let ocaml_compiler_command t ocaml_compiler ~args =
-  let prog = Alice_which.Ocaml_compiler.filename ocaml_compiler in
-  let env = Alice_which.Ocaml_compiler.env ocaml_compiler in
+  let prog = Ocaml_compiler.filename ocaml_compiler in
+  let env = Ocaml_compiler.env ocaml_compiler in
   let args =
     (if t.debug then [ "-g" ] else [])
     @ (match t.optimization_level with

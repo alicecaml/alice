@@ -1,6 +1,7 @@
 open! Alice_stdlib
 open Alice_package
 open Alice_hierarchy
+open Alice_ocaml_compiler
 open Type_bool
 
 module Build_plan : sig
@@ -24,7 +25,7 @@ val create
   :  ('exe, 'lib) Package.Typed.t
   -> Build_dir.t
   -> Alice_env.Os_type.t
-  -> Alice_which.Ocaml_compiler.t
+  -> Ocaml_compiler.t
   -> ('exe, 'lib) t
 
 val plan_exe : (true_t, _) t -> Build_plan.t
