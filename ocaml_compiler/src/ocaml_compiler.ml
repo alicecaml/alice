@@ -124,7 +124,7 @@ module Config = struct
         | None -> None
         | Some (left, right) ->
           if String.equal left "standard_library:"
-          then Some (Absolute_path.of_filename_assert_non_root right)
+          then Some (String.trim right |> Absolute_path.of_filename_assert_non_root)
           else None)
     in
     match path_opt with
