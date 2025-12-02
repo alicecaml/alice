@@ -1,5 +1,6 @@
 {
-  description = "Alice";
+  description =
+    "Alice is a radical, experimental OCaml build system, package manager, and toolchain manager for Windows and Unix-based OSes.";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
