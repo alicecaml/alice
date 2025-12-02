@@ -30,7 +30,7 @@ jobs:
       - run: Remove-Item -Recurse -Force "$env:DUNE_NAME.tar.gz"
 
       # Install Alice (used to bootstrap environment)
-      - run: echo ALICE_IN_VERSION="0.0.0" >> $env:GITHUB_ENV
+      - run: echo ALICE_IN_VERSION="0.3.0-alpha2" >> $env:GITHUB_ENV
       - run: echo ALICE_IN_NAME="alice-$env:ALICE_IN_VERSION-x86_64-windows" >> $env:GITHUB_ENV
       - run: echo "https://github.com/alicecaml/alice/releases/download/$env:ALICE_IN_VERSION/$env:ALICE_IN_NAME.tar.gz"
       - run: curl -fsSL --output "$env:ALICE_IN_NAME.tar.gz" "https://github.com/alicecaml/alice/releases/download/$env:ALICE_IN_VERSION/$env:ALICE_IN_NAME.tar.gz"
@@ -50,7 +50,6 @@ jobs:
 
       # Save the environment so we can remove the root from $Env:Path after building.
       - run: cat "$env:GITHUB_PATH" > old-path.txt
-      - run: echo "$HOME\.alice\current\bin" >> $env:GITHUB_PATH
       - run: echo "$HOME\.local\share\alice\current\bin" >> $env:GITHUB_PATH
 
       # Build the project
@@ -101,19 +100,19 @@ jobs:
       - run: echo $HOME/.local/bin >> $GITHUB_PATH
 
       # Install Dune
-      - run: curl -fsSL https://github.com/ocaml-dune/dune-bin-install/releases/download/v2/install.sh | sh -s 3.20.1 --install-root $HOME/.local --no-update-shell-config
+      - run: curl -fsSL https://github.com/ocaml-dune/dune-bin-install/releases/download/v3/install.sh | sh -s 3.20.2 --install-root $HOME/.local --no-update-shell-config
       - run: which dune
       - run: dune --version
 
       # Install OCaml
-      - run: curl -fsSL https://alicecaml.org/install.sh | sh -s -- 0.0.0 --no-prompt --install-tools --no-update-shell-config
+      - run: curl -fsSL curl -fsSL https://github.com/alicecaml/alice-install/releases/download/v4/install.sh | sh -s -- 0.3.0-alpha2 --global /usr --no-prompt --install-tools --no-update-shell-config --install-compiler-only
 
       # Build the project
       - run: echo DUNE_CONFIG__PKG_BUILD_PROGRESS=enabled >> $GITHUB_ENV
-      - run: PATH="$HOME/.alice/current/bin:$HOME/.local/share/alice/current/bin:$PATH" dune build
+      - run: PATH="$HOME/.local/share/alice/current/bin:$PATH" dune build
 
       # Run tests
-      - run: PATH="$HOME/.alice/current/bin:$HOME/.local/share/alice/current/bin:$PATH" dune test
+      - run: PATH="$HOME/.local/share/alice/current/bin:$PATH" dune test
 
       # Install the alice we just built
       - run: cp -vlf _build/install/default/bin/alice $HOME/.local/bin
@@ -122,8 +121,7 @@ jobs:
 
       # Test that alice works without the root in $PATH
       - run: alice new --exe hello
-      # XXX temporary measure to add the old tool bin dir to PATH so Alice can find the compiler.
-      - run: PATH="$HOME/.alice/current/bin:$PATH" alice run --manifest-path hello/Alice.toml
+      - run: alice run --manifest-path hello/Alice.toml
 
   test-flake-build:
     name: Test that the nix flake can be built
