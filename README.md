@@ -196,6 +196,3 @@ export DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled
 export DUNE_CONFIG__PKG_BUILD_PROGRESS=enabled
 export DUNE_CONFIG__LOCK_DEV_TOOL=disabled
 ```
-
-Run the script in `boot` for your system to bootstrap an environment with the
-tools needed to build Alice.
