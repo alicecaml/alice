@@ -24,6 +24,7 @@ RUN boot/aarch64-linux-gnu.sh
 
 RUN opam init --disable-sandbox --auto-setup --bare
 
+ENV PATH=/home/user/.local/share/alice/current/bin:$PATH
 ENV PATH=/home/user/.alice/current/bin:$PATH
 
 # There's no Dune binary distro available for aarch64 linux, so install it with Opam instead.
