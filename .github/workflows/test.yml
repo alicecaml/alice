@@ -130,9 +130,8 @@ jobs:
       - uses: actions/checkout@v5
       - uses: cachix/install-nix-action@v31
       - run: nix build
-      - run: nix build .#alice
-      - run: nix build .#tools
-      - run: nix build .#full
+      - run: nix build .#dev
+      - run: nix build .#default.bare
 
   test-flake-shell:
     name: Test that alice works within its nix shell
@@ -141,7 +140,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: cachix/install-nix-action@v31
       - name: Set up a project and build it with alice in a nix shell
-        shell: nix shell .#full -c bash -e {0}
+        shell: nix shell . -c bash -e {0}
         run: |
           cd $(mktemp -d)
           alice new --exe foo
