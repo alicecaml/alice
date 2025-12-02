@@ -18,6 +18,10 @@
       makeDevShell =
         system: ({ default = import ./shell.nix { pkgs = getPkgs system; }; });
     in {
+      overlays = {
+        default = import ./nix/overlay/default.nix;
+        development = import ./nix/overlay/development.nix;
+      };
       packages = mapSystemAttrs makePackage;
       devShells = mapSystemAttrs makeDevShell;
     };
