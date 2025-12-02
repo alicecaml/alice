@@ -10,5 +10,5 @@ mkShell {
     alice.package
   ];
   nativeBuildInputs = [ graphviz ];
-  buildInput = [ musl ];
+  buildInputs = [ musl ];
 }
