@@ -9,23 +9,17 @@ RUN apt-get update -y && apt-get upgrade -y && apt-get install -y \
     unzip \
     ;
 
+# Install the OCaml compiler (via alice)
+RUN curl -fsSL curl -fsSL https://github.com/alicecaml/alice-install/releases/download/v4/install.sh | sh -s -- 0.3.0-alpha2 --global /usr --no-prompt --install-tools --no-update-shell-config --install-compiler-only
+
 # Install Opam. Don't use the apt package because it would interfere with alice's OCaml binary distribution.
 RUN curl -fsSL https://opam.ocaml.org/install.sh > install_opam.sh && yes '' | sh install_opam.sh
 
-RUN useradd --create-home --gid users user
-WORKDIR /home/user
-COPY --chmod=0755 . alice
-RUN chown -R user alice
-
-USER user
-WORKDIR alice
-
-RUN boot/aarch64-linux-gnu.sh
+RUN mkdir /app
+WORKDIR /app
+COPY --chmod=0755 . .
 
 RUN opam init --disable-sandbox --auto-setup --bare
-
-ENV PATH=/home/user/.local/share/alice/current/bin:$PATH
-ENV PATH=/home/user/.alice/current/bin:$PATH
 
 # There's no Dune binary distro available for aarch64 linux, so install it with Opam instead.
 RUN opam switch create . --empty
@@ -47,4 +41,4 @@ RUN tar czf $(cat name.txt).tar.gz $(cat name.txt)
 RUN opam exec dune clean
 
 FROM scratch
-COPY --from=builder /home/user/alice .
+COPY --from=builder /app .
