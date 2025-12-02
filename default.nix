@@ -35,16 +35,12 @@ let
       };
     })
   ];
-  make = { version, hash }:
+  make = { version, src }:
     let
       packageBare = (ocamlPackages.buildDunePackage {
+        inherit src;
         pname = "alice";
         version = version;
-        src = fetchgit {
-          url = "https://github.com/alicecaml/alice";
-          rev = "refs/tags/${version}";
-          hash = hash;
-        };
         buildInputs = deps;
         postInstall = ''
           mkdir -p $out/share/bash-completion/completions
@@ -66,30 +62,43 @@ let
         paths = [ packageBare tools ];
       };
     in packageWithTools // { bare = packageBare; };
+  makeGithub = { version, hash }:
+    make {
+      inherit version;
+      src = fetchgit {
+        url = "https://github.com/alicecaml/alice";
+        rev = "refs/tags/${version}";
+        hash = hash;
+      };
+    };
   versioned = {
-    alice_0_1_0 = make {
+    alice_0_1_0 = makeGithub {
       version = "0.1.0";
       hash = "sha256-Ax9qbFzgHPH0EYQrgA+1bEAlFinc4egNKIn/ZrxV5K4=";
     };
-    alice_0_1_1 = make {
+    alice_0_1_1 = makeGithub {
       version = "0.1.1";
       hash = "sha256-4T6YyyN4ttFcqSeBWNfff8bL7bYWYhLMxqRN7KCAp3c=";
     };
-    alice_0_1_2 = make {
+    alice_0_1_2 = makeGithub {
       version = "0.1.2";
       hash = "sha256-05EXQxosue5XEwAUtkI/2VObKJzUTzrZfVH3WELHACk=";
     };
-    alice_0_1_3 = make {
+    alice_0_1_3 = makeGithub {
       version = "0.1.3";
       hash = "sha256-PkZbzqjlWswJ/8wBJikj45royPUEyUWG/bRqB47qkXg=";
     };
-    alice_0_2_0 = make {
+    alice_0_2_0 = makeGithub {
       version = "0.2.0";
       hash = "sha256-QNAPIccp3K6w0s35jmEWodwvac0YoWUZr0ffXptfLGs=";
     };
   };
   latest = versioned.alice_0_2_0;
+  dev = make {
+    version = "0.2-dev";
+    src = ./.;
+  };
 in {
-  inherit versioned latest tools;
+  inherit versioned latest tools dev;
   default = latest;
 }
