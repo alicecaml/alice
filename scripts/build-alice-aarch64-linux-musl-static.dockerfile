@@ -11,7 +11,7 @@ RUN apk update && apk add \
     ;
 
 # Install the OCaml compiler (via alice)
-RUN curl -fsSL curl -fsSL https://github.com/alicecaml/alice-install/releases/download/v4/install.sh | sh -s -- 0.3.0-alpha2 --global /usr --no-prompt --install-tools --no-update-shell-config --install-compiler-only
+RUN curl -fsSL https://github.com/alicecaml/alice-install/releases/download/v4/install.sh | sh -s -- 0.3.0-alpha2 --global /usr --no-prompt --install-tools --no-update-shell-config --install-compiler-only
 
 RUN mkdir /app
 WORKDIR /app
