@@ -52,6 +52,7 @@ jobs:
 
       # Use Alice to bootstrap OCaml environment
       - run: alice tools install
+      - run: echo "$HOME\AppData\Local\alice\current\bin" >> $env:GITHUB_PATH
       - run: Get-Command ocamlopt.opt
 
       # Build the project
