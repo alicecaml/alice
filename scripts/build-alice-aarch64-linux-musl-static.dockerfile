@@ -18,8 +18,7 @@ RUN chown -R user alice
 USER user
 WORKDIR alice
 
-# Install the OCaml compiler (via alice)
-RUN curl -fsSL https://alicecaml.org/install.sh | sh -s -- 0.3.0-alpha1 --global /usr --no-prompt --install-tools --no-update-shell-config
+RUN boot/aarch64-linux-musl-static.sh
 
 RUN opam init --disable-sandbox --auto-setup --bare
 
