@@ -35,8 +35,8 @@ jobs:
       - run: Remove-Item -Recurse -Force "$env:DUNE_NAME.tar.gz"
 
       # Install Alice (used to bootstrap environment)
-      - run: echo "$HOME\.alice\current\bin" >> $env:GITHUB_PATH
-      - run: echo ALICE_IN_VERSION="0.0.0" >> $env:GITHUB_ENV
+      - run: echo "$HOME\.local\share\alice\current\bin" >> $env:GITHUB_PATH
+      - run: echo ALICE_IN_VERSION="0.3.0-alpha2" >> $env:GITHUB_ENV
       - run: echo ALICE_IN_NAME="alice-$env:ALICE_IN_VERSION-x86_64-windows" >> $env:GITHUB_ENV
       - run: curl -fsSL --output "$env:ALICE_IN_NAME.tar.gz" "https://github.com/alicecaml/alice/releases/download/$env:ALICE_IN_VERSION/$env:ALICE_IN_NAME.tar.gz"
       - run: tar xf "$env:ALICE_IN_NAME.tar.gz"
@@ -102,14 +102,13 @@ jobs:
       - run: echo $HOME/.local/bin >> $GITHUB_PATH
 
       # Install Dune
-      - run: curl -fsSL https://github.com/ocaml-dune/dune-bin-install/releases/download/v2/install.sh | sh -s 3.20.1 --install-root $HOME/.local --no-update-shell-config
+      - run: curl -fsSL https://github.com/ocaml-dune/dune-bin-install/releases/download/v3/install.sh | sh -s 3.20.2 --install-root $HOME/.local --no-update-shell-config
       - run: which dune
       - run: dune --version
 
       # Install OCaml
-      - run: echo $HOME/.alice/current/bin >> $GITHUB_PATH
       - run: echo $HOME/.local/share/alice/current/bin >> $GITHUB_PATH
-      - run: curl -fsSL https://alicecaml.org/install.sh | sh -s -- 0.0.0 --no-prompt --install-tools --no-update-shell-config
+      - run: curl -fsSL https://alicecaml.org/install.sh | sh -s -- 0.3.0-alpha2 --no-prompt --install-tools --no-update-shell-config
       - run: which ocamlopt.opt
 
       # Build the project
