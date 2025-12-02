@@ -4,84 +4,122 @@ open Alice_hierarchy
 open Alice_ui
 
 module Env_script = struct
-  let posix_src =
-    {|#!/bin/sh
+  let posix_src installation =
+    let local_bin =
+      Alice_installation.local_bin installation |> Absolute_path.to_filename
+    in
+    let current_bin =
+      Alice_installation.current_bin installation |> Absolute_path.to_filename
+    in
+    sprintf
+      {|#!/bin/sh
 # Add the directory containing the 'alice' executable to PATH.
 case :"$PATH": in
-  *:"$HOME/.alice/alice/bin":*)
+  *:"%s":*)
     ;;
   *)
-    export PATH="$HOME/.alice/alice/bin:$PATH"
+    export PATH="%s:$PATH"
     ;;
 esac
 
 # Add the directory containing the OCaml development tools to PATH.
 case :"$PATH": in
-  *:"$HOME/.alice/current/bin":*)
+  *:"%s":*)
     ;;
   *)
-    export PATH="$HOME/.alice/current/bin:$PATH"
+    export PATH="%s:$PATH"
     ;;
 esac|}
+      local_bin
+      local_bin
+      current_bin
+      current_bin
   ;;
 
-  let bash_src =
+  let bash_src installation =
+    let bash_completion =
+      Alice_installation.bash_completion_script_path installation
+      |> Absolute_path.to_filename
+    in
     String.cat
-      posix_src
-      {|
+      (posix_src installation)
+      (sprintf
+         {|
 
 # Only load completions if the shell is interactive.
-if [ -t 0 ] && [ -f "$HOME/.alice/completions/bash.sh" ]; then
+if [ -t 0 ] && [ -f "%s" ]; then
   # Load bash completions for Alice.
-  . "$HOME/.alice/completions/bash.sh"
+  . "%s"
 fi|}
+         bash_completion
+         bash_completion)
   ;;
 
-  let zsh_src =
+  let zsh_src installation =
+    let bash_completion =
+      Alice_installation.bash_completion_script_path installation
+      |> Absolute_path.to_filename
+    in
     String.cat
-      posix_src
-      {|
+      (posix_src installation)
+      (sprintf
+         {|
 
 # Only load completions if the shell is interactive.
-if [ -t 0 ] && [ -f "$ROOT"/share/bash-completion/completions/dune ]; then
+if [ -t 0 ] && [ -f %s ]; then
   # Load bash completions for Alice.
   autoload -Uz compinit bashcompinit
   compinit
   bashcompinit
-  . "$HOME/.alice/completions/bash.sh"
+  . "%s"
 fi|}
+         bash_completion
+         bash_completion)
   ;;
 
-  let fish_src =
-    {|#!/usr/bin/env fish
+  let fish_src installation =
+    let local_bin =
+      Alice_installation.local_bin installation |> Absolute_path.to_filename
+    in
+    let current_bin =
+      Alice_installation.current_bin installation |> Absolute_path.to_filename
+    in
+    sprintf
+      {|#!/usr/bin/env fish
 # Add the directory containing the 'alice' executable to PATH.
-if ! contains "$HOME/.alice/alice/bin" $PATH; and [ -d "$HOME/.alice/alice/bin" ]
-  fish_add_path --prepend --path "$HOME/.alice/alice/bin"
+if ! contains "%s" $PATH; and [ -d "%s" ]
+  fish_add_path --prepend --path "%s"
 end
 
 # Add the directory containing the OCaml development tools to PATH.
-if ! contains "$HOME/.alice/current/bin" $PATH; and [ -d "$HOME/.alice/current/bin" ]
-  fish_add_path --prepend --path "$HOME/.alice/current/bin"
+if ! contains "%s" $PATH; and [ -d "%s" ]
+  fish_add_path --prepend --path "%s"
 end|}
+      local_bin
+      local_bin
+      local_bin
+      current_bin
+      current_bin
+      current_bin
   ;;
 
-  let make_all install_dir =
+  let make_all installation =
     let module File_ops = Alice_io.File_ops in
-    File_ops.mkdir_p (Alice_install_dir.env_dir install_dir);
+    File_ops.mkdir_p (Alice_installation.env installation);
     let make_env_file filename text =
       File_ops.write_text_file
-        (Alice_install_dir.env_dir install_dir / Basename.of_filename filename)
+        (Alice_installation.env installation / Basename.of_filename filename)
         text
     in
-    make_env_file "env.bash" bash_src;
-    make_env_file "env.fish" fish_src;
-    make_env_file "env.sh" posix_src;
-    make_env_file "env.zsh" zsh_src;
+    make_env_file "env.bash" (bash_src installation);
+    make_env_file "env.fish" (fish_src installation);
+    make_env_file "env.sh" (posix_src installation);
+    make_env_file "env.zsh" (zsh_src installation);
     println
       (raw_message
          (sprintf
             "Installed env scripts to '%s'."
-            (Absolute_path.to_filename (Alice_install_dir.env_dir install_dir))))
+            (Absolute_path.to_filename (Alice_installation.env installation))))
   ;;
 end
 
@@ -105,20 +143,24 @@ module Completion_script = struct
       command
   ;;
 
-  let make_all install_dir =
+  let make_bash installation =
     let module File_ops = Alice_io.File_ops in
-    File_ops.mkdir_p (Alice_install_dir.completions_dir install_dir);
-    let make_completion_file filename text =
+    File_ops.mkdir_p
+      (Alice_installation.bash_completion_script_path installation
+       |> Absolute_path.parent
+       |> Absolute_path.Root_or_non_root.assert_non_root);
+    let make_bash_completion_file text =
       File_ops.write_text_file
-        (Alice_install_dir.completions_dir install_dir / Basename.of_filename filename)
+        (Alice_installation.bash_completion_script_path installation)
         text
     in
-    make_completion_file "bash.sh" (bash_src ());
+    make_bash_completion_file (bash_src ());
     println
       (raw_message
          (sprintf
-            "Installed completion scripts to '%s'."
-            (Absolute_path.to_filename (Alice_install_dir.completions_dir install_dir))))
+            "Installed bash completion script to '%s'."
+            (Absolute_path.to_filename
+               (Alice_installation.bash_completion_script_path installation))))
   ;;
 end
 
@@ -127,9 +169,9 @@ let setup =
   let+ () = Common.set_globals_from_flags in
   let env = Alice_env.current_env () in
   let os_dir = Alice_env.Os_type.current () in
-  let install_dir = Alice_install_dir.create os_dir env in
-  Env_script.make_all install_dir;
-  Completion_script.make_all install_dir
+  let installation = Alice_installation.create os_dir env in
+  Env_script.make_all installation;
+  Completion_script.make_bash installation
 ;;
 
 let subcommand =

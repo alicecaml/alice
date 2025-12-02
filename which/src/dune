@@ -6,6 +6,6 @@
   alice_hierarchy
   alice_io
   alice_log
-  alice_install_dir
+  alice_installation
   alice_env
   alice_ocaml_compiler))

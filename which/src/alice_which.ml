@@ -15,26 +15,26 @@ let find_in_search_path exe_name search_paths =
    if the user doesn't already have an OCaml toolchain installed, the toolchain
    installed by Alice will be used, and commands from the toolchain can call
    each other. *)
-let add_install_dir_to_path_variable os_type env =
-  let install_dir = Alice_install_dir.create os_type env in
-  let install_dir_bin = Alice_install_dir.current_bin install_dir in
+let add_installation_to_path_variable os_type env =
+  let installation = Alice_installation.create os_type env in
+  let installation_bin = Alice_installation.current_bin installation in
   let path_variable =
     match Path_variable.get_result os_type env with
     | Error `Variable_not_defined -> []
     | Ok path_variable -> path_variable
   in
-  if Path_variable.contains path_variable (`Non_root install_dir_bin)
+  if Path_variable.contains path_variable (`Non_root installation_bin)
   then
     (* The bin dir from the Alice installation is already in the PATH
        variable, so there's nothing to do. *)
     env
   else if
-    Alice_io.File_ops.exists install_dir_bin
-    && Alice_io.File_ops.is_directory install_dir_bin
+    Alice_io.File_ops.exists installation_bin
+    && Alice_io.File_ops.is_directory installation_bin
   then (
     (* Only update the PATH variable if the bin dir from the Alice
        installation exists. *)
-    let path_variable = path_variable @ [ `Non_root install_dir_bin ] in
+    let path_variable = path_variable @ [ `Non_root installation_bin ] in
     Path_variable.set path_variable os_type env)
   else env
 ;;
@@ -82,7 +82,7 @@ let ocamlopt_name os_type =
 ;;
 
 let ocamlopt os_type env =
-  let env = add_install_dir_to_path_variable os_type env in
+  let env = add_installation_to_path_variable os_type env in
   let filename = try_which os_type env (ocamlopt_name os_type) in
   Alice_ocaml_compiler.Ocaml_compiler.create filename env
 ;;

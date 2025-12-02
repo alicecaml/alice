@@ -1,4 +1,4 @@
 (library
  (package alice)
- (name alice_install_dir)
+ (name alice_installation)
  (libraries alice_stdlib alice_hierarchy alice_env))

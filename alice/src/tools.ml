@@ -42,9 +42,9 @@ module Root = struct
         ]
   ;;
 
-  let dir { name; _ } install_dir = Alice_install_dir.roots_dir install_dir / name
+  let dir { name; _ } installation = Alice_installation.roots installation / name
 
-  let install t env install_dir ~target ~compiler_only ~global =
+  let install t env installation ~target ~compiler_only ~global =
     let install_to dst =
       Alice_io.File_ops.mkdir_p dst;
       let remote_tarballs = choose_remote_tarballs t ~target in
@@ -55,20 +55,20 @@ module Root = struct
     match (global : Absolute_path.Root_or_non_root.t option) with
     | Some (`Non_root dst) -> install_to dst
     | Some (`Root dst) -> install_to dst
-    | None -> install_to (dir t install_dir)
+    | None -> install_to (dir t installation)
   ;;
 
-  let make_current t install_dir os_type =
-    let current_path = Alice_install_dir.current install_dir in
+  let make_current t installation os_type =
+    let current_path = Alice_installation.current installation in
     if File_ops.exists current_path then File_ops.rm_rf current_path;
-    let src = dir t install_dir in
+    let src = dir t installation in
     let dst = current_path in
     match Alice_env.Os_type.is_windows os_type with
     | true -> File_ops.cp_rf ~src ~dst
     | false -> File_ops.symlink ~src ~dst
   ;;
 
-  let is_installed t install_dir = File_ops.exists (dir t install_dir)
+  let is_installed t installation = File_ops.exists (dir t installation)
   let latest = root_5_3_1
 
   let conv =
@@ -97,11 +97,11 @@ module Shell = struct
     enum ~eq:equal ~default_value_name:"SHELL" [ "bash", Bash; "zsh", Zsh; "fish", Fish ]
   ;;
 
-  let update_path t install_dir ~root =
+  let update_path t installation ~root =
     let bin_dir =
       match root with
-      | None -> Alice_install_dir.current_bin install_dir
-      | Some root -> Root.dir root install_dir / Basename.of_filename "bin"
+      | None -> Alice_installation.current_bin installation
+      | Some root -> Root.dir root installation / Basename.of_filename "bin"
     in
     match t with
     | Bash | Zsh -> sprintf "export PATH=\"%s:$PATH\"" (Absolute_path.to_filename bin_dir)
@@ -126,13 +126,13 @@ let install =
   and+ global =
     Common.parse_absolute_path
       [ "g"; "global" ]
-      ~doc:"Install tools to this directory rather than '~/.alice'."
+      ~doc:"Install tools to this directory rather than the default location."
   and+ target = Target.arg_parser in
   let env = Alice_env.current_env () in
   let os_type = Alice_env.Os_type.current () in
-  let install_dir = Alice_install_dir.create os_type env in
-  Root.install root env install_dir ~target ~compiler_only ~global;
-  if not (Alice_io.File_ops.exists (Alice_install_dir.current install_dir))
+  let installation = Alice_installation.create os_type env in
+  Root.install root env installation ~target ~compiler_only ~global;
+  if not (Alice_io.File_ops.exists (Alice_installation.current installation))
   then (
     let open Alice_ui in
     println
@@ -140,7 +140,7 @@ let install =
          (sprintf
             "No current root was found so making %s the current root."
             (Basename.to_filename root.name)));
-    Root.make_current root install_dir os_type)
+    Root.make_current root installation os_type)
 ;;
 
 let env =
@@ -161,8 +161,8 @@ let env =
   in
   let env = Alice_env.current_env () in
   let os_type = Alice_env.Os_type.current () in
-  let install_dir = Alice_install_dir.create os_type env in
-  print_endline (Shell.update_path shell install_dir ~root)
+  let installation = Alice_installation.create os_type env in
+  print_endline (Shell.update_path shell installation ~root)
 ;;
 
 let change =
@@ -171,9 +171,9 @@ let change =
   and+ root = pos_req 0 Root.conv in
   let env = Alice_env.current_env () in
   let os_type = Alice_env.Os_type.current () in
-  let install_dir = Alice_install_dir.create os_type env in
-  if Root.is_installed root install_dir
-  then Root.make_current root install_dir os_type
+  let installation = Alice_installation.create os_type env in
+  if Root.is_installed root installation
+  then Root.make_current root installation os_type
   else
     Alice_error.panic
       [ Pp.textf
@@ -195,9 +195,9 @@ let exec =
   let env = Alice_env.current_env () in
   let os_type = Os_type.current () in
   let path_variable = Path_variable.get_or_empty os_type env in
-  let install_dir = Alice_install_dir.create os_type env in
+  let installation = Alice_installation.create os_type env in
   let augmented_path_variable =
-    `Non_root (Alice_install_dir.current_bin install_dir) :: path_variable
+    `Non_root (Alice_installation.current_bin installation) :: path_variable
   in
   let augmented_env = Path_variable.set augmented_path_variable os_type env in
   match Alice_io.Process.Blocking.run ~env:augmented_env prog ~args with
