@@ -73,5 +73,6 @@ ocamlPackages.buildDunePackage {
 
   meta = {
     license = with lib.licenses; [ mit ];
+    mainProgram = "alice";
   };
 }
