@@ -10,7 +10,7 @@ RUN apk update && apk add \
     ;
 
 # Install the OCaml compiler (via alice)
-RUN curl -fsSL https://alicecaml.org/install.sh | sh -s -- 0.0.0 --global /usr --no-prompt --install-tools --no-update-shell-config
+RUN curl -fsSL https://alicecaml.org/install.sh | sh -s -- 0.3.0-alpha1 --global /usr --no-prompt --install-tools --no-update-shell-config
 
 # Install Dune
 RUN curl -4fsSL https://github.com/ocaml-dune/dune-bin-install/releases/download/v3/install.sh | sh -s 3.20.2 --install-root /usr --no-update-shell-config
@@ -23,7 +23,7 @@ RUN chown -R user alice
 USER user
 WORKDIR alice
 
-RUN awk '{ print } /\(executable/ { print " (link_flags (:standard -cclib -static))" }' alice/src/dune > /tmp/alice_static_dune && cp /tmp/alice_static_dune alice/src/dune
+ENV DUNE_PROFILE=static
 RUN dune build
 
 RUN (git describe --exact-match --tags || git rev-parse HEAD) | cat > version.txt

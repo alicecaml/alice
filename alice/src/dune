@@ -13,3 +13,8 @@
   alice_env
   climate
   sha))
+
+(env
+ (static
+  (link_flags
+   (:standard -cclib -static))))

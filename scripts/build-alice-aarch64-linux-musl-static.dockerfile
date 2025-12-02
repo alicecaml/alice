@@ -18,7 +18,8 @@ RUN chown -R user alice
 USER user
 WORKDIR alice
 
-RUN boot/aarch64-linux-musl-static.sh
+# Install the OCaml compiler (via alice)
+RUN curl -fsSL https://alicecaml.org/install.sh | sh -s -- 0.3.0-alpha1 --global /usr --no-prompt --install-tools --no-update-shell-config
 
 RUN opam init --disable-sandbox --auto-setup --bare
 
@@ -30,7 +31,7 @@ RUN opam switch create . --empty
 RUN opam repo add alice git+https://github.com/alicecaml/alice-opam-repo --all-switches
 RUN opam update
 RUN opam install -y ocaml-system.5.3.1+relocatable dune
-RUN awk '{ print } /\(executable/ { print " (link_flags (:standard -cclib -static))" }' alice/src/dune > /tmp/alice_static_dune && cp /tmp/alice_static_dune alice/src/dune
+ENV DUNE_PROFILE=static
 RUN opam exec dune build
 
 RUN (git describe --exact-match --tags || git rev-parse HEAD) | cat > version.txt
