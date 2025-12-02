@@ -95,7 +95,7 @@ let
   };
   latest = versioned.alice_0_2_0;
   dev = make {
-    version = "0.2-dev";
+    version = "0.3-dev";
     src = ./.;
   };
 in {
