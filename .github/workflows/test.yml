@@ -110,12 +110,10 @@ jobs:
 
       # Build the project
       - run: echo DUNE_CONFIG__PKG_BUILD_PROGRESS=enabled >> $GITHUB_ENV
-      - run: PATH="$HOME/.alice/current/bin:$PATH" dune build
-      - run: PATH="$HOME/.local/share/alice/current/bin:$PATH" dune build
+      - run: PATH="$HOME/.alice/current/bin:$HOME/.local/share/alice/current/bin:$PATH" dune build
 
       # Run tests
-      - run: PATH="$HOME/.alice/current/bin:$PATH" dune test
-      - run: PATH="$HOME/.local/share/alice/current/bin:$PATH" dune test
+      - run: PATH="$HOME/.alice/current/bin:$HOME/.local/share/alice/current/bin:$PATH" dune test
 
       # Install the alice we just built
       - run: cp -vlf _build/install/default/bin/alice $HOME/.local/bin
