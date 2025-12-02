@@ -8,22 +8,38 @@
     let
       systems =
         [ "aarch64-darwin" "aarch64-linux" "x86_64-darwin" "x86_64-linux" ];
-      mapSystemAttrs = f:
-        builtins.listToAttrs (map (system: {
-          name = system;
-          value = f system;
-        }) systems);
-      getPkgs = system: builtins.getAttr system nixpkgs.legacyPackages;
-      makePackage = system: (getPkgs system).callPackage ./default.nix { };
-      makeDevShell =
-        system: ({ default = import ./shell.nix { pkgs = getPkgs system; }; });
+      nixpkgsFor = nixpkgs.lib.genAttrs systems (system: import nixpkgs {
+        inherit system;
+        config = { };
+        overlays = [
+          (import ./nix/overlay/default.nix)
+          (import ./nix/overlay/development.nix)
+          (import ./nix/overlay/versioned.nix)
+        ];
+      });
+      forAllSystems = fn: nixpkgs.lib.genAttrs systems (system: fn rec {
+        inherit system;
+        pkgs = nixpkgsFor.${system};
+        inherit (pkgs) lib;
+      });
     in {
       overlays = {
         default = import ./nix/overlay/default.nix;
         development = import ./nix/overlay/development.nix;
         versioned = import ./nix/overlay/versioned.nix;
       };
-      packages = mapSystemAttrs makePackage;
-      devShells = mapSystemAttrs makeDevShell;
+
+      packages = forAllSystems ({ pkgs, lib, ... }:
+        let
+          prefix = name: value: { inherit value; name = "alice_" + name; };
+        in
+        lib.mapAttrs' prefix pkgs.alice.versioned // {
+          inherit (pkgs.alice) tools;
+          default = pkgs.alice.package;
+        });
+
+      devShells = forAllSystems ({ pkgs, ... }: {
+        default = pkgs.pkgsMusl.alice.dev-shell;
+      });
     };
 }
