@@ -36,12 +36,17 @@ final: prev: {
               version = "0.2.0";
               hash = "sha256-QNAPIccp3K6w0s35jmEWodwvac0YoWUZr0ffXptfLGs=";
             };
+            "0_3_0" = {
+              version = "0.3.0";
+              hash = "sha256-7KvoTQOHgd5cWMCw2EKbxSa45mqYLklEF8vvIzgwAeY=";
+            };
+
           };
     in
     prev.alice.overrideScope (
       final': prev': {
         versioned = versioned // {
-          latest = versioned."0_2_0";
+          latest = versioned."0_3_0";
           dev = final.alice.alice;
         };
       }
