@@ -61,7 +61,7 @@ let
         '';
       });
       packageWithTools = symlinkJoin {
-        name = "alice-and-ocaml-tools";
+        name = "alice-${version}-and-ocaml-tools";
         version = version;
         paths = [ packageBare tools ];
       };
