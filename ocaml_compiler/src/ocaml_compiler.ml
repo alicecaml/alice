@@ -24,7 +24,7 @@ module Depend = struct
     | Error `Prog_not_available ->
       user_exn
         [ Pp.textf
-            "Program %S not found while trynig to run command: %s"
+            "Program %S not found while trying to run command: %s"
             (filename ocaml_compiler)
             (Command.to_string_ignore_env command)
         ]
@@ -110,7 +110,7 @@ module Config = struct
     | Error `Prog_not_available ->
       user_exn
         [ Pp.textf
-            "Program %S not found while trynig to run command: %s"
+            "Program %S not found while trying to run command: %s"
             (filename ocaml_compiler)
             (Command.to_string_ignore_env command)
         ]
