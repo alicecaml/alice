@@ -10,7 +10,7 @@ RUN apt-get update -y && apt-get upgrade -y && apt-get install -y \
     ;
 
 # Install the OCaml compiler (via alice)
-RUN curl -fsSL https://github.com/alicecaml/alice-install/releases/download/v4/install.sh | sh -s -- 0.3.0-alpha2 --global /usr --no-prompt --install-tools --no-update-shell-config --install-compiler-only
+RUN curl -fsSL https://github.com/alicecaml/alice-install/releases/download/v5/install.sh | sh -s -- 0.3.0-alpha2 --global /usr --no-prompt --install-tools --no-update-shell-config --install-compiler-only
 
 # Install Opam. Don't use the apt package because it would interfere with alice's OCaml binary distribution.
 RUN curl -fsSL https://opam.ocaml.org/install.sh > install_opam.sh && yes '' | sh install_opam.sh

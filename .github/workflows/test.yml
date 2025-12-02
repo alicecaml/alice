@@ -50,7 +50,7 @@ jobs:
 
       # Save the environment so we can remove the root from $Env:Path after building.
       - run: cat "$env:GITHUB_PATH" > old-path.txt
-      - run: echo "$HOME\.local\share\alice\current\bin" >> $env:GITHUB_PATH
+      - run: echo "$HOME\AppData\Local\alice\current\bin" >> $env:GITHUB_PATH
 
       # Build the project
       - run: echo DUNE_CONFIG__PKG_BUILD_PROGRESS=enabled >> $env:GITHUB_ENV
@@ -105,7 +105,7 @@ jobs:
       - run: dune --version
 
       # Install OCaml
-      - run: curl -fsSL https://github.com/alicecaml/alice-install/releases/download/v4/install.sh | sh -s -- 0.3.0-alpha2 --no-prompt --install-tools --no-update-shell-config --install-compiler-only
+      - run: curl -fsSL https://github.com/alicecaml/alice-install/releases/download/v5/install.sh | sh -s -- 0.3.0-alpha2 --no-prompt --install-tools --no-update-shell-config --install-compiler-only
 
       # Build the project
       - run: echo DUNE_CONFIG__PKG_BUILD_PROGRESS=enabled >> $GITHUB_ENV
