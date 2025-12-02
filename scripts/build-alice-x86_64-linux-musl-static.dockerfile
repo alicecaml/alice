@@ -15,13 +15,9 @@ RUN curl -fsSL curl -fsSL https://github.com/alicecaml/alice-install/releases/do
 # Install Dune
 RUN curl -4fsSL https://github.com/ocaml-dune/dune-bin-install/releases/download/v3/install.sh | sh -s 3.20.2 --install-root /usr --no-update-shell-config
 
-RUN adduser -D -G users -G wheel user
-WORKDIR /home/user
-COPY --chmod=0755 . alice
-RUN chown -R user alice
-
-USER user
-WORKDIR alice
+RUN mkdir /app
+WORKDIR /app
+COPY --chmod=0755 . .
 
 ENV DUNE_PROFILE=static
 RUN dune build
@@ -39,4 +35,4 @@ RUN tar czf $(cat name.txt).tar.gz $(cat name.txt)
 RUN dune clean
 
 FROM scratch
-COPY --from=builder /home/user/alice .
+COPY --from=builder /app .
