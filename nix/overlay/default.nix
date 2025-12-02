@@ -1,6 +1,7 @@
 final: prev: {
   alice = {
     package = final.callPackage ../package/alice.nix { };
+    tools = final.callPackage ../package/tools.nix { };
   };
 
   ocamlPackages = prev.ocamlPackages.overrideScope (
