@@ -12,11 +12,12 @@ let
     overlays = [
       (import ./nix/overlay/default.nix)
       (import ./nix/overlay/development.nix)
+      (import ./nix/overlay/versioned.nix)
     ];
   };
 in
 {
-  inherit (pkgs.alice) package tools;
+  inherit (pkgs.alice) package tools versioned;
 
   # When developing alice, use the musl toolchain. The development environment
   # (ocamllsp, ocamlopt, etc.) can then be managed by alice itself, since alice
