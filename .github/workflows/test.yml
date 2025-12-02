@@ -122,7 +122,8 @@ jobs:
 
       # Test that alice works without the root in $Env:Path
       - run: alice new --exe hello
-      - run: alice run --manifest-path hello/Alice.toml
+      # XXX temporary measure to add the old tool bin dir to PATH so Alice can find the compiler.
+      - run: PATH="$HOME/.alice/current/bin" alice run --manifest-path hello/Alice.toml
 
   test-flake-build:
     name: Test that the nix flake can be built
