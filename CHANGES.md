@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Follow the XDG convention when installing tools.
+
 ## 0.2.0
 
 ### Added
