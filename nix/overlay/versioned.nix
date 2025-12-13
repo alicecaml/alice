@@ -38,11 +38,12 @@ final: prev: {
             };
           };
     in
-    (prev.alice or { })
-    // {
-      versioned = versioned // {
-        latest = versioned."0_2_0";
-        dev = final.alice.package;
-      };
-    };
+    prev.alice.overrideScope (
+      final': prev': {
+        versioned = versioned // {
+          latest = versioned."0_2_0";
+          dev = final.alice.alice;
+        };
+      }
+    );
 }
