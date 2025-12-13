@@ -21,6 +21,7 @@
       overlays = {
         default = import ./nix/overlay/default.nix;
         development = import ./nix/overlay/development.nix;
+        versioned = import ./nix/overlay/versioned.nix;
       };
       packages = mapSystemAttrs makePackage;
       devShells = mapSystemAttrs makeDevShell;
