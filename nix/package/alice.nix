@@ -1,7 +1,6 @@
 {
   lib,
   ocamlPackages,
-  fetchgit,
   withBashCompletions ? true,
 }:
 
@@ -55,15 +54,7 @@ ocamlPackages.buildDunePackage {
         rm -rf vendor/pp
       '';
     }))
-    (buildDunePackage {
-      pname = "climate";
-      version = "0.9.0";
-      src = fetchgit {
-        url = "https://github.com/gridbugs/climate";
-        rev = "refs/tags/0.9.0";
-        hash = "sha256-WRhWNWQ4iTUVpJlp7isJs3+0n/D0gYXTxRcCTJZ1o8U=";
-      };
-    })
+    climate
   ];
 
   postInstall = lib.optionalString withBashCompletions /* sh */ ''
