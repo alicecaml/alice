@@ -2,6 +2,8 @@ final: prev: {
   alice = final.lib.makeScope final.newScope (self: {
     alice = self.callPackage ../package/alice.nix { };
 
+    tools = self.callPackage ../package/tools.nix { };
+
     default = self.alice;
 
     __functor = _: self.alice;
