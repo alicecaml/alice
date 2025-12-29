@@ -9,6 +9,7 @@
 ### Fixed
 
 - Update dot-merlin-reader on windows to fix crash on launch.
+- Fix issue running `alice tools exec` on windows in CMD.exe.
 
 ## 0.2.0
 

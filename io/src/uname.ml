@@ -4,11 +4,11 @@ open Alice_error
 let run_uname env args =
   let command = Command.create "uname" ~args env in
   match Process.Blocking.run_command_capturing_stdout_lines command with
-  | Ok (Process.Status.Exited 0, [ output ]) -> output
-  | Ok (Process.Status.Exited 0, []) ->
+  | Ok ({ status = Process.Status.Exited 0; _ }, [ output ]) -> output
+  | Ok ({ status = Process.Status.Exited 0; _ }, []) ->
     panic
       [ Pp.textf "No output from %s" (Command.to_string_ignore_env_backticks command) ]
-  | Ok (Process.Status.Exited 0, _) ->
+  | Ok ({ status = Process.Status.Exited 0; _ }, _) ->
     panic
       [ Pp.textf
           "Multiple lines output from %s expectedly"

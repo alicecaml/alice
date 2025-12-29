@@ -42,16 +42,7 @@ let add_installation_to_path_variable os_type env =
 let which os_type env exe_name =
   let exe_name =
     if Os_type.is_windows os_type && not (Filename.has_extension exe_name ~ext:".exe")
-    then (
-      let exe_name_with_extension = Filename.add_extension exe_name ~ext:".exe" in
-      Alice_log.warn
-        [ Pp.textf
-            "Looking up location of program %S which lacks \".exe\" extension. Assuming \
-             you meant %S."
-            exe_name
-            exe_name_with_extension
-        ];
-      exe_name_with_extension)
+    then Filename.add_extension exe_name ~ext:".exe"
     else exe_name
   in
   let search_paths =

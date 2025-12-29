@@ -35,13 +35,13 @@ module Action = struct
   let run t =
     match t with
     | Command command ->
-      let status =
+      let report =
         match Alice_io.Process.Blocking.run_command command with
-        | Ok status -> status
+        | Ok report -> report
         | Error `Prog_not_available ->
           panic [ Pp.textf "Can't find program: %s" command.prog ]
       in
-      (match status with
+      (match report.status with
        | Exited 0 -> ()
        | _ ->
          Alice_error.user_exn

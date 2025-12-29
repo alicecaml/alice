@@ -15,7 +15,7 @@ let tar env ~tarball_file ~output_dir =
 
 let extract env ~tarball_file ~output_dir =
   match tar env ~tarball_file ~output_dir |> Process.Blocking.run_command with
-  | Ok (Process.Status.Exited 0) -> ()
+  | Ok { status = Process.Status.Exited 0; _ } -> ()
   | _ ->
     Alice_error.panic
       [ Pp.textf "Unable to extract tarball: %s" (Absolute_path.to_filename tarball_file)

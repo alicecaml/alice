@@ -32,9 +32,14 @@ let get_opt t ~name =
     if String.equal variable.name name then Some variable.value else None)
 ;;
 
-let find_name_opt t ~f =
+let find_by_name_opt t ~f =
   List.find_map t ~f:(fun (variable : Variable.t) ->
     if f variable.name then Some variable.value else None)
+;;
+
+let find_name_opt t ~f =
+  List.find_map t ~f:(fun (variable : Variable.t) ->
+    if f variable.name then Some variable.name else None)
 ;;
 
 let contains t ~name =
