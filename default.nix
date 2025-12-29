@@ -92,10 +92,14 @@ let
       version = "0.2.0";
       hash = "sha256-QNAPIccp3K6w0s35jmEWodwvac0YoWUZr0ffXptfLGs=";
     };
+    alice_0_3_0 = makeGithub {
+      version = "0.3.0";
+      hash = "sha256-7KvoTQOHgd5cWMCw2EKbxSa45mqYLklEF8vvIzgwAeY=";
+    };
   };
-  latest = versioned.alice_0_2_0;
+  latest = versioned.alice_0_3_0;
   dev = make {
-    version = "0.3-dev";
+    version = "0.4-dev";
     src = ./.;
   };
 in {

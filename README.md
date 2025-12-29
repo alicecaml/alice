@@ -191,7 +191,7 @@ alice dot artifacts | dot -Tsvg > artifacts.svg
 
 It's recommended to use direnv with the following .envrc while working on Alice:
 ```sh
-export PATH=$PWD/scripts:$HOME/.alice/current/bin:$HOME/.dune/bin:$PATH
+export PATH=$PWD/scripts:$HOME/.local/share/alice/current/bin:$HOME/.local/bin:$PATH
 export DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled
 export DUNE_CONFIG__PKG_BUILD_PROGRESS=enabled
 export DUNE_CONFIG__LOCK_DEV_TOOL=disabled
