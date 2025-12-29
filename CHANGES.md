@@ -6,6 +6,10 @@
 
 - Follow the XDG convention when installing tools.
 
+### Fixed
+
+- Update dot-merlin-reader on windows to fix crash on launch.
+
 ## 0.2.0
 
 ### Added
