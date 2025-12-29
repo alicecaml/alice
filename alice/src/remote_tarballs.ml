@@ -253,7 +253,7 @@ module Root_5_3_1 = struct
          "26b385b694cc1c03595ad91baac663a37f1e86faf57848d06e1d2dbc63bfefaf")
       (dot_merlin_reader
          plat_string
-         "84aae5e368ac04809415350a3cd5df46cf95a31346eff867d983df4068214ac6")
+         "e8666cf4b40452775511ac130781c7a492477ce56e16536288b3b9170d208cf9")
   ;;
 end
 
