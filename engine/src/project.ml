@@ -207,12 +207,17 @@ let run t profile os_type ocaml_compiler ~args =
            This is a bug in Alice."
           exe_filename
       ]
-  | Ok (Exited code) -> exit code
-  | Ok (Signaled signal | Stopped signal) ->
-    println
-      (raw_message
-         (sprintf "The executable %s was stopped by a signal (%d)." exe_filename signal));
-    exit 0
+  | Ok report ->
+    (match report.status with
+     | Exited code -> exit code
+     | Signaled signal | Stopped signal ->
+       println
+         (raw_message
+            (sprintf
+               "The executable %s was stopped by a signal (%d)."
+               exe_filename
+               signal));
+       exit 0)
 ;;
 
 let clean t =

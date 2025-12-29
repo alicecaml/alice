@@ -73,8 +73,13 @@ module Path_variable = struct
     else String.equal name "PATH"
   ;;
 
+  let get_name os_type env =
+    Env.find_name_opt env ~f:(is_path_variable_name os_type)
+    |> Option.value ~default:"PATH"
+  ;;
+
   let get_opt os_type env =
-    Env.find_name_opt ~f:(is_path_variable_name os_type) env
+    Env.find_by_name_opt ~f:(is_path_variable_name os_type) env
     |> Option.map ~f:(of_raw os_type)
   ;;
 
@@ -89,10 +94,8 @@ module Path_variable = struct
   let contains t path = List.exists t ~f:(Absolute_path.Root_or_non_root.equal path)
 
   let set t os_type env =
-    (* Set the PATH variable. Note that on Windows, the PATH variable is
-       sometimes referred to in non-uppercase, however it's case insensitive on
-       Windows so setting it by an all uppercase name should be fine. *)
-    Env.set env ~name:"PATH" ~value:(to_raw os_type t)
+    let name = get_name os_type env in
+    Env.set env ~name ~value:(to_raw os_type t)
   ;;
 end
 

@@ -24,12 +24,12 @@ let wget env ~url ~output_file =
 let fetch env ~url ~output_file =
   Log.info [ Pp.textf "Downloading %s to %s" url (Absolute_path.to_filename output_file) ];
   match curl env ~url ~output_file |> Process.Blocking.run_command with
-  | Ok (Process.Status.Exited 0) ->
+  | Ok { status = Process.Status.Exited 0; _ } ->
     assert (Sys.file_exists (Absolute_path.to_filename output_file));
     ()
   | _ ->
     (match wget env ~url ~output_file |> Process.Blocking.run_command with
-     | Ok (Process.Status.Exited 0) ->
+     | Ok { status = Process.Status.Exited 0; _ } ->
        assert (Sys.file_exists (Absolute_path.to_filename output_file));
        ()
      | _ -> Alice_error.panic [ Pp.textf "Unable to download: %s" url ])

@@ -183,6 +183,36 @@ let change =
       ]
 ;;
 
+module Lookup_prog = struct
+  type t =
+    { prog_path : Absolute_path.non_root_t option
+    ; augmented_env : Env.t
+    }
+
+  let lookup_prog prog =
+    let open Alice_env in
+    let env = current_env () in
+    let os_type = Os_type.current () in
+    let path_variable = Path_variable.get_or_empty os_type env in
+    let installation = Alice_installation.create os_type env in
+    let augmented_path_variable =
+      `Non_root (Alice_installation.current_bin installation) :: path_variable
+    in
+    let augmented_env = Path_variable.set augmented_path_variable os_type env in
+    let prog_path = Alice_which.which os_type augmented_env prog in
+    { prog_path; augmented_env }
+  ;;
+end
+
+let which =
+  let open Arg_parser in
+  let+ () = Common.set_globals_from_flags
+  and+ prog = pos_req 0 string ~value_name:"PROG" ~doc:"Program to look up." in
+  match (Lookup_prog.lookup_prog prog).prog_path with
+  | Some prog_path -> print_endline (Absolute_path.to_filename prog_path)
+  | None -> Alice_error.user_exn [ Pp.textf "Can't find %S executable!" prog ]
+;;
+
 let exec =
   let open Arg_parser in
   let+ () = Common.set_globals_from_flags
@@ -190,21 +220,23 @@ let exec =
   and+ args =
     pos_right 0 string ~value_name:"ARGS" ~doc:"Arguments to pass to program."
   in
-  let open Alice_ui in
-  let open Alice_env in
-  let env = Alice_env.current_env () in
-  let os_type = Os_type.current () in
-  let path_variable = Path_variable.get_or_empty os_type env in
-  let installation = Alice_installation.create os_type env in
-  let augmented_path_variable =
-    `Non_root (Alice_installation.current_bin installation) :: path_variable
+  let { Lookup_prog.prog_path; augmented_env } = Lookup_prog.lookup_prog prog in
+  let prog =
+    (* Compute the absolute path to the exe if it can be found in the PATH
+       variable (after augmenting the environment with some Alice-specific
+       paths). This avoids relying on the machinery for spawning processes to
+       respect the modified PATH variable, as this was found to be unreliable
+       on Windows when running in CMD.exe. *)
+    match prog_path with
+    | Some prog_path -> Absolute_path.to_filename prog_path
+    | None -> prog
   in
-  let augmented_env = Path_variable.set augmented_path_variable os_type env in
+  let open Alice_ui in
   match Alice_io.Process.Blocking.run ~env:augmented_env prog ~args with
   | Error `Prog_not_available ->
     Alice_error.panic [ Pp.textf "The executable %s does not exist." prog ]
-  | Ok (Exited code) -> exit code
-  | Ok (Signaled signal | Stopped signal) ->
+  | Ok { status = Exited code; _ } -> exit code
+  | Ok { status = Signaled signal | Stopped signal; _ } ->
     println
       (raw_message
          (sprintf "The executable %s was stopped by a signal (%d)." prog signal));
@@ -224,6 +256,11 @@ let subcommand =
               env
               ~doc:"Print a command which can be eval'd to add tools to PATH.")
        ; subcommand "change" (singleton change ~doc:"Change the currently active root.")
+       ; subcommand
+           "which"
+           (singleton
+              which
+              ~doc:"Print the path to an exe in the env used by the exec command.")
        ; subcommand
            "exec"
            (singleton

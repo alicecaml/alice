@@ -18,8 +18,8 @@ module Depend = struct
   let run_lines ocaml_compiler args =
     let command = command ocaml_compiler args in
     match Alice_io.Process.Blocking.run_command_capturing_stdout_lines command with
-    | Ok (status, output) ->
-      Alice_io.Process.Status.panic_unless_exit_0 status;
+    | Ok (report, output) ->
+      Alice_io.Process.Report.error_unless_exit_0 report;
       output
     | Error `Prog_not_available ->
       user_exn
@@ -104,8 +104,8 @@ module Config = struct
   let run_lines ocaml_compiler =
     let command = command ocaml_compiler in
     match Alice_io.Process.Blocking.run_command_capturing_stdout_lines command with
-    | Ok (status, output) ->
-      Alice_io.Process.Status.panic_unless_exit_0 status;
+    | Ok (report, output) ->
+      Alice_io.Process.Report.error_unless_exit_0 report;
       output
     | Error `Prog_not_available ->
       user_exn
