@@ -46,7 +46,7 @@ jobs:
       - run: alice --help
 
       # Use Alice to bootstrap OCaml environment
-      - run: alice tools install
+      - run: alice tools install --compiler-only
 
       # Save the environment so we can remove the root from $Env:Path after building.
       - run: cat "$env:GITHUB_PATH" > old-path.txt
