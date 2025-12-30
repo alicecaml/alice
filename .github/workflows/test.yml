@@ -131,7 +131,6 @@ jobs:
       - uses: cachix/install-nix-action@v31
       - run: nix build
       - run: nix build .#dev
-      - run: nix build .#default.bare
 
   test-flake-shell:
     name: Test that alice works within its nix shell

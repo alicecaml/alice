@@ -6,13 +6,21 @@ final: prev: {
           (
             _:
             { version, hash }:
-            (final.alicecaml.makeAlice { inherit version; }).overrideAttrs (old: {
-              src = final.fetchgit {
-                inherit hash;
-                url = "https://github.com/alicecaml/alice";
-                rev = "refs/tags/${version}";
-              };
-            })
+            let
+              alice =
+                (final.alicecaml.makeAlice { inherit version; }).overrideAttrs (old: {
+                  src = final.fetchgit {
+                    inherit hash;
+                    url = "https://github.com/alicecaml/alice";
+                    rev = "refs/tags/${version}";
+                  };
+                });
+              aliceWithTools = final.alicecaml.addTools alice;
+            in
+            {
+              inherit alice aliceWithTools;
+              default = aliceWithTools;
+            }
           )
           {
             "0_1_0" = {
@@ -46,7 +54,6 @@ final: prev: {
       ofinal: oprev: {
         versioned = versioned // {
           latest = versioned."0_3_0";
-          dev = final.alicecaml.alice;
         };
       }
     );
