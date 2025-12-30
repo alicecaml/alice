@@ -26,5 +26,5 @@ in
   # with dune package management on NixOS, where the OCaml compiler is treated
   # as a package and thus a specific version unknown to nix is fixed in the
   # lockdir.
-  inherit (pkgs.pkgsMusl.alice) dev-shell;
+  inherit (pkgs.alicecaml) dev-shell;
 }
