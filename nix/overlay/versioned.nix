@@ -43,7 +43,7 @@ final: prev: {
           };
     in
     prev.alicecaml.overrideScope (
-      final': prev': {
+      ofinal: oprev: {
         versioned = versioned // {
           latest = versioned."0_3_0";
           dev = final.alicecaml.alice;
