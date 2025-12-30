@@ -22,12 +22,12 @@ module Remote_tarball = struct
     }
   ;;
 
-  let panic_if_hashes_don't_match path expected_hash =
+  let error_if_hashes_don't_match path expected_hash =
     let actual_hash = Sha256.file (Absolute_path.to_filename path) in
     if Sha256.equal actual_hash expected_hash
     then ()
     else
-      Alice_error.panic
+      Alice_error.user_exn
         [ Pp.textf "Hash mismatch for file: %s" (Absolute_path.to_filename path)
         ; Pp.newline
         ; Pp.textf "Expected hash: %s" (Sha256.to_hex expected_hash)
@@ -43,7 +43,7 @@ module Remote_tarball = struct
       let tarball_file = dir / Basename.of_filename (sprintf "%s.tar.gz" name) in
       println (verb_message `Fetching (sprintf "%s.%s (%s)..." name version url_file));
       Fetch.fetch env ~url ~output_file:tarball_file;
-      panic_if_hashes_don't_match tarball_file sha256;
+      error_if_hashes_don't_match tarball_file sha256;
       println (verb_message `Unpacking (sprintf "%s.%s..." name version));
       Extract.extract env ~tarball_file ~output_dir:dir;
       File_ops.recursive_move_between_dirs ~src:(dir / top_level_dir) ~dst;

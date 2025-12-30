@@ -32,5 +32,5 @@ let fetch env ~url ~output_file =
      | Ok { status = Process.Status.Exited 0; _ } ->
        assert (Sys.file_exists (Absolute_path.to_filename output_file));
        ()
-     | _ -> Alice_error.panic [ Pp.textf "Unable to download: %s" url ])
+     | _ -> Alice_error.user_exn [ Pp.textf "Unable to download: %s" url ])
 ;;

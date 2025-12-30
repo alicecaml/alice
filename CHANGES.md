@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixed
+
+- Replace panics with user exceptions in some cases
+
 ## 0.3.0
 
 ### Changed
