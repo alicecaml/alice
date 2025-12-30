@@ -21,8 +21,6 @@ final: prev: {
     aliceWithTools =  self.addTools self.alice;
 
     default = self.aliceWithTools;
-
-    __functor = _: self.alice;
   });
 
   ocamlPackages = prev.ocamlPackages.overrideScope (
