@@ -33,9 +33,9 @@
         let
           prefix = name: value: { inherit value; name = "alice_" + name; };
         in
-        lib.mapAttrs' prefix pkgs.alice.versioned // {
-          inherit (pkgs.alice) tools;
-          default = pkgs.alice.package;
+        lib.mapAttrs' prefix pkgs.alicecaml.versioned // {
+          inherit (pkgs.alicecaml) tools;
+          default = pkgs.alicecaml.package;
         });
 
       devShells = forAllSystems ({ pkgs, ... }: {

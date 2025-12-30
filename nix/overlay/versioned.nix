@@ -1,12 +1,12 @@
 final: prev: {
-  alice =
+  alicecaml =
     let
       versioned =
         final.lib.mapAttrs
           (
             _:
             { version, hash }:
-            final.alice.package.overrideAttrs (old: {
+            final.alicecaml.package.overrideAttrs (old: {
               inherit version;
               src = final.fetchgit {
                 inherit hash;
@@ -43,11 +43,11 @@ final: prev: {
 
           };
     in
-    prev.alice.overrideScope (
+    prev.alicecaml.overrideScope (
       final': prev': {
         versioned = versioned // {
           latest = versioned."0_3_0";
-          dev = final.alice.alice;
+          dev = final.alicecaml.alice;
         };
       }
     );
