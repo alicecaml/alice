@@ -17,7 +17,7 @@ let
   };
 in
 {
-  inherit (pkgs.alicecaml) alice default tools versioned;
+  inherit (pkgs.alicecaml) alice aliceWithTools default tools versioned;
 
   # When developing alice, use the musl toolchain. The development environment
   # (ocamllsp, ocamlopt, etc.) can then be managed by alice itself, since alice

@@ -35,7 +35,10 @@
         in
         lib.mapAttrs' prefix pkgs.alicecaml.versioned // {
           inherit (pkgs.alicecaml) tools;
-          default = pkgs.alicecaml.alice;
+
+          # By default, get the latest released version of Alice.
+          default = pkgs.alicecaml.versioned.latest.default;
+          alice_dev = pkgs.alicecaml;
         });
 
       devShells = forAllSystems ({ pkgs, ... }: {

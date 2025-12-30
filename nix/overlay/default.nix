@@ -2,11 +2,25 @@ final: prev: {
   alicecaml = final.lib.makeScope final.newScope (self: {
     makeAlice = attrs: self.callPackage ../package/alice.nix attrs;
 
-    alice = self.makeAlice { };
+    alice =  self.makeAlice { };
 
     tools = self.callPackage ../package/tools.nix { };
 
-    default = self.alice;
+    # Create a derivation which is the union of a given alice derivation and
+    # the OCaml tools.
+    addTools = alice:
+      let
+        version = alice.version;
+      in
+      prev.symlinkJoin {
+        name = "alice-${version}-with-ocaml-tools";
+        version = version;
+        paths = [ alice self.tools ];
+      };
+
+    aliceWithTools =  self.addTools self.alice;
+
+    default = self.aliceWithTools;
 
     __functor = _: self.alice;
   });
