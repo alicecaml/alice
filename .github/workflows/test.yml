@@ -130,7 +130,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: cachix/install-nix-action@v31
       - run: nix build
-      - run: nix build .#dev
+      - run: nix build .#alice_dev.default
 
   test-flake-shell:
     name: Test that alice works within its nix shell
