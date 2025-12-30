@@ -6,17 +6,19 @@
 
   outputs = { self, nixpkgs }:
     let
+      overlays = {
+        default = import ./nix/overlay/default.nix;
+        development = import ./nix/overlay/development.nix;
+        versioned = import ./nix/overlay/versioned.nix;
+      };
       systems =
         [ "aarch64-darwin" "aarch64-linux" "x86_64-darwin" "x86_64-linux" ];
       nixpkgsFor = nixpkgs.lib.genAttrs systems (system:
         import nixpkgs {
           inherit system;
           config = { };
-          overlays = [
-            (import ./nix/overlay/default.nix)
-            (import ./nix/overlay/development.nix)
-            (import ./nix/overlay/versioned.nix)
-          ];
+          overlays =
+            [ overlays.default overlays.development overlays.versioned ];
         });
       forAllSystems = fn:
         nixpkgs.lib.genAttrs systems (system:
@@ -26,12 +28,7 @@
             inherit (pkgs) lib;
           });
     in {
-      overlays = {
-        default = import ./nix/overlay/default.nix;
-        development = import ./nix/overlay/development.nix;
-        versioned = import ./nix/overlay/versioned.nix;
-      };
-
+      inherit overlays;
       packages = forAllSystems ({ pkgs, lib, ... }:
         let
           prefix = name: value: {
