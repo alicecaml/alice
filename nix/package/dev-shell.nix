@@ -1,14 +1,9 @@
 {
-  mkShell,
-  musl,
   graphviz,
-  alice,
+  pkgsMusl,
 }:
 
-mkShell {
-  inputsFrom = [
-    alice
-  ];
+pkgsMusl.mkShell {
   nativeBuildInputs = [ graphviz ];
-  buildInputs = [ musl ];
+  buildInputs = [ pkgsMusl.musl ];
 }

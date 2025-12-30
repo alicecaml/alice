@@ -39,7 +39,7 @@
         });
 
       devShells = forAllSystems ({ pkgs, ... }: {
-        default = pkgs.pkgsMusl.alice.dev-shell;
+        default = pkgs.alicecaml.dev-shell;
       });
     };
 }
