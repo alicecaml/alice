@@ -6,7 +6,7 @@ final: prev: {
           (
             _:
             { version, hash }:
-            final.alicecaml.package.overrideAttrs (old: {
+            final.alicecaml.alice.overrideAttrs (old: {
               inherit version;
               src = final.fetchgit {
                 inherit hash;

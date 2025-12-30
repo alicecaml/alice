@@ -35,7 +35,7 @@
         in
         lib.mapAttrs' prefix pkgs.alicecaml.versioned // {
           inherit (pkgs.alicecaml) tools;
-          default = pkgs.alicecaml.package;
+          default = pkgs.alicecaml.alice;
         });
 
       devShells = forAllSystems ({ pkgs, ... }: {
