@@ -2,7 +2,7 @@ final: prev: {
   alicecaml = final.lib.makeScope final.newScope (self: {
     makeAlice = attrs: self.callPackage ../package/alice.nix attrs;
 
-    alice =  self.makeAlice { };
+    aliceWithoutTools =  self.makeAlice { };
 
     tools = self.callPackage ../package/tools.nix { };
 
@@ -18,7 +18,7 @@ final: prev: {
         paths = [ alice self.tools ];
       };
 
-    aliceWithTools =  self.addTools self.alice;
+    aliceWithTools =  self.addTools self.aliceWithoutTools;
 
     default = self.aliceWithTools;
   });

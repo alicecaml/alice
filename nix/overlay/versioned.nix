@@ -7,7 +7,7 @@ final: prev: {
             _:
             { version, hash }:
             let
-              alice =
+              aliceWithoutTools =
                 (final.alicecaml.makeAlice { inherit version; }).overrideAttrs (old: {
                   src = final.fetchgit {
                     inherit hash;
@@ -15,10 +15,10 @@ final: prev: {
                     rev = "refs/tags/${version}";
                   };
                 });
-              aliceWithTools = final.alicecaml.addTools alice;
+              aliceWithTools = final.alicecaml.addTools aliceWithoutTools;
             in
             {
-              inherit alice aliceWithTools;
+              inherit aliceWithoutTools aliceWithTools;
               default = aliceWithTools;
             }
           )
