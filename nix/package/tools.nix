@@ -1,9 +1,4 @@
-{
-  ocaml,
-  ocamlformat_0_27_0,
-  ocamlPackages,
-  symlinkJoin,
-}:
+{ ocaml, ocamlformat_0_27_0, ocamlPackages, symlinkJoin, }:
 
 symlinkJoin {
   name = "alice-ocaml-tools";

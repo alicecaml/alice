@@ -3,8 +3,7 @@ let
 
   pkgs-src = builtins.fetchTarball {
     url =
-      flake_lock.nodes.nixpkgs.locked.url
-        or "https://github.com/NixOS/nixpkgs/archive/${flake_lock.nodes.nixpkgs.locked.rev}.tar.gz";
+      flake_lock.nodes.nixpkgs.locked.url or "https://github.com/NixOS/nixpkgs/archive/${flake_lock.nodes.nixpkgs.locked.rev}.tar.gz";
     sha256 = flake_lock.nodes.nixpkgs.locked.narHash;
   };
 
@@ -15,9 +14,9 @@ let
       (import ./nix/overlay/versioned.nix)
     ];
   };
-in
-{
-  inherit (pkgs.alicecaml) aliceWithoutTools aliceWithTools default tools versioned;
+in {
+  inherit (pkgs.alicecaml)
+    aliceWithoutTools aliceWithTools default tools versioned;
 
   # When developing alice, use the musl toolchain. The development environment
   # (ocamllsp, ocamlopt, etc.) can then be managed by alice itself, since alice
