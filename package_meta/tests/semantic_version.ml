@@ -2,15 +2,15 @@ open Alice_stdlib
 open Alice_package_meta.Semantic_version
 
 let of_string_exn s =
-  match of_string s with
+  match of_string_res s with
   | Ok t -> t
   | Error e ->
     Alice_error.User_error.eprint e;
     exit 1
 ;;
 
-let%test "basic" = Result.is_ok (of_string "1.2.3")
-let%test "multiple digits" = Result.is_ok (of_string "14.25.36")
+let%test "basic" = Result.is_ok (of_string_res "1.2.3")
+let%test "multiple digits" = Result.is_ok (of_string_res "14.25.36")
 
 let%test "pre_release" =
   match pre_release_string @@ of_string_exn "9.8.7-beta" with
@@ -53,7 +53,7 @@ let%test "invalid versions" =
     ]
   in
   List.for_all versions ~f:(fun version ->
-    match of_string version with
+    match of_string_res version with
     | Ok _ ->
       print_endline (sprintf "Should be invalid but was accepted: %s" version);
       false

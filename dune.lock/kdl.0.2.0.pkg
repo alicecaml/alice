@@ -1,0 +1,14 @@
+(version 0.2.0)
+
+(build
+ (all_platforms ((action (run dune build -p %{pkg-self:name} -j %{jobs})))))
+
+(depends
+ (all_platforms
+  (ocaml dune menhir menhirLib sexplib0)))
+
+(source
+ (fetch
+  (url https://github.com/eilvelia/ocaml-kdl/archive/refs/tags/v0.2.0.tar.gz)
+  (checksum
+   sha256=c6bff16d8b9194f1d99789ad45aaee948cdf3ebeba1a3e839d261e341329c4c7)))

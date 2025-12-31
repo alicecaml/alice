@@ -45,3 +45,52 @@ let to_toml t =
   in
   Toml.Types.Table.of_list fields
 ;;
+
+let node_to_string node =
+  let () = Kdl.pp_node Format.str_formatter node in
+  Format.flush_str_formatter ()
+;;
+
+let annot_value_to_string annot_value =
+  let () = Kdl.pp_annot_value Format.str_formatter annot_value in
+  Format.flush_str_formatter ()
+;;
+
+let prop_to_string prop =
+  let () = Kdl.pp_prop Format.str_formatter prop in
+  Format.flush_str_formatter ()
+;;
+
+let value_to_string value =
+  let () = Kdl.pp_value Format.str_formatter value in
+  Format.flush_str_formatter ()
+;;
+
+let of_kdl_node (kdl_node : Kdl.node) =
+  print_endline (sprintf "a %s" (node_to_string kdl_node));
+  let children = kdl_node.children in
+  List.iter children ~f:(fun child ->
+    let s = node_to_string child in
+    print_endline (sprintf "b %s" s);
+    match child.name with
+    | "name" ->
+      let args = child.args in
+      List.iter args ~f:(fun arg ->
+        print_endline (sprintf "c %s" (annot_value_to_string arg)))
+    | "version" ->
+      let args = child.args in
+      List.iter args ~f:(fun arg ->
+        print_endline (sprintf "d %s" (annot_value_to_string arg)))
+    | "dependencies" ->
+      List.iter child.children ~f:(fun child ->
+        let s = node_to_string child in
+        print_endline (sprintf "e %s %s" child.name s);
+        List.iter child.props ~f:(fun prop ->
+          print_endline
+            (sprintf
+               "f %s %s %s"
+               (prop_to_string prop)
+               (fst prop)
+               (value_to_string (snd (snd prop))))))
+    | _ -> ())
+;;

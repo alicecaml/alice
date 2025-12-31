@@ -9,3 +9,4 @@ val of_toml
   -> t
 
 val to_toml : t -> Toml.Types.table
+val of_kdl_node : Kdl.node -> unit
