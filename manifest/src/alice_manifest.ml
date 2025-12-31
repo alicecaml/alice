@@ -46,9 +46,11 @@ module Parse_kdl_manifest = struct
 
   module Dependency_field_names = struct
     let path = "path"
+    let all = [ path ]
   end
 
   let dependency_node (node : Kdl.node) =
+    let open Result.O in
     match node with
     | { annot = Some annot; _ } ->
       Error
@@ -81,6 +83,16 @@ module Parse_kdl_manifest = struct
           if String.equal name name_ then Some annot_value else None)
       in
       let module F = Dependency_field_names in
+      let* _ : unit list =
+        let all_fields = String.Set.of_list F.all in
+        Result.List.all
+          (List.map props ~f:(fun (name, _) ->
+             if String.Set.mem name all_fields
+             then Ok ()
+             else
+               Error
+                 [ Pp.textf "Unexpected prop in dependency node (%S): %S" node.name name ]))
+      in
       (match find_prop F.path with
        | None -> Error [ Pp.textf "Dependency node (%S) lacks field %S" node.name F.path ]
        | Some (Some type_annot, _) ->
@@ -92,9 +104,8 @@ module Parse_kdl_manifest = struct
                type_annot
            ]
        | Some (None, `String value) ->
-         let open Result.O in
          let+ name = Package_name.of_string_res node.name in
-         let path = Alice_hierarchy.Either_path.of_filename value in
+         let path = Either_path.of_filename value in
          let source = Dependency_source.Local_directory path in
          Dependency.create ~name ~source
        | Some (None, value) ->
@@ -142,10 +153,19 @@ module Parse_kdl_manifest = struct
   end
 
   let package_node_children (children : Kdl.node list) =
+    let open Result.O in
+    let module F = Package_field_names in
+    let* _ : unit list =
+      let all_fields = String.Set.of_list F.all in
+      Result.List.all
+        (List.map children ~f:(fun (child : Kdl.node) ->
+           if String.Set.mem child.name all_fields
+           then Ok ()
+           else Error [ Pp.textf "Unexpected field in node \"package\": %S" child.name ]))
+    in
     let find_node name =
       List.find_opt children ~f:(fun (node : Kdl.node) -> String.equal node.name name)
     in
-    let module F = Package_field_names in
     let name = find_node F.name in
     let version = find_node F.version in
     let dependencies = find_node F.dependencies in
@@ -155,7 +175,6 @@ module Parse_kdl_manifest = struct
     | _, None ->
       Error [ Pp.textf "Node \"package\" is missing required field: %S" F.version ]
     | Some name, Some version ->
-      let open Result.O in
       let* name = simple_string_node name >>= Package_name.of_string_res in
       let* version = simple_string_node version >>= Semantic_version.of_string_res in
       let id = { Package_id.name; version } in
@@ -207,6 +226,59 @@ module Parse_kdl_manifest = struct
   ;;
 end
 
+module Generate_kdl_manifest = struct
+  let simple_string_annot_value string : Kdl.annot_value = None, `String string
+
+  let package_name_annot_value package_name =
+    Package_name.to_string package_name |> simple_string_annot_value
+  ;;
+
+  let semantic_version_annot_value semantic_version =
+    Semantic_version.to_string semantic_version |> simple_string_annot_value
+  ;;
+
+  let name package_name =
+    Kdl.node
+      Parse_kdl_manifest.Package_field_names.name
+      ~args:[ package_name_annot_value package_name ]
+      []
+  ;;
+
+  let version semantic_version =
+    Kdl.node
+      Parse_kdl_manifest.Package_field_names.version
+      ~args:[ semantic_version_annot_value semantic_version ]
+      []
+  ;;
+
+  let dependency dependency =
+    let props =
+      match Dependency.source dependency with
+      | Local_directory path ->
+        [ ( Parse_kdl_manifest.Dependency_field_names.path
+          , simple_string_annot_value (Either_path.to_filename path) )
+        ]
+    in
+    Kdl.node (Dependency.name dependency |> Package_name.to_string) ~props []
+  ;;
+
+  let dependencies dependencies =
+    let children = Dependencies.to_list dependencies |> List.map ~f:dependency in
+    Kdl.node Parse_kdl_manifest.Package_field_names.dependencies children
+  ;;
+
+  let package package_meta =
+    let name = name (Package_meta.name package_meta) in
+    let version = version (Package_meta.version package_meta) in
+    let dependencies =
+      Package_meta.dependencies_ package_meta |> Option.map ~f:dependencies
+    in
+    Kdl.node "package" (List.filter_opt [ Some name; Some version; dependencies ])
+  ;;
+
+  let document package_meta = [ package package_meta ]
+end
+
 let read_kdl_package path =
   let filename = Absolute_path.to_filename path in
   let channel = In_channel.open_text filename in
@@ -245,6 +317,6 @@ let read_package_dir ~dir_path =
 ;;
 
 let write_package_manifest ~manifest_path package =
-  let package_string = Package.to_toml package |> Toml.Printer.string_of_table in
+  let package_string = Generate_kdl_manifest.document package |> Kdl.to_string in
   Alice_io.File_ops.write_text_file manifest_path package_string
 ;;
