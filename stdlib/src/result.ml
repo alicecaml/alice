@@ -2,6 +2,7 @@ open! Stdlib
 include Result
 
 let map t ~f = map f t
+let map_error t ~f = map_error f t
 let bind t ~f = bind t f
 
 let both a b =

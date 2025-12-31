@@ -1,6 +1,7 @@
 include module type of Stdlib.Result
 
 val map : ('a, 'e) t -> f:('a -> 'b) -> ('b, 'e) t
+val map_error : ('a, 'e) t -> f:('e -> 'f) -> ('a, 'f) t
 val bind : ('a, 'e) t -> f:('a -> ('b, 'e) t) -> ('b, 'e) t
 
 module O : sig

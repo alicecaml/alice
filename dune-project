@@ -34,8 +34,8 @@
   (re
    (>= "1.12"))
   xdg
-  (toml
-   (>= "7"))))
+  (kdl
+   (>= "0.2"))))
 
 (package
  (name alice_tests)

@@ -1,0 +1,8 @@
+package {
+  name d
+  version "0.1.0"
+  dependencies {
+    b path="../b"
+    c path="../c"
+  }
+}

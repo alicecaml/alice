@@ -29,7 +29,7 @@ ocamlPackages.buildDunePackage {
   buildInputs = with ocamlPackages; [
     sha
     xdg
-    toml
+    kdl
     re
     fileutils
     pp

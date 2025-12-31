@@ -24,7 +24,11 @@ module User_error = struct
   exception E of t
 
   let eprint t = Alice_print.Raw.pps_eprint (Pp.newline :: t)
-  let get = Result.get_ok
+
+  let get = function
+    | Ok x -> x
+    | Error e -> raise (E e)
+  ;;
 
   let get_or_panic = function
     | Ok t -> t

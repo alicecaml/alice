@@ -1,6 +1,0 @@
-[package]
-name = "depend_on_hello"
-version = "0.1.0"
-
-[dependencies]
-hello = { path = "../hello_project" }

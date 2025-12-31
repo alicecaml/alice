@@ -14,11 +14,11 @@ Test some error cases for `alice new`:
   $ alice new hello --path . --normalize-paths
     Creating new executable package "hello" in .
   
-  Refusing to create project because destination directory exists and contains project manifest (Alice.toml).
+  Refusing to create project because destination directory exists and contains project manifest (Alice.kdl).
   Delete this file before proceeding.
   [1]
 
-  $ rm Alice.toml
+  $ rm Alice.kdl
 
   $ alice new hello --path . --normalize-paths
     Creating new executable package "hello" in .

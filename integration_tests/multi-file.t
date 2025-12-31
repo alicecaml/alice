@@ -32,10 +32,11 @@ Create a multi-file project:
   > let () = print_endline Lib.text
   > EOF
 
-  $ cat > Alice.toml <<EOF
-  > [package]
-  > name = "foo"
-  > version = "0.1.0"
+  $ cat > Alice.kdl <<EOF
+  > package {
+  >   name foo
+  >   version "0.1.0"
+  > }
   > EOF
 
 Print the dependency graph of the project:

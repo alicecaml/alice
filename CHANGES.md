@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+- Use [kdl](https://kdl.dev) rather than toml for manifests
+
 ### Fixed
 
 - Replace panics with user exceptions in some cases
