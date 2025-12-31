@@ -4,7 +4,7 @@ Build a package with dependencies.
   > cat | sed -E '/Command failed: /d' | sed -E '/File .*, line [0-9]+, characters/d' | sed -E 's/Unbound module "([^ ]*)"/Unbound module \1/'
   > }
 
-  $ alice run --normalize-paths --manifest-path app/Alice.toml
+  $ alice run --normalize-paths --manifest-path app/Alice.kdl
    Compiling c v0.1.0
    Compiling b v0.1.0
    Compiling a v0.1.0
@@ -19,7 +19,7 @@ Build a package with dependencies.
   foo bar baz
   Hello, World! blah blah blah
 
-  $ alice dot packages --normalize-paths --manifest-path app/Alice.toml
+  $ alice dot packages --normalize-paths --manifest-path app/Alice.kdl
   digraph {
     "a v0.1.0" -> {"b v0.1.0"}
     "app v0.1.0" -> {"a v0.1.0", "d v0.1.0"}
@@ -30,11 +30,16 @@ Build a package with dependencies.
 Make a new package to test some things which are not allowed:
   $ alice new --normalize-paths --exe bad
     Creating new executable package "bad" in bad
-  $ cat >> bad/Alice.toml << EOF
-  > [dependencies]
-  > a = { path = "../a" }
+  $ cat > bad/Alice.kdl << EOF
+  > package {
+  >   name bad
+  >   version "0.1.0"
+  >   dependencies {
+  >     a path="../a"
+  >   }
+  > }
   > EOF
-  $ alice build --normalize-paths --manifest-path bad/Alice.toml
+  $ alice build --normalize-paths --manifest-path bad/Alice.kdl
    Compiling c v0.1.0
    Compiling b v0.1.0
    Compiling a v0.1.0
@@ -46,7 +51,7 @@ Even though the package "c" is in the transitive dependency closure of "bad",
   $ cat > bad/src/main.ml << EOF
   > let () = print_endline C.Message.message
   > EOF
-  $ alice build --normalize-paths --manifest-path bad/Alice.toml 2>&1  | sanitize
+  $ alice build --normalize-paths --manifest-path bad/Alice.kdl 2>&1  | sanitize
    Compiling bad v0.1.0
   1 | let () = print_endline C.Message.message
                              ^^^^^^^^^^^^^^^^^
@@ -60,7 +65,7 @@ to access the transitive dependency "c" from "bad" via this module.
   $ cat > bad/src/main.ml << EOF
   > let () = print_endline Internal_modules_of_c.Lib.Message.message
   > EOF
-  $ alice build --normalize-paths --manifest-path bad/Alice.toml 2>&1  | sanitize
+  $ alice build --normalize-paths --manifest-path bad/Alice.kdl 2>&1  | sanitize
    Compiling bad v0.1.0
   1 | let () = print_endline Internal_modules_of_c.Lib.Message.message
                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -79,7 +84,7 @@ client code, even when the package is an immediate dependency.
   $ cat > bad/src/main.ml << EOF
   > let () = print_endline Public_interface_to_open_of_a.A.C.Message.message
   > EOF
-  $ alice build --normalize-paths --manifest-path bad/Alice.toml 2>&1  | sanitize
+  $ alice build --normalize-paths --manifest-path bad/Alice.kdl 2>&1  | sanitize
    Compiling bad v0.1.0
   1 | let () = print_endline Public_interface_to_open_of_a.A.C.Message.message
                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

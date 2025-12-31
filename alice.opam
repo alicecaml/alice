@@ -18,7 +18,6 @@ depends: [
   "pp"
   "re" {>= "1.12"}
   "xdg"
-  "toml" {>= "7"}
   "kdl" {>= "0.2"}
   "odoc" {with-doc}
 ]

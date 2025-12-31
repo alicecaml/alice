@@ -1,7 +1,0 @@
-[package]
-name = "app"
-version = "0.1.0"
-
-[dependencies]
-a = { path = "../a" }
-d = { path = "../d" }

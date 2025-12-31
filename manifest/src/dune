@@ -6,6 +6,5 @@
   alice_error
   alice_hierarchy
   alice_package_meta
-  toml
-  kdl
-  alice_io))
+  alice_io
+  kdl))

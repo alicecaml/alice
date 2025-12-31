@@ -89,7 +89,18 @@ let transitive_dependency_closure package =
                 (Package.root package)
                 rel_root
           in
-          Package.read_root dep_root)
+          let package = Package.read_root dep_root in
+          (match Package_name.equal (Dependency.name dep) (Package.name package) with
+           | true -> package
+           | false ->
+             user_exn
+               [ Pp.textf
+                   "The package loaded from %S was expected to be named %S, but got %S \
+                    instead."
+                   (Either_path.to_filename dir_path)
+                   (Dependency.name dep |> Package_name.to_string)
+                   (Package.name package |> Package_name.to_string)
+               ]))
     in
     List.fold_left dep_packages ~init:acc ~f:(fun acc dep_package ->
       let dep_package_lib =
