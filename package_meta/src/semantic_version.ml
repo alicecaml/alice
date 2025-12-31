@@ -141,7 +141,7 @@ let compare a b =
   0
 ;;
 
-let of_string s =
+let of_string_res s =
   let open Result.O in
   let int_of_component_res s =
     match int_of_string_round_trip_check s with
@@ -247,7 +247,7 @@ let of_string s =
 ;;
 
 let of_string_exn s =
-  match of_string s with
+  match of_string_res s with
   | Ok t -> t
   | Error pps -> Alice_error.user_exn pps
 ;;

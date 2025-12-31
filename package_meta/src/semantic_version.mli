@@ -17,7 +17,7 @@ val pre_release_string : t -> string option
 val metadata_string : t -> string option
 
 (** Returns an error if the argument isn't a valid semantic version. *)
-val of_string : string -> t user_result
+val of_string_res : string -> t user_result
 
 (** Raises a user error if the argument isn't a valid semantic version. *)
 val of_string_exn : string -> t
