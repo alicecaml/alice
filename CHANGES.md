@@ -5,6 +5,7 @@
 ### Fixed
 
 - Replace panics with user exceptions in some cases
+- Detect case when the name of a dependency doesn't match the name of the specified package
 
 ## 0.3.0
 
