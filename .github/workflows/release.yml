@@ -36,7 +36,7 @@ jobs:
 
       # Install Alice (used to bootstrap environment)
       - run: echo "$HOME\.local\share\alice\current\bin" >> $env:GITHUB_PATH
-      - run: echo ALICE_IN_VERSION="0.3.0-alpha2" >> $env:GITHUB_ENV
+      - run: echo ALICE_IN_VERSION="0.3.0" >> $env:GITHUB_ENV
       - run: echo ALICE_IN_NAME="alice-$env:ALICE_IN_VERSION-x86_64-windows" >> $env:GITHUB_ENV
       - run: curl -fsSL --output "$env:ALICE_IN_NAME.tar.gz" "https://github.com/alicecaml/alice/releases/download/$env:ALICE_IN_VERSION/$env:ALICE_IN_NAME.tar.gz"
       - run: tar xf "$env:ALICE_IN_NAME.tar.gz"
@@ -109,7 +109,7 @@ jobs:
 
       # Install OCaml
       - run: echo $HOME/.local/share/alice/current/bin >> $GITHUB_PATH
-      - run: curl -fsSL https://github.com/alicecaml/alice-install/releases/download/v5/install.sh | sh -s -- 0.3.0-alpha2 --no-prompt --install-tools --no-update-shell-config --install-compiler-only
+      - run: curl -fsSL https://github.com/alicecaml/alice-install/releases/download/v5/install.sh | sh -s -- 0.3.0 --no-prompt --install-tools --no-update-shell-config --install-compiler-only
       - run: which ocamlopt.opt
 
       # Build the project
