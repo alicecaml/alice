@@ -68,7 +68,7 @@ jobs:
 
       # Test that alice works without the root in $Env:Path
       - run: alice new --exe hello
-      - run: alice run --manifest-path hello/Alice.toml
+      - run: alice run --manifest-path hello/Alice.kdl
 
   test-unix:
     name: Test for ${{ matrix.name }}
@@ -121,7 +121,7 @@ jobs:
 
       # Test that alice works without the root in $PATH
       - run: alice new --exe hello
-      - run: alice run --manifest-path hello/Alice.toml
+      - run: alice run --manifest-path hello/Alice.kdl
 
   test-nix-build:
     name: Test that some of the nix devirations can be built
