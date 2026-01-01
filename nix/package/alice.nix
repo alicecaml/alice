@@ -2,7 +2,7 @@
 # Overriding the version of a derivation produced by buildDunePackage doesn't
 # result in the new version appearing in the output, so alternative versions
 # must be passed as arguments instead.
-version ? "0.4-dev",
+version,
 # Older versions of Alice may have different dependencies from the current
 # version, and the additional dependencies can be passed here.
 extraDependencies ? [ ], }:
