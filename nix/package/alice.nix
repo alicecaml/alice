@@ -2,7 +2,10 @@
 # Overriding the version of a derivation produced by buildDunePackage doesn't
 # result in the new version appearing in the output, so alternative versions
 # must be passed as arguments instead.
-version ? "0.4-dev", }:
+version ? "0.4-dev",
+# Older versions of Alice may have different dependencies from the current
+# version, and the additional dependencies can be passed here.
+extraDependencies ? [ ], }:
 
 ocamlPackages.buildDunePackage {
   pname = "alice";
@@ -26,24 +29,25 @@ ocamlPackages.buildDunePackage {
     ];
   };
 
-  buildInputs = with ocamlPackages; [
-    sha
-    xdg
-    kdl
-    re
-    fileutils
-    pp
-    (dyn.overrideAttrs (_: {
-      # Since alice depends on pp and dyn, modify dyn to reuse the common
-      # pp rather than vendoring it. This avoids a module conflict
-      # between pp and dyn's vendored copy of pp when building alice.
-      buildInputs = [ pp ];
-      patchPhase = ''
-        rm -rf vendor/pp
-      '';
-    }))
-    climate
-  ];
+  buildInputs = with ocamlPackages;
+    [
+      sha
+      xdg
+      kdl
+      re
+      fileutils
+      pp
+      (dyn.overrideAttrs (_: {
+        # Since alice depends on pp and dyn, modify dyn to reuse the common
+        # pp rather than vendoring it. This avoids a module conflict
+        # between pp and dyn's vendored copy of pp when building alice.
+        buildInputs = [ pp ];
+        patchPhase = ''
+          rm -rf vendor/pp
+        '';
+      }))
+      climate
+    ] ++ extraDependencies;
 
   postInstall = lib.optionalString withBashCompletions # sh
     ''
