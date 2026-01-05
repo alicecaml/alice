@@ -84,7 +84,7 @@ alice new hello
 ```
 
 This will create a new directory named `hello`, containing a package manifest
-`Alice.toml` and a `src` directory which will contain all the package's source
+`Alice.kdl` and a `src` directory which will contain all the package's source
 code. Currently there is just a single file `src/main.ml`.
 
 If a package has a `main.ml` file then it is considered by Alice to be _executable_.
@@ -130,14 +130,15 @@ however we can modify the `hello` package from earlier to _depend_ on it.
 Go back to the `hello` package directory and make `hello` depend on the `foo`
 package we just created.
 
-Modify `hello`'s `Alice.toml` file to look like this:
-```toml
-[package]
-name = "hello"
-version = "0.1.0"
-
-[dependencies]
-foo = { path = "../foo" } # replace "../foo" with the relative path to the foo package
+Modify `hello`'s `Alice.kdl` file to look like this:
+```kdl
+package {
+  name hello
+  version "0.1.0"
+  dependencies {
+    foo path="../foo"  // replace "../foo" with the relative path to the foo package
+  }
+}
 ```
 
 Modify `hello`'s `src/main.ml` file to look like this:

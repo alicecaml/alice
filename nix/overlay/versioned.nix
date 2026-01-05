@@ -47,6 +47,10 @@ final: prev: {
           hash = "sha256-7KvoTQOHgd5cWMCw2EKbxSa45mqYLklEF8vvIzgwAeY=";
           extraDependencies = [ final.ocamlPackages.toml ];
         };
+        "0_4_0" = {
+          version = "0.4.0";
+          hash = "sha256-/PuCDBedACkFepJa8j1DF/lRc7nE3Y2EpXkpbBTSwak=";
+        };
 
       };
   in prev.alicecaml.overrideScope (ofinal: oprev: {
