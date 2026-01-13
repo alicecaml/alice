@@ -38,9 +38,10 @@
         in lib.mapAttrs' prefix pkgs.alicecaml.versioned // {
           inherit (pkgs.alicecaml) tools;
 
-          # By default, get the latest released version of Alice.
-          default = pkgs.alicecaml.versioned.latest.default;
-          alice_dev = pkgs.alicecaml;
+          # By default get the current development version of Alice. This is so
+          # that installing the flake from a versioned release tag installs
+          # that version of Alice.
+          default = pkgs.alicecaml.default;
         });
 
       devShells =
