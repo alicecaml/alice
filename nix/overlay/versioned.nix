@@ -54,6 +54,6 @@ final: prev: {
 
       };
   in prev.alicecaml.overrideScope (ofinal: oprev: {
-    versioned = versioned // { latest = versioned."0_3_0"; };
+    versioned = versioned // { latest = versioned."0_4_0"; };
   });
 }
