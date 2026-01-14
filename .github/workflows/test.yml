@@ -144,7 +144,6 @@ jobs:
       - uses: actions/checkout@v6
       - uses: cachix/install-nix-action@v31
       - run: nix build
-      - run: nix build .#alice_dev.default
       - run: nix build .#alice_0_2_0.aliceWithoutTools
       - run: nix build .#tools
       - run: nix build .#alice_latest.aliceWithTools
