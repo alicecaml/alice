@@ -1,4 +1,4 @@
-type 'a t = ( :: ) of ('a * 'a list)
+type 'a t = ( :: ) of 'a * 'a list
 
 let singleton x = [ x ]
 

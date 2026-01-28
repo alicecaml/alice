@@ -1,4 +1,4 @@
-type 'a t = ( :: ) of ('a * 'a list)
+type 'a t = ( :: ) of 'a * 'a list
 
 val singleton : 'a -> 'a t
 val of_list_opt : 'a list -> 'a t option
