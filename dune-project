@@ -35,7 +35,8 @@
    (>= "1.12"))
   xdg
   (kdl
-   (>= "0.2"))))
+   (>= "0.2"))
+  eio_main))
 
 (package
  (name alice_tests)

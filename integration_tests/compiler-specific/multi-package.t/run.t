@@ -53,6 +53,7 @@ Even though the package "c" is in the transitive dependency closure of "bad",
   > EOF
   $ alice build --normalize-paths --manifest-path bad/Alice.kdl 2>&1  | sanitize
    Compiling bad v0.1.0
+  
   1 | let () = print_endline C.Message.message
                              ^^^^^^^^^^^^^^^^^
   Error: Unbound module C
@@ -67,6 +68,7 @@ to access the transitive dependency "c" from "bad" via this module.
   > EOF
   $ alice build --normalize-paths --manifest-path bad/Alice.kdl 2>&1  | sanitize
    Compiling bad v0.1.0
+  
   1 | let () = print_endline Internal_modules_of_c.Lib.Message.message
                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Alert deprecated: module Public_interface_to_open_of_a.Internal_modules_of_c
@@ -86,6 +88,7 @@ client code, even when the package is an immediate dependency.
   > EOF
   $ alice build --normalize-paths --manifest-path bad/Alice.kdl 2>&1  | sanitize
    Compiling bad v0.1.0
+  
   1 | let () = print_endline Public_interface_to_open_of_a.A.C.Message.message
                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Alert deprecated: module Public_interface_to_open_of_a.Public_interface_to_open_of_a

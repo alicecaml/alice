@@ -9,13 +9,23 @@ open Alice_ocaml_compiler
 type t
 
 val of_package : Package.t -> t
-val build : t -> Profile.t -> Alice_env.Os_type.t -> Ocaml_compiler.t -> unit
 
-val run
+val build
   :  t
+  -> _ Eio.Process.mgr
   -> Profile.t
   -> Alice_env.Os_type.t
   -> Ocaml_compiler.t
+  -> Scheduler.Jobs.t
+  -> unit
+
+val run
+  :  t
+  -> _ Eio.Process.mgr
+  -> Profile.t
+  -> Alice_env.Os_type.t
+  -> Ocaml_compiler.t
+  -> Scheduler.Jobs.t
   -> args:string list
   -> unit
 

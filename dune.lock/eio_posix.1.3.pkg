@@ -1,0 +1,56 @@
+(version 1.3)
+
+(build
+ (choice
+  ((((arch x86_64)
+     (os linux)
+     (sys-ocaml-version 5.3.1+relocatable))
+    ((arch arm64)
+     (os linux)
+     (sys-ocaml-version 5.3.1+relocatable))
+    ((arch x86_64)
+     (os macos)
+     (sys-ocaml-version 5.3.1+relocatable))
+    ((arch arm64)
+     (os macos)
+     (sys-ocaml-version 5.3.1+relocatable)))
+   ((action
+     (run dune build -p %{pkg-self:name} -j %{jobs} @install))))))
+
+(depends
+ (choice
+  ((((arch x86_64)
+     (os linux)
+     (sys-ocaml-version 5.3.1+relocatable))
+    ((arch arm64)
+     (os linux)
+     (sys-ocaml-version 5.3.1+relocatable))
+    ((arch x86_64)
+     (os macos)
+     (sys-ocaml-version 5.3.1+relocatable))
+    ((arch arm64)
+     (os macos)
+     (sys-ocaml-version 5.3.1+relocatable)))
+   (dune eio iomux fmt))))
+
+(source
+ (fetch
+  (url
+   https://github.com/ocaml-multicore/eio/releases/download/v1.3/eio-1.3.tbz)
+  (checksum
+   sha256=8ed5c13e6689f31c85dca5f12762d84b8cc0042a7b07d3e464df6eb4b72b3dfc)))
+
+(enabled_on_platforms
+ (only
+  ((arch x86_64)
+   (os linux)
+   (sys-ocaml-version 5.3.1+relocatable))
+  ((arch arm64)
+   (os linux)
+   (sys-ocaml-version 5.3.1+relocatable))
+  ((arch x86_64)
+   (os macos)
+   (sys-ocaml-version 5.3.1+relocatable))
+  ((arch arm64)
+   (os macos)
+   (sys-ocaml-version 5.3.1+relocatable))))

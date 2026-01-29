@@ -7,13 +7,17 @@ let run_ =
   let+ () = Common.set_globals_from_flags
   and+ project = Common.parse_project
   and+ profile = Common.parse_profile
+  and+ jobs = Common.parse_jobs
   and+ args =
     pos_all string ~doc:"Arguments to pass to the executable." ~value_name:"ARGS"
   in
   let env = Alice_env.current_env () in
   let os_type = Alice_env.Os_type.current () in
   let ocamlopt = Alice_which.ocamlopt os_type env in
-  Project.run project profile os_type ocamlopt ~args
+  Eio_main.run
+  @@ fun env ->
+  let proc_mgr = Eio.Stdenv.process_mgr env in
+  Project.run project proc_mgr profile os_type ocamlopt jobs ~args
 ;;
 
 let subcommand =

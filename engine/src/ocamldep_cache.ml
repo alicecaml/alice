@@ -66,8 +66,8 @@ let get_deps t ocaml_compiler ~source_path =
     match Absolute_path.Non_root_map.find_opt source_path t.dep_table with
     | None ->
       (* Source file is absent from the cache. This is unusual because the
-           source file is older than the cache. Run ocamldep to compute the
-           result anyway. *)
+         source file is older than the cache. Run ocamldep to compute the
+         result anyway. *)
       Log.warn
         ~package_id:t.package_id
         [ Pp.textf

@@ -16,3 +16,5 @@ val parse_profile : Profile.t Arg_parser.t
 (** Parse the "--verbose" and "--quiet" and have the side effect of setting the
     global log level and print mode. *)
 val set_globals_from_flags : unit Arg_parser.t
+
+val parse_jobs : Scheduler.Jobs.t Arg_parser.t

@@ -60,7 +60,7 @@ module Make (Node : Node) : sig
     val name : t -> Node.Name.t
     val dag : t -> dag
     val deps : t -> t list
-    val transitive_closure : t -> Node.t list
+    val transitive_closure_in_dependency_order : t -> Node.t list
   end
 
   (** [traverse t ~name] returns a traversal of [t] starting at the node named

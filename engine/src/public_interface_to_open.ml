@@ -7,6 +7,14 @@ type t =
   ; transitive_dependency_closure_excluding_package : Package.Typed.lib_only_t list
   }
 
+let to_dyn { package; transitive_dependency_closure_excluding_package } =
+  Dyn.record
+    [ "package", Package.to_dyn package
+    ; ( "transitive_dependency_closure_excluding_package"
+      , Dyn.list Package.Typed.to_dyn transitive_dependency_closure_excluding_package )
+    ]
+;;
+
 let of_package_with_deps package_with_deps =
   let package = Package_with_deps.package package_with_deps in
   let transitive_dependency_closure_excluding_package =

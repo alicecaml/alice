@@ -6,11 +6,15 @@ let build =
   let open Arg_parser in
   let+ () = Common.set_globals_from_flags
   and+ project = Common.parse_project
-  and+ profile = Common.parse_profile in
+  and+ profile = Common.parse_profile
+  and+ jobs = Common.parse_jobs in
   let env = Alice_env.current_env () in
   let os_type = Alice_env.Os_type.current () in
   let ocamlopt = Alice_which.ocamlopt os_type env in
-  Project.build project profile os_type ocamlopt
+  Eio_main.run
+  @@ fun env ->
+  let proc_mgr = Eio.Stdenv.process_mgr env in
+  Project.build project proc_mgr profile os_type ocamlopt jobs
 ;;
 
 let subcommand =

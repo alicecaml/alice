@@ -19,6 +19,7 @@ depends: [
   "re" {>= "1.12"}
   "xdg"
   "kdl" {>= "0.2"}
+  "eio_main"
   "odoc" {with-doc}
 ]
 dev-repo: "git+https://github.com/alicecaml/alice.git"

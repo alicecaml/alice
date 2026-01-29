@@ -117,7 +117,7 @@ module Build_plan = struct
   let outputs t = Typed_op.outputs (op t) |> Typed_op.Generated_file.Set.of_list
 
   let transitive_closure_outputs t =
-    transitive_closure t
+    transitive_closure_in_dependency_order t
     |> List.map ~f:Build_node.name
     |> Typed_op.Generated_file.Set.of_list
   ;;
@@ -261,7 +261,7 @@ let lsp_ops build_dag_compilation_only package =
               Typed_op.Generated_file.Compiled.lib_cmi
           then
             (* If the package has a lib.mli file then lib.cmx will depend
-                   on lib.cmi. Swap the dependency out for <package>.cmi here. *)
+               on lib.cmi. Swap the dependency out for <package>.cmi here. *)
             Generated_file.Compiled.rename
               input
               ~name_without_extension:package_name_s
@@ -310,6 +310,15 @@ let lsp_ops build_dag_compilation_only package =
       (match Build_plan.op lib_cmi_plan with
        | Compile_interface
            { interface_input; compiled_inputs; cmi_output; stop_after_typing = _ } ->
+         let compiled_inputs =
+           let pack_output =
+             let pack = Typed_op.Pack.of_package_name (Package.name package) in
+             Typed_op.Pack.cmx_file pack |> Typed_op.File.Compiled.generated_file_compiled
+           in
+           (* Add the package's internal modules pack to the dependencies of this
+              node. *)
+           pack_output :: compiled_inputs
+         in
          let cmi_output =
            Typed_op.File.Compiled.rename
              cmi_output

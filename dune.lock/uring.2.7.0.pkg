@@ -1,0 +1,46 @@
+(version 2.7.0)
+
+(build
+ (choice
+  ((((arch x86_64)
+     (os linux)
+     (sys-ocaml-version 5.3.1+relocatable))
+    ((arch arm64)
+     (os linux)
+     (sys-ocaml-version 5.3.1+relocatable)))
+   ((action
+     (progn
+      (when
+       %{pkg-self:dev}
+       (run dune subst))
+      (run dune build -p %{pkg-self:name} -j %{jobs} @install)))))))
+
+(depends
+ (choice
+  ((((arch x86_64)
+     (os linux)
+     (sys-ocaml-version 5.3.1+relocatable))
+    ((arch arm64)
+     (os linux)
+     (sys-ocaml-version 5.3.1+relocatable)))
+   (dune cstruct ocaml dune-configurator fmt optint))))
+
+(depexts
+ ((linux-headers)
+  (= %{os_distribution} alpine)))
+
+(source
+ (fetch
+  (url
+   https://github.com/ocaml-multicore/ocaml-uring/releases/download/v2.7.0/uring-2.7.0.tbz)
+  (checksum
+   sha256=99e3e2ebf4d7b7182d2d82f21d101d9d17207a574256051a3d8f8c6574b30ba5)))
+
+(enabled_on_platforms
+ (only
+  ((arch x86_64)
+   (os linux)
+   (sys-ocaml-version 5.3.1+relocatable))
+  ((arch arm64)
+   (os linux)
+   (sys-ocaml-version 5.3.1+relocatable))))

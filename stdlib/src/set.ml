@@ -4,6 +4,7 @@ module type S = sig
   include S
 
   val to_dyn : t -> Dyn.t
+  val union_all : t list -> t
 end
 
 module type Ord = sig
@@ -20,4 +21,5 @@ module Make (Ord : Ord) = struct
     end)
 
   let to_dyn t = Dyn.Set (to_list t |> List.map ~f:Ord.to_dyn)
+  let union_all ts = List.fold_left ts ~init:empty ~f:union
 end

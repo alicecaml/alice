@@ -131,3 +131,13 @@ let set_globals_from_flags =
   and+ () = set_normalized_paths_from_flag in
   ()
 ;;
+
+let parse_jobs =
+  let open Arg_parser in
+  let+ jobs =
+    named_opt [ "j"; "jobs" ] int ~doc:"Limit the number of parallel jobs to INT."
+  in
+  match jobs with
+  | None -> Scheduler.Jobs.unlimited
+  | Some n -> Scheduler.Jobs.limited n
+;;

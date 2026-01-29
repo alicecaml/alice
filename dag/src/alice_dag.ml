@@ -109,7 +109,7 @@ module Make (Node : Node) = struct
         { t with node })
     ;;
 
-    let transitive_closure t =
+    let transitive_closure_in_dependency_order t =
       transitive_closure_in_dependency_order (dag t) ~start:(name t) ~include_start:true
     ;;
   end

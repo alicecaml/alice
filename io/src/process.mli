@@ -49,3 +49,8 @@ module Blocking : sig
     -> Command.t
     -> (Report.t * string list, [ `Prog_not_available ]) result
 end
+
+module Eio : sig
+  val run : _ Eio.Process.mgr -> string -> args:string list -> env:Env.t -> unit
+  val run_command : _ Eio.Process.mgr -> Command.t -> unit
+end

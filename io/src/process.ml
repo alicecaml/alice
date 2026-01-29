@@ -127,3 +127,18 @@ module Blocking = struct
     run_capturing_stdout_lines ~stdin ~stderr prog ~args ~env
   ;;
 end
+
+module Eio = struct
+  let run proc_mgr prog ~args ~env =
+    let env_arr = Env.to_raw env in
+    Log.debug [ Pp.textf "Running command: %s %s" prog (String.concat ~sep:" " args) ];
+    let stderr_buffer = Buffer.create 0 in
+    let stderr = Eio.Flow.buffer_sink stderr_buffer in
+    try Eio.Process.run ~stderr proc_mgr ~env:env_arr ~executable:prog args with
+    | Eio.Io _ ->
+      let stderr_string = String.of_bytes (Buffer.to_bytes stderr_buffer) in
+      Alice_error.user_exn [ Pp.textf "%s" stderr_string ]
+  ;;
+
+  let run_command proc_mgr { Command.prog; args; env } = run proc_mgr prog ~args ~env
+end

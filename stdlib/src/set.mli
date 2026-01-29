@@ -4,6 +4,7 @@ module type S = sig
   include S
 
   val to_dyn : t -> Dyn.t
+  val union_all : t list -> t
 end
 
 module type Ord = sig

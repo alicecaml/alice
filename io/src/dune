@@ -8,4 +8,5 @@
   alice_log
   alice_env
   alice_ui
-  unix))
+  unix
+  eio))
