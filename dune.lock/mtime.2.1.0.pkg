@@ -2,7 +2,14 @@
 
 (build
  (all_platforms
-  ((action (run ocaml pkg/pkg.ml build --dev-pkg %{pkg-self:dev})))))
+  ((action
+   (run
+    sh
+    %{pkg:ocamlfind:bin}/ocaml
+    pkg/pkg.ml
+    build
+    --dev-pkg
+    %{pkg-self:dev})))))
 
 (depends
  (all_platforms

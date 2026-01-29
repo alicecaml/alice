@@ -3,16 +3,17 @@
 (build
  (all_platforms
   ((action
-    (run
-     ocaml
-     pkg/pkg.ml
-     build
-     --dev-pkg
-     %{pkg-self:dev}
-     --with-base-unix
-     %{pkg:base-unix:installed}
-     --with-cmdliner
-     %{pkg:cmdliner:installed})))))
+   (run
+    sh
+    %{pkg:ocamlfind:bin}/ocaml
+    pkg/pkg.ml
+    build
+    --dev-pkg
+    %{pkg-self:dev}
+    --with-base-unix
+    %{pkg:base-unix:installed}
+    --with-cmdliner
+    %{pkg:cmdliner:installed})))))
 
 (depends
  (all_platforms
