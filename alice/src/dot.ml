@@ -12,8 +12,10 @@ let dot_artifacts =
   let ocamlopt = Alice_which.ocamlopt os_type env in
   Eio_main.run
   @@ fun env ->
-  let proc_mgr = Eio.Stdenv.process_mgr env in
-  let io_ctx = Alice_io.Io_ctx.create os_type proc_mgr num_jobs in
+  let proc_mgr =
+    Alice_io.Io_ctx.create_maybe_proc_mgr os_type (fun () -> Eio.Stdenv.process_mgr env)
+  in
+  let io_ctx = Alice_io.Io_ctx.create proc_mgr num_jobs in
   print_endline @@ Project.dot_build_artifacts project io_ctx os_type ocamlopt
 ;;
 
