@@ -155,28 +155,43 @@ module Eio = struct
     | Error (`Generic_error message) -> Alice_error.user_exn [ Pp.text message ]
   ;;
 
-  let run proc_mgr prog ~args ~env =
-    let env_arr = Env.to_raw env in
-    let args = prog :: args in
-    Log.debug [ Pp.textf "Running command: %s" (String.concat ~sep:" " args) ];
-    handle_errors (fun ~stderr -> Eio.Process.run ~stderr proc_mgr ~env:env_arr args)
+  let run (io_ctx : _ Io_ctx.t) prog ~args ~env =
+    if Alice_env.Os_type.is_windows io_ctx.os_type
+    then (
+      (* Eio can't launch processes on Windows so fall back to the blocking interface *)
+      match Blocking.run prog ~args ~env with
+      | Ok _ -> Ok ()
+      | Error `Prog_not_available -> Error (`Program_not_available prog))
+    else (
+      let env_arr = Env.to_raw env in
+      let args = prog :: args in
+      Log.debug [ Pp.textf "Running command: %s" (String.concat ~sep:" " args) ];
+      handle_errors (fun ~stderr ->
+        Eio.Process.run ~stderr io_ctx.proc_mgr ~env:env_arr args))
   ;;
 
-  let run_command proc_mgr { Command.prog; args; env } = run proc_mgr prog ~args ~env
+  let run_command io_ctx { Command.prog; args; env } = run io_ctx prog ~args ~env
 
-  let run_capturing_stdout_lines proc_mgr prog ~args ~env =
-    let env_arr = Env.to_raw env in
-    let args = prog :: args in
-    Log.debug [ Pp.textf "Running command: %s" (String.concat ~sep:" " args) ];
-    handle_errors (fun ~stderr ->
-      let stdin_parser = Eio.Buf_read.take_all in
-      let output_string =
-        Eio.Process.parse_out ~stderr proc_mgr stdin_parser ~env:env_arr args
-      in
-      String.split_on_char output_string ~sep:'\n')
+  let run_capturing_stdout_lines (io_ctx : _ Io_ctx.t) prog ~args ~env =
+    if Alice_env.Os_type.is_windows io_ctx.os_type
+    then (
+      (* Eio can't launch processes on Windows so fall back to the blocking interface *)
+      match Blocking.run_capturing_stdout_lines prog ~args ~env with
+      | Ok (_, lines) -> Ok lines
+      | Error `Prog_not_available -> Error (`Program_not_available prog))
+    else (
+      let env_arr = Env.to_raw env in
+      let args = prog :: args in
+      Log.debug [ Pp.textf "Running command: %s" (String.concat ~sep:" " args) ];
+      handle_errors (fun ~stderr ->
+        let stdin_parser = Eio.Buf_read.take_all in
+        let output_string =
+          Eio.Process.parse_out ~stderr io_ctx.proc_mgr stdin_parser ~env:env_arr args
+        in
+        String.split_on_char output_string ~sep:'\n'))
   ;;
 
-  let run_command_capturing_stdout_lines proc_mgr { Command.prog; args; env } =
-    run_capturing_stdout_lines proc_mgr prog ~args ~env
+  let run_command_capturing_stdout_lines io_ctx { Command.prog; args; env } =
+    run_capturing_stdout_lines io_ctx prog ~args ~env
   ;;
 end

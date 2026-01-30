@@ -26,7 +26,7 @@ val create
   -> Build_dir.t
   -> Alice_env.Os_type.t
   -> Ocaml_compiler.t
-  -> _ Eio.Process.mgr
+  -> _ Alice_io.Io_ctx.t
   -> ('exe, 'lib) t
 
 val plan_exe : (true_t, _) t -> Build_plan.t

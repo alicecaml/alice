@@ -320,7 +320,7 @@ module Task = struct
     File_is_built.wait_multi t.deps_finished;
     Limit.run io_ctx.limit ~f:(fun () ->
       assert_expected_files_exist t;
-      Action.run t.action io_ctx.proc_mgr);
+      Action.run t.action io_ctx);
     File_is_built.broadcast_multi t.finished
   ;;
 

@@ -123,7 +123,7 @@ module Build_plan = struct
   ;;
 end
 
-let compilation_ops dir package_id build_dir ocaml_compiler proc_mgr =
+let compilation_ops dir package_id build_dir ocaml_compiler io_ctx =
   let ocamldep_cache = Ocamldep_cache.load build_dir package_id in
   let deps_key_value_pairs =
     Dir_non_root.contents dir
@@ -137,7 +137,7 @@ let compilation_ops dir package_id build_dir ocaml_compiler proc_mgr =
       ( file.path
       , Ocamldep_cache.get_deps
           ocamldep_cache
-          proc_mgr
+          io_ctx
           ocaml_compiler
           ~source_path:file.path ))
     |> Alice_io.Eio_fiber.all_values
@@ -365,15 +365,15 @@ let create
     -> Build_dir.t
     -> Alice_env.Os_type.t
     -> Ocaml_compiler.t
-    -> _ Eio.Process.mgr
+    -> _ Alice_io.Io_ctx.t
     -> (exe, lib) t
   =
-  fun package_typed build_dir os_type ocaml_compiler proc_mgr ->
+  fun package_typed build_dir os_type ocaml_compiler io_ctx ->
   let open Typed_op in
   let package = Package.Typed.package package_typed in
   let src_dir = Package.src_dir_exn package in
   let compilation_ops =
-    compilation_ops src_dir (Package.id package) build_dir ocaml_compiler proc_mgr
+    compilation_ops src_dir (Package.id package) build_dir ocaml_compiler io_ctx
   in
   let build_dag_compilation_only = Build_dag.of_ops compilation_ops in
   let link_library () =

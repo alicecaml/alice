@@ -74,7 +74,7 @@ let build_single_package
   fun t io_ctx package_with_deps profile os_type ocaml_compiler ~any_dep_rebuilt ->
   let package_typed = Package_with_deps.package_typed package_with_deps in
   let build_graph =
-    Build_graph.create package_typed t.build_dir os_type ocaml_compiler io_ctx.proc_mgr
+    Build_graph.create package_typed t.build_dir os_type ocaml_compiler io_ctx
   in
   let build_plans =
     match Package.Typed.type_ package_typed with
@@ -157,7 +157,7 @@ let build_package_typed
       ocaml_compiler
   =
   let dependency_graph = Dependency_graph.compute package_typed in
-  let ocamllib_path = Ocaml_compiler.standard_library ocaml_compiler io_ctx.proc_mgr in
+  let ocamllib_path = Ocaml_compiler.standard_library ocaml_compiler io_ctx in
   write_dot_merlin
     t
     (Dependency_graph.root_package_with_deps dependency_graph)
@@ -210,7 +210,7 @@ let run t (io_ctx : _ Io_ctx.t) profile os_type ocaml_compiler ~args =
   print_newline ();
   match
     Alice_io.Process.Eio.run
-      io_ctx.proc_mgr
+      io_ctx
       exe_filename
       ~args
       ~env:(Ocaml_compiler.env ocaml_compiler)
@@ -237,7 +237,7 @@ let dot_package_build_artifacts t (io_ctx : _ Io_ctx.t) package os_type ocaml_co
   Package.with_typed
     { f =
         (fun pt ->
-          Build_graph.create pt t.build_dir os_type ocaml_compiler io_ctx.proc_mgr
+          Build_graph.create pt t.build_dir os_type ocaml_compiler io_ctx
           |> Build_graph.dot)
     }
     package

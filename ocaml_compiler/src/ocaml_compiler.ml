@@ -15,9 +15,9 @@ let command { filename; env } ~args = Command.create filename ~args env
 module Depend = struct
   let command ocaml_compiler args = command ocaml_compiler ~args:("-depend" :: args)
 
-  let run_lines ocaml_compiler proc_mgr args =
+  let run_lines ocaml_compiler io_ctx args =
     let command = command ocaml_compiler args in
-    Alice_io.Process.Eio.run_command_capturing_stdout_lines proc_mgr command
+    Alice_io.Process.Eio.run_command_capturing_stdout_lines io_ctx command
     |> Alice_io.Process.Eio.result_ok_or_exn
   ;;
 
@@ -65,14 +65,14 @@ module Depend = struct
     ;;
   end
 
-  let native_deps ocaml_compiler proc_mgr path =
+  let native_deps ocaml_compiler io_ctx path =
     if not (Alice_io.File_ops.exists path)
     then
       panic [ Pp.textf "File does not exist: %s" (Alice_ui.absolute_path_to_string path) ];
     match
       run_lines
         ocaml_compiler
-        proc_mgr
+        io_ctx
         [ "-one-line"
         ; "-native"
         ; "-I"
@@ -97,14 +97,14 @@ let depends_native = Depend.native_deps
 module Config = struct
   let command ocaml_compiler = command ocaml_compiler ~args:[ "-config" ]
 
-  let run_lines ocaml_compiler proc_mgr =
+  let run_lines ocaml_compiler io_ctx =
     let command = command ocaml_compiler in
-    Alice_io.Process.Eio.run_command_capturing_stdout_lines proc_mgr command
+    Alice_io.Process.Eio.run_command_capturing_stdout_lines io_ctx command
     |> Alice_io.Process.Eio.result_ok_or_exn
   ;;
 
-  let standard_library ocaml_compiler proc_mgr =
-    let lines = run_lines ocaml_compiler proc_mgr in
+  let standard_library ocaml_compiler io_ctx =
+    let lines = run_lines ocaml_compiler io_ctx in
     let path_opt =
       List.find_map lines ~f:(fun line ->
         match String.lsplit2 line ~on:' ' with

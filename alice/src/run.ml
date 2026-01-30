@@ -17,7 +17,7 @@ let run_ =
   Eio_main.run
   @@ fun env ->
   let proc_mgr = Eio.Stdenv.process_mgr env in
-  let io_ctx = Alice_io.Io_ctx.create proc_mgr num_jobs in
+  let io_ctx = Alice_io.Io_ctx.create os_type proc_mgr num_jobs in
   Project.run project io_ctx profile os_type ocamlopt ~args
 ;;
 

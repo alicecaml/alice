@@ -57,25 +57,18 @@ module Eio : sig
     ]
 
   val result_ok_or_exn : ('a, error) result -> 'a
-
-  val run
-    :  _ Eio.Process.mgr
-    -> string
-    -> args:string list
-    -> env:Env.t
-    -> (unit, error) result
-
-  val run_command : _ Eio.Process.mgr -> Command.t -> (unit, error) result
+  val run : _ Io_ctx.t -> string -> args:string list -> env:Env.t -> (unit, error) result
+  val run_command : _ Io_ctx.t -> Command.t -> (unit, error) result
 
   val run_capturing_stdout_lines
-    :  _ Eio.Process.mgr
+    :  _ Io_ctx.t
     -> string
     -> args:string list
     -> env:Env.t
     -> (string list, error) result
 
   val run_command_capturing_stdout_lines
-    :  _ Eio.Process.mgr
+    :  _ Io_ctx.t
     -> Command.t
     -> (string list, error) result
 end

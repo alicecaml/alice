@@ -28,8 +28,8 @@ end
     well as the files which must be generated before compiling the given file
     ([Deps.inputs]). Returned paths are relative to the directory containing
     [file]. *)
-val depends_native : t -> _ Eio.Process.mgr -> Absolute_path.non_root_t -> Deps.t
+val depends_native : t -> _ Alice_io.Io_ctx.t -> Absolute_path.non_root_t -> Deps.t
 
 (** Returns the "standard_library" path from the output of running the compiler
     with "-config". *)
-val standard_library : t -> _ Eio.Process.mgr -> Absolute_path.non_root_t
+val standard_library : t -> _ Alice_io.Io_ctx.t -> Absolute_path.non_root_t
