@@ -19,7 +19,7 @@ Build a package with dependencies.
   foo bar baz
   Hello, World! blah blah blah
 
-  $ alice dot packages --normalize-paths --manifest-path app/Alice.kdl -j1
+  $ alice dot packages --normalize-paths --manifest-path app/Alice.kdl
   digraph {
     "a v0.1.0" -> {"b v0.1.0"}
     "app v0.1.0" -> {"a v0.1.0", "d v0.1.0"}

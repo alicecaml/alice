@@ -177,7 +177,6 @@ module Eio = struct
        | Ok (_, lines) -> Ok lines
        | Error `Prog_not_available -> Error (`Program_not_available prog))
     | Proc_mgr proc_mgr ->
-      let _ = failwith "a" in
       let env_arr = Env.to_raw env in
       let args = prog :: args in
       Log.debug [ Pp.textf "Running command: %s" (String.concat ~sep:" " args) ];
