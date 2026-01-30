@@ -15,24 +15,10 @@ let command { filename; env } ~args = Command.create filename ~args env
 module Depend = struct
   let command ocaml_compiler args = command ocaml_compiler ~args:("-depend" :: args)
 
-  let run_lines ocaml_compiler args =
+  let run_lines ocaml_compiler proc_mgr args =
     let command = command ocaml_compiler args in
-    match Alice_io.Process.Blocking.run_command_capturing_stdout_lines command with
-    | Ok (report, output) ->
-      Alice_io.Process.Report.error_unless_exit_0 report;
-      output
-    | Error `Prog_not_available ->
-      user_exn
-        [ Pp.textf
-            "Program %S not found while trying to run command: %s"
-            (filename ocaml_compiler)
-            (Command.to_string_ignore_env command)
-        ]
-  ;;
-
-  let run_lines_eio ocaml_compiler prog_mgr args =
-    let command = command ocaml_compiler args in
-    Alice_io.Process.Eio.run_command_capturing_stdout_lines prog_mgr command
+    Alice_io.Process.Eio.run_command_capturing_stdout_lines proc_mgr command
+    |> Alice_io.Process.Eio.result_ok_or_exn
   ;;
 
   module Deps = struct
@@ -79,37 +65,14 @@ module Depend = struct
     ;;
   end
 
-  let native_deps ocaml_compiler path =
+  let native_deps ocaml_compiler proc_mgr path =
     if not (Alice_io.File_ops.exists path)
     then
       panic [ Pp.textf "File does not exist: %s" (Alice_ui.absolute_path_to_string path) ];
     match
       run_lines
         ocaml_compiler
-        [ "-one-line"
-        ; "-native"
-        ; "-I"
-        ; Absolute_path.parent path |> Absolute_path.Root_or_non_root.to_filename
-        ; Absolute_path.to_filename path
-        ]
-    with
-    | [ line ] -> Deps.of_line line
-    | [] -> panic [ Pp.text "Unexpected empty output!" ]
-    | lines ->
-      panic
-        [ Pp.text "Unexpected multiple lines of output:"
-        ; Pp.concat_map lines ~f:(Pp.textf "%S") ~sep:(Pp.text ", ")
-        ]
-  ;;
-
-  let native_deps_eio ocaml_compiler prog_mgr path =
-    if not (Alice_io.File_ops.exists path)
-    then
-      panic [ Pp.textf "File does not exist: %s" (Alice_ui.absolute_path_to_string path) ];
-    match
-      run_lines_eio
-        ocaml_compiler
-        prog_mgr
+        proc_mgr
         [ "-one-line"
         ; "-native"
         ; "-I"
@@ -130,28 +93,18 @@ end
 module Deps = Depend.Deps
 
 let depends_native = Depend.native_deps
-let depends_native_eio = Depend.native_deps_eio
 
 module Config = struct
   let command ocaml_compiler = command ocaml_compiler ~args:[ "-config" ]
 
-  let run_lines ocaml_compiler =
+  let run_lines ocaml_compiler proc_mgr =
     let command = command ocaml_compiler in
-    match Alice_io.Process.Blocking.run_command_capturing_stdout_lines command with
-    | Ok (report, output) ->
-      Alice_io.Process.Report.error_unless_exit_0 report;
-      output
-    | Error `Prog_not_available ->
-      user_exn
-        [ Pp.textf
-            "Program %S not found while trying to run command: %s"
-            (filename ocaml_compiler)
-            (Command.to_string_ignore_env command)
-        ]
+    Alice_io.Process.Eio.run_command_capturing_stdout_lines proc_mgr command
+    |> Alice_io.Process.Eio.result_ok_or_exn
   ;;
 
-  let standard_library ocaml_compiler =
-    let lines = run_lines ocaml_compiler in
+  let standard_library ocaml_compiler proc_mgr =
+    let lines = run_lines ocaml_compiler proc_mgr in
     let path_opt =
       List.find_map lines ~f:(fun line ->
         match String.lsplit2 line ~on:' ' with

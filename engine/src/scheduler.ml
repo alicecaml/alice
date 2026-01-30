@@ -34,35 +34,11 @@ module Action = struct
     | Command of Command.t
     | Generated_public_interface_to_open of Generated_public_interface_to_open.t
 
-  let run_blocking t =
+  let run t proc_mgr =
     match t with
     | Command command ->
-      let report =
-        match Alice_io.Process.Blocking.run_command command with
-        | Ok report -> report
-        | Error `Prog_not_available ->
-          panic [ Pp.textf "Can't find program: %s" command.prog ]
-      in
-      (match report.status with
-       | Exited 0 -> ()
-       | _ ->
-         Alice_error.user_exn
-           [ Pp.textf "Command failed: %s" (Command.to_string_ignore_env command) ])
-    | Generated_public_interface_to_open { output_path; public_interface_to_open } ->
-      (* TODO write the public interface file with eio *)
-      Log.debug
-        [ Pp.textf
-            "Generating public interface source file: %s"
-            (Absolute_path.to_filename output_path)
-        ];
-      File_ops.write_text_file
-        output_path
-        (Public_interface_to_open.source_code public_interface_to_open)
-  ;;
-
-  let run_eio t proc_mgr =
-    match t with
-    | Command command -> Alice_io.Process.Eio.run_command proc_mgr command
+      Alice_io.Process.Eio.run_command proc_mgr command
+      |> Alice_io.Process.Eio.result_ok_or_exn
     | Generated_public_interface_to_open { output_path; public_interface_to_open } ->
       (* TODO write the public interface file with eio *)
       Log.debug
@@ -344,7 +320,7 @@ module Task = struct
     File_is_built.wait_multi t.deps_finished;
     Limit.run io_ctx.limit ~f:(fun () ->
       assert_expected_files_exist t;
-      Action.run_eio t.action io_ctx.proc_mgr);
+      Action.run t.action io_ctx.proc_mgr);
     File_is_built.broadcast_multi t.finished
   ;;
 

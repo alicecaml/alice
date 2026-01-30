@@ -148,9 +148,16 @@ let build_dependency_graph t io_ctx dependency_graph profile os_type ocaml_compi
   ()
 ;;
 
-let build_package_typed t io_ctx package_typed profile os_type ocaml_compiler =
+let build_package_typed
+      t
+      (io_ctx : _ Io_ctx.t)
+      package_typed
+      profile
+      os_type
+      ocaml_compiler
+  =
   let dependency_graph = Dependency_graph.compute package_typed in
-  let ocamllib_path = Ocaml_compiler.standard_library ocaml_compiler in
+  let ocamllib_path = Ocaml_compiler.standard_library ocaml_compiler io_ctx.proc_mgr in
   write_dot_merlin
     t
     (Dependency_graph.root_package_with_deps dependency_graph)
@@ -180,7 +187,7 @@ let build t io_ctx profile os_type ocaml_compiler =
           (Package_id.name_v_version_string (Package.id t.package))))
 ;;
 
-let run t io_ctx profile os_type ocaml_compiler ~args =
+let run t (io_ctx : _ Io_ctx.t) profile os_type ocaml_compiler ~args =
   let open Alice_ui in
   let package_typed =
     match Package.typed t.package with
@@ -202,29 +209,21 @@ let run t io_ctx profile os_type ocaml_compiler ~args =
   println (verb_message `Running (absolute_path_to_string exe_path));
   print_newline ();
   match
-    Alice_io.Process.Blocking.run
+    Alice_io.Process.Eio.run
+      io_ctx.proc_mgr
       exe_filename
       ~args
       ~env:(Ocaml_compiler.env ocaml_compiler)
   with
-  | Error `Prog_not_available ->
+  | Error (`Program_not_available _) ->
     panic
       [ Pp.textf
           "The executable %s does not exist. Alice was supposed to create that file. \
            This is a bug in Alice."
           exe_filename
       ]
-  | Ok report ->
-    (match report.status with
-     | Exited code -> exit code
-     | Signaled signal | Stopped signal ->
-       println
-         (raw_message
-            (sprintf
-               "The executable %s was stopped by a signal (%d)."
-               exe_filename
-               signal));
-       exit 0)
+  | Error (`Generic_error message) -> Printf.eprintf "%s" message
+  | Ok () -> ()
 ;;
 
 let clean t =

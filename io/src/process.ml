@@ -129,16 +129,37 @@ module Blocking = struct
 end
 
 module Eio = struct
+  type error =
+    [ `Program_not_available of string
+    | `Generic_error of string
+    ]
+
+  let handle_errors f =
+    let stderr_buffer = Buffer.create 0 in
+    let stderr = Eio.Flow.buffer_sink stderr_buffer in
+    try Ok (f ~stderr) with
+    | Eio.Io (err, _ctx) ->
+      (match err with
+       | Eio.Process.E (Eio.Process.Executable_not_found prog) ->
+         Error (`Program_not_available prog)
+       | _ ->
+         let stderr_string = String.of_bytes (Buffer.to_bytes stderr_buffer) in
+         Error (`Generic_error stderr_string))
+  ;;
+
+  let result_ok_or_exn result =
+    match result with
+    | Ok x -> x
+    | Error (`Program_not_available prog) ->
+      Alice_error.user_exn [ Pp.textf "Program %S not found!" prog ]
+    | Error (`Generic_error message) -> Alice_error.user_exn [ Pp.text message ]
+  ;;
+
   let run proc_mgr prog ~args ~env =
     let env_arr = Env.to_raw env in
     let args = prog :: args in
     Log.debug [ Pp.textf "Running command: %s" (String.concat ~sep:" " args) ];
-    let stderr_buffer = Buffer.create 0 in
-    let stderr = Eio.Flow.buffer_sink stderr_buffer in
-    try Eio.Process.run ~stderr proc_mgr ~env:env_arr args with
-    | Eio.Io _ ->
-      let stderr_string = String.of_bytes (Buffer.to_bytes stderr_buffer) in
-      Alice_error.user_exn [ Pp.textf "%s" stderr_string ]
+    handle_errors (fun ~stderr -> Eio.Process.run ~stderr proc_mgr ~env:env_arr args)
   ;;
 
   let run_command proc_mgr { Command.prog; args; env } = run proc_mgr prog ~args ~env
@@ -147,18 +168,12 @@ module Eio = struct
     let env_arr = Env.to_raw env in
     let args = prog :: args in
     Log.debug [ Pp.textf "Running command: %s" (String.concat ~sep:" " args) ];
-    let stderr_buffer = Buffer.create 0 in
-    let stderr = Eio.Flow.buffer_sink stderr_buffer in
-    let stdin_parser = Eio.Buf_read.take_all in
-    try
+    handle_errors (fun ~stderr ->
+      let stdin_parser = Eio.Buf_read.take_all in
       let output_string =
         Eio.Process.parse_out ~stderr proc_mgr stdin_parser ~env:env_arr args
       in
-      String.split_on_char output_string ~sep:'\n'
-    with
-    | Eio.Io _ ->
-      let stderr_string = String.of_bytes (Buffer.to_bytes stderr_buffer) in
-      Alice_error.user_exn [ Pp.textf "%s" stderr_string ]
+      String.split_on_char output_string ~sep:'\n')
   ;;
 
   let run_command_capturing_stdout_lines proc_mgr { Command.prog; args; env } =

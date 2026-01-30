@@ -51,15 +51,31 @@ module Blocking : sig
 end
 
 module Eio : sig
-  val run : _ Eio.Process.mgr -> string -> args:string list -> env:Env.t -> unit
-  val run_command : _ Eio.Process.mgr -> Command.t -> unit
+  type error =
+    [ `Program_not_available of string
+    | `Generic_error of string
+    ]
+
+  val result_ok_or_exn : ('a, error) result -> 'a
+
+  val run
+    :  _ Eio.Process.mgr
+    -> string
+    -> args:string list
+    -> env:Env.t
+    -> (unit, error) result
+
+  val run_command : _ Eio.Process.mgr -> Command.t -> (unit, error) result
 
   val run_capturing_stdout_lines
     :  _ Eio.Process.mgr
     -> string
     -> args:string list
     -> env:Env.t
-    -> string list
+    -> (string list, error) result
 
-  val run_command_capturing_stdout_lines : _ Eio.Process.mgr -> Command.t -> string list
+  val run_command_capturing_stdout_lines
+    :  _ Eio.Process.mgr
+    -> Command.t
+    -> (string list, error) result
 end
