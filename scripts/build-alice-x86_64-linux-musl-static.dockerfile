@@ -7,6 +7,7 @@ RUN apk update && apk add \
     wget \
     git \
     bash \
+    linux-headers \
     ;
 
 # Install the OCaml compiler (via alice)
