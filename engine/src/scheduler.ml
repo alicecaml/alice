@@ -419,12 +419,7 @@ let tasks_of_build_plans
   =
   let package = Dependency_graph.Package_with_deps.package package_with_deps in
   let package_id = Package.id package in
-  let make_tasks ~files_to_build build_plan =
-    let built_file_condvars =
-      Generated_file.Set.to_list files_to_build
-      |> List.map ~f:(fun file -> file, File_is_built.create file)
-      |> Generated_file.Map.of_list_exn
-    in
+  let make_tasks ~files_to_build ~files_are_built build_plan =
     let rec loop ~files_to_build ~tasks_rev build_plan =
       let remaining_files_to_build, tasks_rev =
         List.fold_left
@@ -457,13 +452,13 @@ let tasks_of_build_plans
           |> Generated_file.Set.union_all
           |> Generated_file.Set.to_list
           |> List.map ~f:(fun output ->
-            Generated_file.Map.find_opt output built_file_condvars)
+            Generated_file.Map.find_opt output files_are_built)
           |> List.filter_opt
         in
         let finished =
           Generated_file.Set.to_list outputs
           |> List.map ~f:(fun output ->
-            Generated_file.Map.find_opt output built_file_condvars)
+            Generated_file.Map.find_opt output files_are_built)
           |> List.filter_opt
         in
         let task =
@@ -481,10 +476,10 @@ let tasks_of_build_plans
         in
         remaining_files_to_build, task :: tasks_rev
     in
-    let _remaining_files_to_build, tasks_rev =
+    let remaining_files_to_build, tasks_rev =
       loop ~files_to_build ~tasks_rev:[] build_plan
     in
-    List.rev tasks_rev
+    remaining_files_to_build, List.rev tasks_rev
   in
   Build_dir.package_dirs build_dir package_id profile |> List.iter ~f:File_ops.mkdir_p;
   let files_to_build =
@@ -496,14 +491,38 @@ let tasks_of_build_plans
         Generated_file.Set.union acc (Build_plan.transitive_closure_outputs build_plan))
     else
       (* No deps were rebuilt, so only rebuilt the artifacts which are
-           missing or whose inputs have changed since the last build. *)
+         missing or whose inputs have changed since the last build. *)
       List.fold_left build_plans ~init:Generated_file.Set.empty ~f:(fun acc build_plan ->
         incremental_files_to_build build_plan package_id profile build_dir
         |> Generated_file.Set.union acc)
   in
   if Generated_file.Set.is_empty files_to_build
   then []
-  else List.concat_map build_plans ~f:(make_tasks ~files_to_build)
+  else (
+    let files_are_built =
+      Generated_file.Set.to_list files_to_build
+      |> List.map ~f:(fun file -> file, File_is_built.create file)
+      |> Generated_file.Map.of_list_exn
+    in
+    let remaining_files_to_build_should_be_empty, tasks =
+      List.fold_left
+        build_plans
+        ~init:(files_to_build, [])
+        ~f:(fun (files_to_build, all_tasks) build_plan ->
+          let remaining_files_to_build, tasks =
+            make_tasks ~files_to_build ~files_are_built build_plan
+          in
+          remaining_files_to_build, all_tasks @ tasks)
+    in
+    if not (Generated_file.Set.is_empty remaining_files_to_build_should_be_empty)
+    then
+      Alice_error.panic
+        [ Pp.textf
+            "Not all files were built. Missing files: %s"
+            (Generated_file.Set.to_dyn remaining_files_to_build_should_be_empty
+             |> Dyn.to_string)
+        ];
+    tasks)
 ;;
 
 let eval_build_plans
