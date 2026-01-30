@@ -6,4 +6,5 @@ module Process = Process
 module Read_hierarchy = Read_hierarchy
 module Temp_dir = Temp_dir
 module Uname = Uname
-module Strategy = Strategy
+module Concurrency = Concurrency
+module Io_ctx = Io_ctx

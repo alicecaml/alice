@@ -12,7 +12,7 @@ val of_package : Package.t -> t
 
 val build
   :  t
-  -> _ Alice_io.Strategy.t
+  -> _ Alice_io.Io_ctx.t
   -> Profile.t
   -> Alice_env.Os_type.t
   -> Ocaml_compiler.t
@@ -20,7 +20,7 @@ val build
 
 val run
   :  t
-  -> _ Alice_io.Strategy.t
+  -> _ Alice_io.Io_ctx.t
   -> Profile.t
   -> Alice_env.Os_type.t
   -> Ocaml_compiler.t

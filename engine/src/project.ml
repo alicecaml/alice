@@ -4,6 +4,7 @@ open Alice_hierarchy
 open Alice_error
 module File_ops = Alice_io.File_ops
 module Package_with_deps = Dependency_graph.Package_with_deps
+module Io_ctx = Alice_io.Io_ctx
 open Alice_ocaml_compiler
 
 type t =
@@ -62,7 +63,7 @@ let write_dot_gitignore { package; _ } = Dot_gitignore.write (Package.root packa
 let build_single_package
   : type exe lib.
     t
-    -> _ Alice_io.Strategy.t
+    -> _ Io_ctx.t
     -> (exe, lib) Package_with_deps.t
     -> Profile.t
     -> Alice_env.Os_type.t
@@ -70,7 +71,7 @@ let build_single_package
     -> any_dep_rebuilt:bool
     -> Scheduler.Package_built.t
   =
-  fun t strategy package_with_deps profile os_type ocaml_compiler ~any_dep_rebuilt ->
+  fun t io_ctx package_with_deps profile os_type ocaml_compiler ~any_dep_rebuilt ->
   let package_typed = Package_with_deps.package_typed package_with_deps in
   let build_graph = Build_graph.create package_typed t.build_dir os_type ocaml_compiler in
   let build_plans =
@@ -84,7 +85,7 @@ let build_single_package
       ]
   in
   Scheduler.eval_build_plans
-    strategy
+    io_ctx
     build_plans
     package_with_deps
     profile
@@ -93,11 +94,11 @@ let build_single_package
     ~any_dep_rebuilt
 ;;
 
-let build_dependency_graph t strategy dependency_graph profile os_type ocaml_compiler =
+let build_dependency_graph t io_ctx dependency_graph profile os_type ocaml_compiler =
   let build_single_package package_with_deps ~any_dep_rebuilt =
     build_single_package
       t
-      strategy
+      io_ctx
       package_with_deps
       profile
       os_type
@@ -145,7 +146,7 @@ let build_dependency_graph t strategy dependency_graph profile os_type ocaml_com
   ()
 ;;
 
-let build_package_typed t strategy package_typed profile os_type ocaml_compiler =
+let build_package_typed t io_ctx package_typed profile os_type ocaml_compiler =
   let dependency_graph = Dependency_graph.compute package_typed in
   let ocamllib_path = Ocaml_compiler.standard_library ocaml_compiler in
   write_dot_merlin
@@ -153,21 +154,21 @@ let build_package_typed t strategy package_typed profile os_type ocaml_compiler 
     (Dependency_graph.root_package_with_deps dependency_graph)
     profile
     ~ocamllib_path;
-  build_dependency_graph t strategy dependency_graph profile os_type ocaml_compiler
+  build_dependency_graph t io_ctx dependency_graph profile os_type ocaml_compiler
 ;;
 
-let build_package t strategy package profile ocaml_compiler =
+let build_package t io_ctx package profile ocaml_compiler =
   Package.with_typed
     { f =
         (fun package_typed ->
-          build_package_typed t strategy package_typed profile ocaml_compiler)
+          build_package_typed t io_ctx package_typed profile ocaml_compiler)
     }
     package
 ;;
 
-let build t strategy profile os_type ocaml_compiler =
+let build t io_ctx profile os_type ocaml_compiler =
   let open Alice_ui in
-  build_package t strategy t.package profile os_type ocaml_compiler;
+  build_package t io_ctx t.package profile os_type ocaml_compiler;
   println
     (verb_message
        `Finished
@@ -177,7 +178,7 @@ let build t strategy profile os_type ocaml_compiler =
           (Package_id.name_v_version_string (Package.id t.package))))
 ;;
 
-let run t strategy profile os_type ocaml_compiler ~args =
+let run t io_ctx profile os_type ocaml_compiler ~args =
   let open Alice_ui in
   let package_typed =
     match Package.typed t.package with
@@ -185,7 +186,7 @@ let run t strategy profile os_type ocaml_compiler ~args =
     | `Exe_only pt -> pt
     | `Exe_and_lib pt -> Package.Typed.limit_to_exe_only pt
   in
-  build_package_typed t strategy package_typed profile os_type ocaml_compiler;
+  build_package_typed t io_ctx package_typed profile os_type ocaml_compiler;
   let exe_name =
     Package.name t.package
     |> Package_name.to_string

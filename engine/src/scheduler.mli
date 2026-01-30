@@ -12,7 +12,7 @@ end
     multiple build plans for a package, such as if there's a library and
     executable to build. Build plans are evaluated in order. *)
 val eval_build_plans
-  :  _ Alice_io.Strategy.t
+  :  _ Alice_io.Io_ctx.t
   -> Build_graph.Build_plan.t list
   -> (_, _) Dependency_graph.Package_with_deps.t
   -> Profile.t

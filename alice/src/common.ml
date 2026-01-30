@@ -133,17 +133,12 @@ let set_globals_from_flags =
 ;;
 
 let parse_num_jobs =
-  let open Alice_io.Strategy in
+  let open Alice_io.Concurrency in
   let open Arg_parser in
   let+ jobs =
     named_opt [ "j"; "jobs" ] int ~doc:"Limit the number of parallel jobs to INT."
   in
   match jobs with
-  | None -> Parallel_with_eio.Num_jobs.unlimited
-  | Some n -> Parallel_with_eio.Num_jobs.limited n
-;;
-
-let parse_debug_sequential_io =
-  let open Arg_parser in
-  flag [ "debug-sequential-io" ] ~hidden:true ~doc:"Use blocking IO rather than EIO"
+  | None -> Num_jobs.unlimited
+  | Some n -> Num_jobs.limited n
 ;;

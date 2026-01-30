@@ -7,7 +7,8 @@ module Log = Alice_log
 module Build_plan = Build_graph.Build_plan
 module Generated_file = Typed_op.Generated_file
 module Package_with_deps = Dependency_graph.Package_with_deps
-module Limit = Alice_io.Strategy.Parallel_with_eio.Limit
+module Limit = Alice_io.Concurrency.Limit
+module Io_ctx = Alice_io.Io_ctx
 
 module Package_built = struct
   type t =
@@ -339,34 +340,16 @@ module Task = struct
           ])
   ;;
 
-  module Sequential = struct
-    let run t =
+  let run t (io_ctx : _ Io_ctx.t) =
+    File_is_built.wait_multi t.deps_finished;
+    Limit.run io_ctx.limit ~f:(fun () ->
       assert_expected_files_exist t;
-      Action.run_blocking t.action
-    ;;
+      Action.run_eio t.action io_ctx.proc_mgr);
+    File_is_built.broadcast_multi t.finished
+  ;;
 
-    let run_multi ts = List.iter ts ~f:run
-  end
-
-  module Parallel_with_eio = struct
-    let run t (parallel_with_eio : _ Alice_io.Strategy.Parallel_with_eio.t) =
-      File_is_built.wait_multi t.deps_finished;
-      Limit.run parallel_with_eio.limit ~f:(fun () ->
-        assert_expected_files_exist t;
-        Action.run_eio t.action parallel_with_eio.proc_mgr);
-      File_is_built.broadcast_multi t.finished
-    ;;
-
-    let run_multi ts parallel_with_eio =
-      List.map ts ~f:(fun t -> fun () -> run t parallel_with_eio) |> Eio.Fiber.all
-    ;;
-  end
-
-  let run_multi ts strategy =
-    match (strategy : _ Alice_io.Strategy.t) with
-    | Sequential -> Sequential.run_multi ts
-    | Parallel_with_eio parallel_with_eio ->
-      Parallel_with_eio.run_multi ts parallel_with_eio
+  let run_multi ts io_ctx =
+    List.map ts ~f:(fun t -> fun () -> run t io_ctx) |> Eio.Fiber.all
   ;;
 end
 
@@ -526,7 +509,7 @@ let tasks_of_build_plans
 ;;
 
 let eval_build_plans
-      strategy
+      io_ctx
       build_plans
       package_with_deps
       profile
@@ -551,6 +534,6 @@ let eval_build_plans
       (verb_message
          `Compiling
          (Package_id.name_v_version_string (Package_with_deps.id package_with_deps)));
-    Task.run_multi tasks strategy;
+    Task.run_multi tasks io_ctx;
     Rebuilt
 ;;
