@@ -28,7 +28,14 @@ val run
   -> unit
 
 val clean : t -> unit
-val dot_build_artifacts : t -> Alice_env.Os_type.t -> Ocaml_compiler.t -> string
+
+val dot_build_artifacts
+  :  t
+  -> _ Alice_io.Io_ctx.t
+  -> Alice_env.Os_type.t
+  -> Ocaml_compiler.t
+  -> string
+
 val dot_dependencies : t -> string
 val build_dir_path_relative_to_project_root : Basename.t
 val write_dot_merlin_initial : t -> unit

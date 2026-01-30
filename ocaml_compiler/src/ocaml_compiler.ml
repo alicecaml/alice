@@ -30,6 +30,11 @@ module Depend = struct
         ]
   ;;
 
+  let run_lines_eio ocaml_compiler prog_mgr args =
+    let command = command ocaml_compiler args in
+    Alice_io.Process.Eio.run_command_capturing_stdout_lines prog_mgr command
+  ;;
+
   module Deps = struct
     type t =
       { output : Basename.t
@@ -90,13 +95,42 @@ module Depend = struct
     with
     | [ line ] -> Deps.of_line line
     | [] -> panic [ Pp.text "Unexpected empty output!" ]
-    | _ -> panic [ Pp.text "Unexpected multiple lines of output!" ]
+    | lines ->
+      panic
+        [ Pp.text "Unexpected multiple lines of output:"
+        ; Pp.concat_map lines ~f:(Pp.textf "%S") ~sep:(Pp.text ", ")
+        ]
+  ;;
+
+  let native_deps_eio ocaml_compiler prog_mgr path =
+    if not (Alice_io.File_ops.exists path)
+    then
+      panic [ Pp.textf "File does not exist: %s" (Alice_ui.absolute_path_to_string path) ];
+    match
+      run_lines_eio
+        ocaml_compiler
+        prog_mgr
+        [ "-one-line"
+        ; "-native"
+        ; "-I"
+        ; Absolute_path.parent path |> Absolute_path.Root_or_non_root.to_filename
+        ; Absolute_path.to_filename path
+        ]
+    with
+    | [ line ] | [ line; "" ] -> Deps.of_line line
+    | [] -> panic [ Pp.text "Unexpected empty output!" ]
+    | lines ->
+      panic
+        [ Pp.text "Unexpected multiple lines of output:"
+        ; Pp.concat_map lines ~f:(Pp.textf "%S") ~sep:(Pp.text ", ")
+        ]
   ;;
 end
 
 module Deps = Depend.Deps
 
 let depends_native = Depend.native_deps
+let depends_native_eio = Depend.native_deps_eio
 
 module Config = struct
   let command ocaml_compiler = command ocaml_compiler ~args:[ "-config" ]

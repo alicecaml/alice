@@ -73,7 +73,9 @@ let build_single_package
   =
   fun t io_ctx package_with_deps profile os_type ocaml_compiler ~any_dep_rebuilt ->
   let package_typed = Package_with_deps.package_typed package_with_deps in
-  let build_graph = Build_graph.create package_typed t.build_dir os_type ocaml_compiler in
+  let build_graph =
+    Build_graph.create package_typed t.build_dir os_type ocaml_compiler io_ctx.proc_mgr
+  in
   let build_plans =
     match Package.Typed.type_ package_typed with
     | Exe_only -> [ Build_graph.plan_exe build_graph ]
@@ -232,11 +234,12 @@ let clean t =
   File_ops.rm_rf to_remove
 ;;
 
-let dot_package_build_artifacts t package os_type ocaml_compiler =
+let dot_package_build_artifacts t (io_ctx : _ Io_ctx.t) package os_type ocaml_compiler =
   Package.with_typed
     { f =
         (fun pt ->
-          Build_graph.create pt t.build_dir os_type ocaml_compiler |> Build_graph.dot)
+          Build_graph.create pt t.build_dir os_type ocaml_compiler io_ctx.proc_mgr
+          |> Build_graph.dot)
     }
     package
 ;;
@@ -247,5 +250,5 @@ let dot_package_dependencies package =
     package
 ;;
 
-let dot_build_artifacts t = dot_package_build_artifacts t t.package
+let dot_build_artifacts t io_ctx = dot_package_build_artifacts t io_ctx t.package
 let dot_dependencies t = dot_package_dependencies t.package

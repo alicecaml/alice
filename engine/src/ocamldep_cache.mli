@@ -21,6 +21,7 @@ val store : t -> dep_table -> unit
     run in the event of a cache miss. *)
 val get_deps
   :  t
+  -> _ Eio.Process.mgr
   -> Ocaml_compiler.t
   -> source_path:Absolute_path.non_root_t
   -> Ocaml_compiler.Deps.t

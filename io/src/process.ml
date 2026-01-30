@@ -131,14 +131,37 @@ end
 module Eio = struct
   let run proc_mgr prog ~args ~env =
     let env_arr = Env.to_raw env in
-    Log.debug [ Pp.textf "Running command: %s %s" prog (String.concat ~sep:" " args) ];
+    let args = prog :: args in
+    Log.debug [ Pp.textf "Running command: %s" (String.concat ~sep:" " args) ];
     let stderr_buffer = Buffer.create 0 in
     let stderr = Eio.Flow.buffer_sink stderr_buffer in
-    try Eio.Process.run ~stderr proc_mgr ~env:env_arr ~executable:prog args with
+    try Eio.Process.run ~stderr proc_mgr ~env:env_arr args with
     | Eio.Io _ ->
       let stderr_string = String.of_bytes (Buffer.to_bytes stderr_buffer) in
       Alice_error.user_exn [ Pp.textf "%s" stderr_string ]
   ;;
 
   let run_command proc_mgr { Command.prog; args; env } = run proc_mgr prog ~args ~env
+
+  let run_capturing_stdout_lines proc_mgr prog ~args ~env =
+    let env_arr = Env.to_raw env in
+    let args = prog :: args in
+    Log.debug [ Pp.textf "Running command: %s" (String.concat ~sep:" " args) ];
+    let stderr_buffer = Buffer.create 0 in
+    let stderr = Eio.Flow.buffer_sink stderr_buffer in
+    let stdin_parser = Eio.Buf_read.take_all in
+    try
+      let output_string =
+        Eio.Process.parse_out ~stderr proc_mgr stdin_parser ~env:env_arr args
+      in
+      String.split_on_char output_string ~sep:'\n'
+    with
+    | Eio.Io _ ->
+      let stderr_string = String.of_bytes (Buffer.to_bytes stderr_buffer) in
+      Alice_error.user_exn [ Pp.textf "%s" stderr_string ]
+  ;;
+
+  let run_command_capturing_stdout_lines proc_mgr { Command.prog; args; env } =
+    run_capturing_stdout_lines proc_mgr prog ~args ~env
+  ;;
 end

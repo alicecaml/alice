@@ -53,4 +53,13 @@ end
 module Eio : sig
   val run : _ Eio.Process.mgr -> string -> args:string list -> env:Env.t -> unit
   val run_command : _ Eio.Process.mgr -> Command.t -> unit
+
+  val run_capturing_stdout_lines
+    :  _ Eio.Process.mgr
+    -> string
+    -> args:string list
+    -> env:Env.t
+    -> string list
+
+  val run_command_capturing_stdout_lines : _ Eio.Process.mgr -> Command.t -> string list
 end

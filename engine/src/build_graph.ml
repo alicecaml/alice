@@ -123,9 +123,9 @@ module Build_plan = struct
   ;;
 end
 
-let compilation_ops dir package_id build_dir ocaml_compiler =
+let compilation_ops dir package_id build_dir ocaml_compiler proc_mgr =
   let ocamldep_cache = Ocamldep_cache.load build_dir package_id in
-  let deps =
+  let deps_key_value_pairs =
     Dir_non_root.contents dir
     |> List.filter ~f:(fun file ->
       File_non_root.is_regular_or_link file
@@ -133,10 +133,16 @@ let compilation_ops dir package_id build_dir ocaml_compiler =
           || Absolute_path.has_extension file.path ~ext:".mli"))
     |> List.sort ~cmp:File_non_root.compare_by_path
     |> List.map ~f:(fun (file : File_non_root.t) ->
+      fun () ->
       ( file.path
-      , Ocamldep_cache.get_deps ocamldep_cache ocaml_compiler ~source_path:file.path ))
-    |> Absolute_path.Non_root_map.of_list_exn
+      , Ocamldep_cache.get_deps
+          ocamldep_cache
+          proc_mgr
+          ocaml_compiler
+          ~source_path:file.path ))
+    |> Alice_io.Eio_fiber.all_values
   in
+  let deps = Absolute_path.Non_root_map.of_list_exn deps_key_value_pairs in
   Ocamldep_cache.store ocamldep_cache deps;
   Absolute_path.Non_root_map.to_list deps
   |> List.map ~f:(fun (source_path, (deps : Ocaml_compiler.Deps.t)) ->
@@ -359,14 +365,15 @@ let create
     -> Build_dir.t
     -> Alice_env.Os_type.t
     -> Ocaml_compiler.t
+    -> _ Eio.Process.mgr
     -> (exe, lib) t
   =
-  fun package_typed build_dir os_type ocaml_compiler ->
+  fun package_typed build_dir os_type ocaml_compiler proc_mgr ->
   let open Typed_op in
   let package = Package.Typed.package package_typed in
   let src_dir = Package.src_dir_exn package in
   let compilation_ops =
-    compilation_ops src_dir (Package.id package) build_dir ocaml_compiler
+    compilation_ops src_dir (Package.id package) build_dir ocaml_compiler proc_mgr
   in
   let build_dag_compilation_only = Build_dag.of_ops compilation_ops in
   let link_library () =
