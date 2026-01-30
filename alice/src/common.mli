@@ -17,4 +17,5 @@ val parse_profile : Profile.t Arg_parser.t
     global log level and print mode. *)
 val set_globals_from_flags : unit Arg_parser.t
 
-val parse_jobs : Scheduler.Jobs.t Arg_parser.t
+val parse_num_jobs : Alice_io.Strategy.Parallel_with_eio.Num_jobs.t Arg_parser.t
+val parse_debug_sequential_io : bool Arg_parser.t

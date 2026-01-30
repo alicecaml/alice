@@ -7,14 +7,19 @@ let build =
   let+ () = Common.set_globals_from_flags
   and+ project = Common.parse_project
   and+ profile = Common.parse_profile
-  and+ jobs = Common.parse_jobs in
+  and+ num_jobs = Common.parse_num_jobs
+  and+ debug_sequential_io = Common.parse_debug_sequential_io in
   let env = Alice_env.current_env () in
   let os_type = Alice_env.Os_type.current () in
   let ocamlopt = Alice_which.ocamlopt os_type env in
-  Eio_main.run
-  @@ fun env ->
-  let proc_mgr = Eio.Stdenv.process_mgr env in
-  Project.build project proc_mgr profile os_type ocamlopt jobs
+  if debug_sequential_io
+  then Project.build project Alice_io.Strategy.sequential profile os_type ocamlopt
+  else
+    Eio_main.run
+    @@ fun env ->
+    let proc_mgr = Eio.Stdenv.process_mgr env in
+    let strategy = Alice_io.Strategy.parallel_with_eio proc_mgr num_jobs in
+    Project.build project strategy profile os_type ocamlopt
 ;;
 
 let subcommand =

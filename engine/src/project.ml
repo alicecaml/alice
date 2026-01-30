@@ -62,16 +62,15 @@ let write_dot_gitignore { package; _ } = Dot_gitignore.write (Package.root packa
 let build_single_package
   : type exe lib.
     t
-    -> _ Eio.Process.mgr
+    -> _ Alice_io.Strategy.t
     -> (exe, lib) Package_with_deps.t
     -> Profile.t
     -> Alice_env.Os_type.t
     -> Ocaml_compiler.t
     -> any_dep_rebuilt:bool
-    -> Scheduler.Semaphore.t
     -> Scheduler.Package_built.t
   =
-  fun t proc_mgr package_with_deps profile os_type ocaml_compiler ~any_dep_rebuilt jobs ->
+  fun t strategy package_with_deps profile os_type ocaml_compiler ~any_dep_rebuilt ->
   let package_typed = Package_with_deps.package_typed package_with_deps in
   let build_graph = Build_graph.create package_typed t.build_dir os_type ocaml_compiler in
   let build_plans =
@@ -85,35 +84,25 @@ let build_single_package
       ]
   in
   Scheduler.eval_build_plans
-    proc_mgr
+    strategy
     build_plans
     package_with_deps
     profile
     t.build_dir
     ocaml_compiler
     ~any_dep_rebuilt
-    jobs
 ;;
 
-let build_dependency_graph
-      t
-      proc_mgr
-      dependency_graph
-      profile
-      os_type
-      ocaml_compiler
-      semaphore
-  =
+let build_dependency_graph t strategy dependency_graph profile os_type ocaml_compiler =
   let build_single_package package_with_deps ~any_dep_rebuilt =
     build_single_package
       t
-      proc_mgr
+      strategy
       package_with_deps
       profile
       os_type
       ocaml_compiler
       ~any_dep_rebuilt
-      semaphore
   in
   let rec build_package_building_deps_first
     : type exe lib.
@@ -156,7 +145,7 @@ let build_dependency_graph
   ()
 ;;
 
-let build_package_typed t proc_mgr package_typed profile os_type ocaml_compiler =
+let build_package_typed t strategy package_typed profile os_type ocaml_compiler =
   let dependency_graph = Dependency_graph.compute package_typed in
   let ocamllib_path = Ocaml_compiler.standard_library ocaml_compiler in
   write_dot_merlin
@@ -164,22 +153,21 @@ let build_package_typed t proc_mgr package_typed profile os_type ocaml_compiler 
     (Dependency_graph.root_package_with_deps dependency_graph)
     profile
     ~ocamllib_path;
-  build_dependency_graph t proc_mgr dependency_graph profile os_type ocaml_compiler
+  build_dependency_graph t strategy dependency_graph profile os_type ocaml_compiler
 ;;
 
-let build_package t proc_mgr package profile ocaml_compiler =
+let build_package t strategy package profile ocaml_compiler =
   Package.with_typed
     { f =
         (fun package_typed ->
-          build_package_typed t proc_mgr package_typed profile ocaml_compiler)
+          build_package_typed t strategy package_typed profile ocaml_compiler)
     }
     package
 ;;
 
-let build t proc_mgr profile os_type ocaml_compiler jobs =
+let build t strategy profile os_type ocaml_compiler =
   let open Alice_ui in
-  let semaphore = Scheduler.Semaphore.of_jobs jobs in
-  build_package t proc_mgr t.package profile os_type ocaml_compiler semaphore;
+  build_package t strategy t.package profile os_type ocaml_compiler;
   println
     (verb_message
        `Finished
@@ -189,7 +177,7 @@ let build t proc_mgr profile os_type ocaml_compiler jobs =
           (Package_id.name_v_version_string (Package.id t.package))))
 ;;
 
-let run t proc_mgr profile os_type ocaml_compiler jobs ~args =
+let run t strategy profile os_type ocaml_compiler ~args =
   let open Alice_ui in
   let package_typed =
     match Package.typed t.package with
@@ -197,8 +185,7 @@ let run t proc_mgr profile os_type ocaml_compiler jobs ~args =
     | `Exe_only pt -> pt
     | `Exe_and_lib pt -> Package.Typed.limit_to_exe_only pt
   in
-  let semaphore = Scheduler.Semaphore.of_jobs jobs in
-  build_package_typed t proc_mgr package_typed profile os_type ocaml_compiler semaphore;
+  build_package_typed t strategy package_typed profile os_type ocaml_compiler;
   let exe_name =
     Package.name t.package
     |> Package_name.to_string

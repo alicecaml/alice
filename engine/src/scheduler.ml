@@ -7,43 +7,7 @@ module Log = Alice_log
 module Build_plan = Build_graph.Build_plan
 module Generated_file = Typed_op.Generated_file
 module Package_with_deps = Dependency_graph.Package_with_deps
-
-module Jobs = struct
-  type t =
-    | Limited of int
-    | Unlimited
-
-  let limited n =
-    if n < 1
-    then
-      Alice_error.user_exn
-        [ Pp.textf "Jobs may only be limited to a positive integer (got %d)." n ]
-    else Limited n
-  ;;
-
-  let unlimited = Unlimited
-end
-
-module Semaphore = struct
-  type t =
-    | Limited of Eio.Semaphore.t
-    | Unlimited
-
-  let of_jobs = function
-    | Jobs.Limited n -> Limited (Eio.Semaphore.make n)
-    | Unlimited -> Unlimited
-  ;;
-
-  let acquire = function
-    | Limited s -> Eio.Semaphore.acquire s
-    | Unlimited -> ()
-  ;;
-
-  let release = function
-    | Limited s -> Eio.Semaphore.release s
-    | Unlimited -> ()
-  ;;
-end
+module Limit = Alice_io.Strategy.Parallel_with_eio.Limit
 
 module Package_built = struct
   type t =
@@ -68,6 +32,32 @@ module Action = struct
   type t =
     | Command of Command.t
     | Generated_public_interface_to_open of Generated_public_interface_to_open.t
+
+  let run_blocking t =
+    match t with
+    | Command command ->
+      let report =
+        match Alice_io.Process.Blocking.run_command command with
+        | Ok report -> report
+        | Error `Prog_not_available ->
+          panic [ Pp.textf "Can't find program: %s" command.prog ]
+      in
+      (match report.status with
+       | Exited 0 -> ()
+       | _ ->
+         Alice_error.user_exn
+           [ Pp.textf "Command failed: %s" (Command.to_string_ignore_env command) ])
+    | Generated_public_interface_to_open { output_path; public_interface_to_open } ->
+      (* TODO write the public interface file with eio *)
+      Log.debug
+        [ Pp.textf
+            "Generating public interface source file: %s"
+            (Absolute_path.to_filename output_path)
+        ];
+      File_ops.write_text_file
+        output_path
+        (Public_interface_to_open.source_code public_interface_to_open)
+  ;;
 
   let run_eio t proc_mgr =
     match t with
@@ -349,20 +339,35 @@ module Task = struct
           ])
   ;;
 
-  module Eio = struct
-    let run t proc_mgr semaphore =
-      File_is_built.wait_multi t.deps_finished;
-      Semaphore.acquire semaphore;
+  module Sequential = struct
+    let run t =
       assert_expected_files_exist t;
-      Action.run_eio t.action proc_mgr;
-      Semaphore.release semaphore;
+      Action.run_blocking t.action
+    ;;
+
+    let run_multi ts = List.iter ts ~f:run
+  end
+
+  module Parallel_with_eio = struct
+    let run t (parallel_with_eio : _ Alice_io.Strategy.Parallel_with_eio.t) =
+      File_is_built.wait_multi t.deps_finished;
+      Limit.run parallel_with_eio.limit ~f:(fun () ->
+        assert_expected_files_exist t;
+        Action.run_eio t.action parallel_with_eio.proc_mgr);
       File_is_built.broadcast_multi t.finished
     ;;
 
-    let run_multi ts proc_mgr semaphore =
-      List.map ts ~f:(fun t -> fun () -> run t proc_mgr semaphore) |> Eio.Fiber.all
+    let run_multi ts parallel_with_eio =
+      List.map ts ~f:(fun t -> fun () -> run t parallel_with_eio) |> Eio.Fiber.all
     ;;
   end
+
+  let run_multi ts strategy =
+    match (strategy : _ Alice_io.Strategy.t) with
+    | Sequential -> Sequential.run_multi ts
+    | Parallel_with_eio parallel_with_eio ->
+      Parallel_with_eio.run_multi ts parallel_with_eio
+  ;;
 end
 
 (* Determines which files need to be (re)built. A file needs to be rebuilt if
@@ -382,8 +387,8 @@ let incremental_files_to_build build_plan package_id profile build_dir =
       Generated_file.Set.union (Build_plan.outputs build_plan) to_rebuild
     | true ->
       (* Rebuild all the outputs which either don't exist, or whose mtime
-           is earlier than the latest mtime among source files which the
-           output depends on. *)
+         is earlier than the latest mtime among source files which the
+         output depends on. *)
       Generated_file.Set.filter (Build_plan.outputs build_plan) ~f:(fun output ->
         let output_abs =
           Build_dir.package_generated_file build_dir package_id profile output
@@ -394,7 +399,7 @@ let incremental_files_to_build build_plan package_id profile build_dir =
           true
         | true ->
           (* File exists. If it has a source file, compare the source
-                 file's mtime with this file's mtime. *)
+             file's mtime with this file's mtime. *)
           (match Build_plan.source_input build_plan with
            | None ->
              (* No source dependency, so no need ot rebuild. *)
@@ -502,14 +507,13 @@ let tasks_of_build_plans
 ;;
 
 let eval_build_plans
-      proc_mgr
+      strategy
       build_plans
       package_with_deps
       profile
       build_dir
       ocaml_compiler
       ~any_dep_rebuilt
-      semaphore
   =
   let open Alice_ui in
   let tasks =
@@ -528,6 +532,6 @@ let eval_build_plans
       (verb_message
          `Compiling
          (Package_id.name_v_version_string (Package_with_deps.id package_with_deps)));
-    Task.Eio.run_multi tasks proc_mgr semaphore;
+    Task.run_multi tasks strategy;
     Rebuilt
 ;;

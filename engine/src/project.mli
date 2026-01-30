@@ -12,20 +12,18 @@ val of_package : Package.t -> t
 
 val build
   :  t
-  -> _ Eio.Process.mgr
+  -> _ Alice_io.Strategy.t
   -> Profile.t
   -> Alice_env.Os_type.t
   -> Ocaml_compiler.t
-  -> Scheduler.Jobs.t
   -> unit
 
 val run
   :  t
-  -> _ Eio.Process.mgr
+  -> _ Alice_io.Strategy.t
   -> Profile.t
   -> Alice_env.Os_type.t
   -> Ocaml_compiler.t
-  -> Scheduler.Jobs.t
   -> args:string list
   -> unit
 
