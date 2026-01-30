@@ -58,7 +58,7 @@ jobs:
       - run: Copy-Item -Recurse -Force _build/install/default/* "$env:ALICE_OUT_NAME"
       - run: |
           mkdir -p "$env:ALICE_OUT_NAME/share/bash-completion/completions"
-          sh scripts/generate_minified_bash_completion_script.sh > "$env:ALICE_OUT_NAME/share/bash-completion/completions/alice"
+          _build/default/alice/src/alice.exe internal completions bash --program-name=alice --program-exe-for-reentrant-query=alice --global-symbol-prefix=__alice --no-command-hash-in-function-names --no-comments --no-whitespace --minify-global-names --minify-local-variables --optimize-case-statements > "$env:ALICE_OUT_NAME/share/bash-completion/completions/alice"
       - run: tar czf "$env:ALICE_OUT_NAME.tar.gz" "$env:ALICE_OUT_NAME"
       - run: Compress-Archive -Path "_build\install\default\bin\alice.exe" -DestinationPath "$env:ALICE_OUT_NAME.zip" -Force
       - uses: ncipollo/release-action@v1
