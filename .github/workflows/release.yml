@@ -14,50 +14,43 @@ jobs:
       # Checkout the project
       - uses: actions/checkout@v6
 
-      # Install mingw64
+      - name: Remove lockdir because it won't build on Windows
+        run: Remove-Item -Recurse -Force dune.lock
+
       - uses: msys2/setup-msys2@v2
       - run: echo C:\msys64\usr\bin >> $env:GITHUB_PATH
       - run: echo C:\msys64\mingw64\bin >> $env:GITHUB_PATH
-      - run: Get-Command pacman
-      - run: pacman -S --needed --noconfirm mingw-w64-x86_64-gcc
-      - run: Get-Command gcc
+      - run: pacman -S --needed --noconfirm mingw-w64-x86_64-zstd
 
-      # Set up local root directory for installing tools into
-      - run: echo ${{ github.workspace }}\.local\bin >> $env:GITHUB_PATH
-      - run: mkdir .local
+      - name: Install an Alice to bootstrap tools
+        run: winget install --id OCaml.Alice --exact --accept-package-agreements --accept-source-agreements
 
-      # Install Dune
-      - run: echo DUNE_NAME=dune-3.20.2-no-build-path-prefix-map-x86_64-windows >> $env:GITHUB_ENV
-      - run: curl -fSL "https://github.com/alicecaml/alice-tools/releases/download/5.3.1+relocatable/$env:DUNE_NAME.tar.gz" -o "$env:DUNE_NAME.tar.gz"
-      - run: tar xf "$env:DUNE_NAME.tar.gz"
-      - run: Copy-Item -Recurse -Force "$env:DUNE_NAME/*" .local
-      - run: Remove-Item -Recurse -Force "$env:DUNE_NAME"
-      - run: Remove-Item -Recurse -Force "$env:DUNE_NAME.tar.gz"
+      - name: Add Alice to PATH
+        run: echo "$env:LOCALAPPDATA\Microsoft\WinGet\Links" >> $env:GITHUB_PATH
 
-      # Install Alice (used to bootstrap environment)
-      - run: echo "$HOME\.local\share\alice\current\bin" >> $env:GITHUB_PATH
-      - run: echo ALICE_IN_VERSION="0.3.0" >> $env:GITHUB_ENV
-      - run: echo ALICE_IN_NAME="alice-$env:ALICE_IN_VERSION-x86_64-windows" >> $env:GITHUB_ENV
-      - run: curl -fsSL --output "$env:ALICE_IN_NAME.tar.gz" "https://github.com/alicecaml/alice/releases/download/$env:ALICE_IN_VERSION/$env:ALICE_IN_NAME.tar.gz"
-      - run: tar xf "$env:ALICE_IN_NAME.tar.gz"
-      - run: Copy-Item -Recurse -Force "$env:ALICE_IN_NAME/*" .local
-      - run: Remove-Item -Recurse -Force "$env:ALICE_IN_NAME"
-      - run: Remove-Item -Recurse -Force "$env:ALICE_IN_NAME.tar.gz"
+      - name: Test Alice installation
+        run: alice --version
 
-      # Make sure that Dune and Alice both work
-      - run: Get-Command dune
-      - run: dune --version
-      - run: Get-Command alice
-      - run: alice --help
+      - name: Add Alice's tools to PATH
+        run: echo "$env:LOCALAPPDATA\alice\current\bin" >> $env:GITHUB_PATH
 
-      # Use Alice to bootstrap OCaml environment
-      - run: alice tools install --compiler-only
-      - run: echo "$HOME\AppData\Local\alice\current\bin" >> $env:GITHUB_PATH
-      - run: Get-Command ocamlopt.opt
+      - name: Use Alice to bootstrap OCaml environment
+        run: alice tools install --compiler-only
+
+      - name: Test OCaml tools were installed
+        run: ocamlopt.opt --version
+
+      - uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: ocaml.5.3.1+relocatable
+          opam-repositories: "default: https://github.com/ocaml/opam-repository.git\nalice: git+https://github.com/alicecaml/alice-opam-repo.git"
+
+      - name: Install Deps
+        run: opam install . -y --deps-only
 
       # Build the project
       - run: echo DUNE_CONFIG__PKG_BUILD_PROGRESS=enabled >> $env:GITHUB_ENV
-      - run: dune build
+      - run: opam exec dune build
 
       # Release a tarball
       - run: echo ALICE_OUT_NAME=alice-${{ github.ref_name }}-x86_64-windows >> $env:GITHUB_ENV
@@ -65,7 +58,7 @@ jobs:
       - run: Copy-Item -Recurse -Force _build/install/default/* "$env:ALICE_OUT_NAME"
       - run: |
           mkdir -p "$env:ALICE_OUT_NAME/share/bash-completion/completions"
-          scripts/generate_minified_bash_completion_script.sh > "$env:ALICE_OUT_NAME/share/bash-completion/completions/alice"
+          _build/default/alice/src/alice.exe internal completions bash --program-name=alice --program-exe-for-reentrant-query=alice --global-symbol-prefix=__alice --no-command-hash-in-function-names --no-comments --no-whitespace --minify-global-names --minify-local-variables --optimize-case-statements > "$env:ALICE_OUT_NAME/share/bash-completion/completions/alice"
       - run: tar czf "$env:ALICE_OUT_NAME.tar.gz" "$env:ALICE_OUT_NAME"
       - run: Compress-Archive -Path "_build\install\default\bin\alice.exe" -DestinationPath "$env:ALICE_OUT_NAME.zip" -Force
       - uses: ncipollo/release-action@v1
