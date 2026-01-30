@@ -17,13 +17,6 @@
 
 (cram enable)
 
-(pin
- (package
-  (name ocamlfind)
-  (version 1.9.8+alice))
- (url
-  https://github.com/alicecaml/ocamlfind/archive/refs/tags/1.9.8+alice1.tar.gz))
-
 (package
  (name alice)
  (synopsis "Radical OCaml build system and environment manager")
