@@ -36,7 +36,7 @@ RUN chmod a+w $(cat name.txt)/bin/alice
 RUN strip $(cat name.txt)/bin/alice
 RUN chmod a-w $(cat name.txt)/bin/alice
 RUN mkdir -p $(cat name.txt)/share/bash-completion/completions
-RUN opam exec scripts/generate_minified_bash_completion_script.sh > $(cat name.txt)/share/bash-completion/completions/alice
+RUN scripts/generate_minified_bash_completion_script.sh > $(cat name.txt)/share/bash-completion/completions/alice
 RUN tar czf $(cat name.txt).tar.gz $(cat name.txt)
 RUN opam exec dune clean
 
