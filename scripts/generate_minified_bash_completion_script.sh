@@ -1,6 +1,5 @@
 #!/bin/sh
-DUNE_CONFIG__PKG_BUILD_PROGRESS=disabled
-dune exec --display=quiet alice -- internal completions bash \
+_build/default/alice/src/alice.exe internal completions bash \
     --program-name=alice \
     --program-exe-for-reentrant-query=alice \
     --global-symbol-prefix=__alice \
