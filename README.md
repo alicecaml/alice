@@ -13,7 +13,6 @@ song](https://www.youtube.com/watch?v=XM7Jnetdf0I).
 ## Disclaimers
 
 Alice is very early in development and is missing some important features:
-- No parallel builds (yet!).
 - No preprocessing, so there's no way to use things like menhir or ppxes.
 - Packages can only depend on other packages explicitly referred to within the
   local filesystem. There's no package solver or registry and no way to
