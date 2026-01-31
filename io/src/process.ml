@@ -152,14 +152,20 @@ module Eio = struct
     | Ok x -> x
     | Error (`Program_not_available prog) ->
       Alice_error.user_exn [ Pp.textf "Program %S not found!" prog ]
-    | Error (`Generic_error message) -> Alice_error.user_exn [ Pp.text message ]
+    | Error (`Generic_error message) ->
+      Printf.eprintf "%s" message;
+      exit 1
   ;;
 
   let run (io_ctx : _ Io_ctx.t) prog ~args ~env =
     match io_ctx.proc_mgr with
     | None ->
       (match Blocking.run prog ~args ~env with
-       | Ok _ -> Ok ()
+       | Ok report ->
+         (match report.status with
+          | Exited 0 -> ()
+          | _ -> exit 1);
+         Ok ()
        | Error `Prog_not_available -> Error (`Program_not_available prog))
     | Some proc_mgr ->
       let env_arr = Env.to_raw env in
@@ -174,7 +180,11 @@ module Eio = struct
     match io_ctx.proc_mgr with
     | None ->
       (match Blocking.run_capturing_stdout_lines prog ~args ~env with
-       | Ok (_, lines) -> Ok lines
+       | Ok (report, lines) ->
+         (match report.status with
+          | Exited 0 -> ()
+          | _ -> exit 1);
+         Ok lines
        | Error `Prog_not_available -> Error (`Program_not_available prog))
     | Some proc_mgr ->
       let env_arr = Env.to_raw env in

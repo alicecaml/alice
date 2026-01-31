@@ -53,11 +53,9 @@ Even though the package "c" is in the transitive dependency closure of "bad",
   > EOF
   $ alice build --normalize-paths --manifest-path bad/Alice.kdl -j1 2>&1 | sanitize
    Compiling bad v0.1.0
-  
   1 | let () = print_endline C.Message.message
                              ^^^^^^^^^^^^^^^^^
   Error: Unbound module C
-  
 
 The package protocol creates a module "internal_modules_of_<package>" which is
 publically visible to client code, however the module is shadowed with an empty
@@ -68,7 +66,6 @@ to access the transitive dependency "c" from "bad" via this module.
   > EOF
   $ alice build --normalize-paths --manifest-path bad/Alice.kdl -j1 2>&1 | sanitize
    Compiling bad v0.1.0
-  
   1 | let () = print_endline Internal_modules_of_c.Lib.Message.message
                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Alert deprecated: module Public_interface_to_open_of_a.Internal_modules_of_c
@@ -77,7 +74,6 @@ to access the transitive dependency "c" from "bad" via this module.
   1 | let () = print_endline Internal_modules_of_c.Lib.Message.message
                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: Unbound module Internal_modules_of_c.Lib
-  
 
 The package protocol also creates a module
 "public_interface_to_open_of_<package>". This module should be inaccessible to
@@ -88,7 +84,6 @@ client code, even when the package is an immediate dependency.
   > EOF
   $ alice build --normalize-paths --manifest-path bad/Alice.kdl -j1 2>&1 | sanitize
    Compiling bad v0.1.0
-  
   1 | let () = print_endline Public_interface_to_open_of_a.A.C.Message.message
                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Alert deprecated: module Public_interface_to_open_of_a.Public_interface_to_open_of_a
@@ -97,5 +92,4 @@ client code, even when the package is an immediate dependency.
   1 | let () = print_endline Public_interface_to_open_of_a.A.C.Message.message
                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: Unbound module Public_interface_to_open_of_a.A
-  
 
