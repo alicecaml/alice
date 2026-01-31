@@ -10,16 +10,19 @@ let run_ =
   and+ num_jobs = Common.parse_num_jobs
   and+ args =
     pos_all string ~doc:"Arguments to pass to the executable." ~value_name:"ARGS"
-  in
+  and+ debug_blocking_subprocesses = Common.parse_debug_blocking_subprocesses in
   let env = Alice_env.current_env () in
   let os_type = Alice_env.Os_type.current () in
   let ocamlopt = Alice_which.ocamlopt os_type env in
   Eio_main.run
   @@ fun env ->
-  let proc_mgr =
-    Alice_io.Io_ctx.create_maybe_proc_mgr os_type (fun () -> Eio.Stdenv.process_mgr env)
+  let io_ctx =
+    Common.make_io_ctx
+      os_type
+      num_jobs
+      (fun () -> Eio.Stdenv.process_mgr env)
+      ~debug_blocking_subprocesses
   in
-  let io_ctx = Alice_io.Io_ctx.create proc_mgr num_jobs in
   Project.run project io_ctx profile os_type ocamlopt ~args
 ;;
 

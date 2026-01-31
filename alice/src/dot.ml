@@ -6,16 +6,20 @@ let dot_artifacts =
   let open Arg_parser in
   let+ () = Common.set_globals_from_flags
   and+ project = Common.parse_project
-  and+ num_jobs = Common.parse_num_jobs in
+  and+ num_jobs = Common.parse_num_jobs
+  and+ debug_blocking_subprocesses = Common.parse_debug_blocking_subprocesses in
   let env = Alice_env.current_env () in
   let os_type = Alice_env.Os_type.current () in
   let ocamlopt = Alice_which.ocamlopt os_type env in
   Eio_main.run
   @@ fun env ->
-  let proc_mgr =
-    Alice_io.Io_ctx.create_maybe_proc_mgr os_type (fun () -> Eio.Stdenv.process_mgr env)
+  let io_ctx =
+    Common.make_io_ctx
+      os_type
+      num_jobs
+      (fun () -> Eio.Stdenv.process_mgr env)
+      ~debug_blocking_subprocesses
   in
-  let io_ctx = Alice_io.Io_ctx.create proc_mgr num_jobs in
   print_endline @@ Project.dot_build_artifacts project io_ctx os_type ocamlopt
 ;;
 

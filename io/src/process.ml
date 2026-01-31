@@ -157,11 +157,11 @@ module Eio = struct
 
   let run (io_ctx : _ Io_ctx.t) prog ~args ~env =
     match io_ctx.proc_mgr with
-    | Eio_proc_mgr_not_supported_on_platform ->
+    | None ->
       (match Blocking.run prog ~args ~env with
        | Ok _ -> Ok ()
        | Error `Prog_not_available -> Error (`Program_not_available prog))
-    | Proc_mgr proc_mgr ->
+    | Some proc_mgr ->
       let env_arr = Env.to_raw env in
       let args = prog :: args in
       Log.debug [ Pp.textf "Running command: %s" (String.concat ~sep:" " args) ];
@@ -172,11 +172,11 @@ module Eio = struct
 
   let run_capturing_stdout_lines (io_ctx : _ Io_ctx.t) prog ~args ~env =
     match io_ctx.proc_mgr with
-    | Eio_proc_mgr_not_supported_on_platform ->
+    | None ->
       (match Blocking.run_capturing_stdout_lines prog ~args ~env with
        | Ok (_, lines) -> Ok lines
        | Error `Prog_not_available -> Error (`Program_not_available prog))
-    | Proc_mgr proc_mgr ->
+    | Some proc_mgr ->
       let env_arr = Env.to_raw env in
       let args = prog :: args in
       Log.debug [ Pp.textf "Running command: %s" (String.concat ~sep:" " args) ];

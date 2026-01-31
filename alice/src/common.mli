@@ -18,3 +18,11 @@ val parse_profile : Profile.t Arg_parser.t
 val set_globals_from_flags : unit Arg_parser.t
 
 val parse_num_jobs : Alice_io.Concurrency.Num_jobs.t Arg_parser.t
+val parse_debug_blocking_subprocesses : bool Arg_parser.t
+
+val make_io_ctx
+  :  Alice_env.Os_type.t
+  -> Alice_io.Concurrency.Num_jobs.t
+  -> (unit -> 'a Eio.Process.mgr)
+  -> debug_blocking_subprocesses:bool
+  -> 'a Alice_io.Io_ctx.t

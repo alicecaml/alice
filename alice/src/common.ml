@@ -142,3 +142,33 @@ let parse_num_jobs =
   | None -> Num_jobs.unlimited
   | Some n -> Num_jobs.limited n
 ;;
+
+let parse_debug_blocking_subprocesses =
+  let open Arg_parser in
+  flag
+    [ "debug-blocking-subprocesses" ]
+    ~doc:"Don't use eio to spawn processes"
+    ~hidden:true
+;;
+
+let make_io_ctx os_type num_jobs proc_mgr_thunk ~debug_blocking_subprocesses =
+  let num_jobs =
+    if Alice_env.Os_type.is_windows os_type
+    then (
+      (match (num_jobs : Alice_io.Concurrency.Num_jobs.t) with
+       | Limited 1 | Unlimited -> ()
+       | Limited _ ->
+         Alice_log.warn
+           [ Pp.text "Parallel builds on Windows is currently not supported." ]);
+      Alice_io.Concurrency.Num_jobs.limited 1)
+    else num_jobs
+  in
+  let proc_mgr =
+    if Alice_env.Os_type.is_windows os_type
+    then None
+    else if debug_blocking_subprocesses
+    then None
+    else Some (proc_mgr_thunk ())
+  in
+  Alice_io.Io_ctx.create proc_mgr num_jobs
+;;

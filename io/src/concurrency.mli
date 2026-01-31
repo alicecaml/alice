@@ -1,7 +1,9 @@
 open! Alice_stdlib
 
 module Num_jobs : sig
-  type t
+  type t = private
+    | Limited of int
+    | Unlimited
 
   val limited : int -> t
   val unlimited : t
