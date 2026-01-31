@@ -81,8 +81,13 @@ Test that the project can be built an run:
 Now test Alice's incremental recomputation by repeatedly changing files and
 rebuilding the project.
 
+Note that the output is sorted as the order of built targets varies between
+Unix and Windows because on Windows we don't use eio to launch subprocesses.
+
 Initial build:
-  $ alice build --normalize-paths --verbose -j1
+  $ alice build --normalize-paths --verbose -j1 | sort
+    Finished debug build of package: 'foo v0.1.0'
+   Compiling foo v0.1.0
    [INFO] [foo v0.1.0] Analyzing dependencies of file: src/bar.ml
    [INFO] [foo v0.1.0] Analyzing dependencies of file: src/foo.ml
    [INFO] [foo v0.1.0] Analyzing dependencies of file: src/foo.mli
@@ -90,21 +95,19 @@ Initial build:
    [INFO] [foo v0.1.0] Analyzing dependencies of file: src/foo_dep.mli
    [INFO] [foo v0.1.0] Analyzing dependencies of file: src/lib.ml
    [INFO] [foo v0.1.0] Analyzing dependencies of file: src/main.ml
-   Compiling foo v0.1.0
    [INFO] [foo v0.1.0] Building targets: bar.cmi, bar.cmt, bar.cmx
-   [INFO] [foo v0.1.0] Building targets: foo.cmi, foo.cmti
-   [INFO] [foo v0.1.0] Building targets: foo_dep.cmi, foo_dep.cmti
-   [INFO] [foo v0.1.0] Building targets: public_interface_to_open_of_foo.ml
-   [INFO] [foo v0.1.0] Building targets: foo_dep.cmt, foo_dep.cmx
-   [INFO] [foo v0.1.0] Building targets: foo.cmt, foo.cmx
-   [INFO] [foo v0.1.0] Building targets: lib.cmi, lib.cmt, lib.cmx
-   [INFO] [foo v0.1.0] Building targets: main.cmi, main.cmt, main.cmx
-   [INFO] [foo v0.1.0] Building targets: internal_modules_of_foo.cmx
    [INFO] [foo v0.1.0] Building targets: foo
-   [INFO] [foo v0.1.0] Building targets: public_interface_to_open_of_foo.cmx
    [INFO] [foo v0.1.0] Building targets: foo.cmi, foo.cmt
+   [INFO] [foo v0.1.0] Building targets: foo.cmi, foo.cmti
+   [INFO] [foo v0.1.0] Building targets: foo.cmt, foo.cmx
+   [INFO] [foo v0.1.0] Building targets: foo_dep.cmi, foo_dep.cmti
+   [INFO] [foo v0.1.0] Building targets: foo_dep.cmt, foo_dep.cmx
+   [INFO] [foo v0.1.0] Building targets: internal_modules_of_foo.cmx
+   [INFO] [foo v0.1.0] Building targets: lib.cmi, lib.cmt, lib.cmx
    [INFO] [foo v0.1.0] Building targets: lib.cmxa, lib.a
-    Finished debug build of package: 'foo v0.1.0'
+   [INFO] [foo v0.1.0] Building targets: main.cmi, main.cmt, main.cmx
+   [INFO] [foo v0.1.0] Building targets: public_interface_to_open_of_foo.cmx
+   [INFO] [foo v0.1.0] Building targets: public_interface_to_open_of_foo.ml
 
 Change a file deep in the dependency graph and rebuild. Only the path through
 the dependency graph from this file to the output should be rebuilt:
@@ -112,33 +115,33 @@ the dependency graph from this file to the output should be rebuilt:
   > let message = "Hi"
   > EOF
 
-  $ alice build --normalize-paths --verbose -j1
-   [INFO] [foo v0.1.0] Loading ocamldeps cache from: build/packages/foo-0.1.0/ocamldeps_cache.marshal
-   [INFO] [foo v0.1.0] Analyzing dependencies of file: src/foo_dep.ml
-   Compiling foo v0.1.0
-   [INFO] [foo v0.1.0] Building targets: foo_dep.cmt, foo_dep.cmx
-   [INFO] [foo v0.1.0] Building targets: foo.cmt, foo.cmx
-   [INFO] [foo v0.1.0] Building targets: lib.cmi, lib.cmt, lib.cmx
-   [INFO] [foo v0.1.0] Building targets: main.cmi, main.cmt, main.cmx
-   [INFO] [foo v0.1.0] Building targets: internal_modules_of_foo.cmx
-   [INFO] [foo v0.1.0] Building targets: foo
-   [INFO] [foo v0.1.0] Building targets: public_interface_to_open_of_foo.cmx
-   [INFO] [foo v0.1.0] Building targets: foo.cmi, foo.cmt
-   [INFO] [foo v0.1.0] Building targets: lib.cmxa, lib.a
+  $ alice build --normalize-paths --verbose -j1 | sort
     Finished debug build of package: 'foo v0.1.0'
+   Compiling foo v0.1.0
+   [INFO] [foo v0.1.0] Analyzing dependencies of file: src/foo_dep.ml
+   [INFO] [foo v0.1.0] Building targets: foo
+   [INFO] [foo v0.1.0] Building targets: foo.cmi, foo.cmt
+   [INFO] [foo v0.1.0] Building targets: foo.cmt, foo.cmx
+   [INFO] [foo v0.1.0] Building targets: foo_dep.cmt, foo_dep.cmx
+   [INFO] [foo v0.1.0] Building targets: internal_modules_of_foo.cmx
+   [INFO] [foo v0.1.0] Building targets: lib.cmi, lib.cmt, lib.cmx
+   [INFO] [foo v0.1.0] Building targets: lib.cmxa, lib.a
+   [INFO] [foo v0.1.0] Building targets: main.cmi, main.cmt, main.cmx
+   [INFO] [foo v0.1.0] Building targets: public_interface_to_open_of_foo.cmx
+   [INFO] [foo v0.1.0] Loading ocamldeps cache from: build/packages/foo-0.1.0/ocamldeps_cache.marshal
 
 Change a shallow dependency and rebuild. Only the final build steps should run:
   $ cat > src/main.ml <<EOF
   > let () = print_endline (Printf.sprintf "%s...%s!" Foo.hello Bar.world)
   > EOF
 
-  $ alice build --normalize-paths --verbose -j1
-   [INFO] [foo v0.1.0] Loading ocamldeps cache from: build/packages/foo-0.1.0/ocamldeps_cache.marshal
-   [INFO] [foo v0.1.0] Analyzing dependencies of file: src/main.ml
-   Compiling foo v0.1.0
-   [INFO] [foo v0.1.0] Building targets: main.cmi, main.cmt, main.cmx
-   [INFO] [foo v0.1.0] Building targets: foo
+  $ alice build --normalize-paths --verbose -j1 | sort
     Finished debug build of package: 'foo v0.1.0'
+   Compiling foo v0.1.0
+   [INFO] [foo v0.1.0] Analyzing dependencies of file: src/main.ml
+   [INFO] [foo v0.1.0] Building targets: foo
+   [INFO] [foo v0.1.0] Building targets: main.cmi, main.cmt, main.cmx
+   [INFO] [foo v0.1.0] Loading ocamldeps cache from: build/packages/foo-0.1.0/ocamldeps_cache.marshal
 
 Change an interface and rebuild:
   $ cat > src/foo.mli <<EOF
@@ -146,17 +149,17 @@ Change an interface and rebuild:
   > val hello : string
   > EOF
 
-  $ alice build --normalize-paths --verbose -j1
-   [INFO] [foo v0.1.0] Loading ocamldeps cache from: build/packages/foo-0.1.0/ocamldeps_cache.marshal
-   [INFO] [foo v0.1.0] Analyzing dependencies of file: src/foo.mli
+  $ alice build --normalize-paths --verbose -j1 | sort
+    Finished debug build of package: 'foo v0.1.0'
    Compiling foo v0.1.0
+   [INFO] [foo v0.1.0] Analyzing dependencies of file: src/foo.mli
+   [INFO] [foo v0.1.0] Building targets: foo
+   [INFO] [foo v0.1.0] Building targets: foo.cmi, foo.cmt
    [INFO] [foo v0.1.0] Building targets: foo.cmi, foo.cmti
    [INFO] [foo v0.1.0] Building targets: foo.cmt, foo.cmx
-   [INFO] [foo v0.1.0] Building targets: lib.cmi, lib.cmt, lib.cmx
-   [INFO] [foo v0.1.0] Building targets: main.cmi, main.cmt, main.cmx
    [INFO] [foo v0.1.0] Building targets: internal_modules_of_foo.cmx
-   [INFO] [foo v0.1.0] Building targets: foo
-   [INFO] [foo v0.1.0] Building targets: public_interface_to_open_of_foo.cmx
-   [INFO] [foo v0.1.0] Building targets: foo.cmi, foo.cmt
+   [INFO] [foo v0.1.0] Building targets: lib.cmi, lib.cmt, lib.cmx
    [INFO] [foo v0.1.0] Building targets: lib.cmxa, lib.a
-    Finished debug build of package: 'foo v0.1.0'
+   [INFO] [foo v0.1.0] Building targets: main.cmi, main.cmt, main.cmx
+   [INFO] [foo v0.1.0] Building targets: public_interface_to_open_of_foo.cmx
+   [INFO] [foo v0.1.0] Loading ocamldeps cache from: build/packages/foo-0.1.0/ocamldeps_cache.marshal
