@@ -4,8 +4,7 @@
  (all_platforms
   ((action
     (run
-     sh
-     %{pkg:ocamlfind:bin}/ocaml
+     ocaml
      pkg/pkg.ml
      build
      --pkg-name
