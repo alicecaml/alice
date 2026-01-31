@@ -15,7 +15,7 @@ jobs:
       - uses: msys2/setup-msys2@v2
       - run: echo C:\msys64\usr\bin >> $env:GITHUB_PATH
       - run: echo C:\msys64\mingw64\bin >> $env:GITHUB_PATH
-      - run: pacman -S --needed --noconfirm mingw-w64-x86_64-zstd
+      - run: pacman -S --needed --noconfirm mingw-w64-x86_64-gcc
 
       - name: Install an Alice to bootstrap tools
         run: winget install --id OCaml.Alice --exact --accept-package-agreements --accept-source-agreements
