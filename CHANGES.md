@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Parallel builds
+
+## 0.4.0
+
 ### Changed
 
 - Use [kdl](https://kdl.dev) rather than toml for manifests
