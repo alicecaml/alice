@@ -1,4 +1,5 @@
 module Ansi_style = Ansi_style
+module Array = Array
 module Command = Command
 module Compare = Compare
 module Dyn = Dyn

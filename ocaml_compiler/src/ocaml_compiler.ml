@@ -66,6 +66,34 @@ module Depend = struct
     ;;
   end
 
+  module Native_deps = struct
+    let command ocaml_compiler path =
+      command
+        ocaml_compiler
+        [ "-one-line"
+        ; "-native"
+        ; "-I"
+        ; Absolute_path.parent path |> Absolute_path.Root_or_non_root.to_filename
+        ; Absolute_path.to_filename path
+        ]
+    ;;
+
+    let parse_stdout_lines = function
+      | [ line ] | [ line; "" ] -> Deps.of_line line
+      | [] -> panic [ Pp.text "Unexpected empty output!" ]
+      | lines ->
+        panic
+          [ Pp.text "Unexpected multiple lines of output:"
+          ; Pp.concat_map lines ~f:(Pp.textf "%S") ~sep:(Pp.text ", ")
+          ]
+    ;;
+
+    let run_batch ocaml_compiler num_jobs paths =
+      let commands = List.map paths ~f:(command ocaml_compiler) in
+      Alice_io.Process.run_batch_map_stdout_lines commands num_jobs ~f:parse_stdout_lines
+    ;;
+  end
+
   let native_deps ocaml_compiler io_ctx path =
     if not (Alice_io.File_ops.exists path)
     then
@@ -94,6 +122,7 @@ end
 module Deps = Depend.Deps
 
 let depends_native = Depend.native_deps
+let depends_native_batch = Depend.Native_deps.run_batch
 
 module Config = struct
   let command ocaml_compiler = command ocaml_compiler ~args:[ "-config" ]

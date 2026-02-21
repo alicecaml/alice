@@ -18,6 +18,54 @@ module Report : sig
   val error_unless_exit_0 : t -> unit
 end
 
+module Running : sig
+  type t
+
+  val wait : t -> Report.t
+  val poll : t -> Report.t option
+end
+
+module Error : sig
+  type t = [ `Prog_not_available of string ]
+end
+
+module Running_capturing_stdout : sig
+  type t
+
+  val wait_stdout_lines : t -> Report.t * string list
+  val poll_stdout_lines : t -> (Report.t * string list) option
+end
+
+val run
+  :  ?stdin:Unix.file_descr
+  -> ?stdout:Unix.file_descr
+  -> ?stderr:Unix.file_descr
+  -> string
+  -> args:string list
+  -> env:Env.t
+  -> (Running.t, Error.t) result
+
+val run_capturing_stdout
+  :  ?stdin:Unix.file_descr
+  -> ?stderr:Unix.file_descr
+  -> string
+  -> args:string list
+  -> env:Env.t
+  -> (Running_capturing_stdout.t, Error.t) result
+
+val run_command
+  :  ?stdin:Unix.file_descr
+  -> ?stdout:Unix.file_descr
+  -> ?stderr:Unix.file_descr
+  -> Command.t
+  -> (Running.t, Error.t) result
+
+val run_command_capturing_stdout
+  :  ?stdin:Unix.file_descr
+  -> ?stderr:Unix.file_descr
+  -> Command.t
+  -> (Running_capturing_stdout.t, Error.t) result
+
 module Blocking : sig
   val run
     :  ?stdin:Unix.file_descr
@@ -26,7 +74,7 @@ module Blocking : sig
     -> string
     -> args:string list
     -> env:Env.t
-    -> (Report.t, [ `Prog_not_available ]) result
+    -> (Report.t, Error.t) result
 
   val run_capturing_stdout_lines
     :  ?stdin:Unix.file_descr
@@ -34,20 +82,20 @@ module Blocking : sig
     -> string
     -> args:string list
     -> env:Env.t
-    -> (Report.t * string list, [ `Prog_not_available ]) result
+    -> (Report.t * string list, Error.t) result
 
   val run_command
     :  ?stdin:Unix.file_descr
     -> ?stdout:Unix.file_descr
     -> ?stderr:Unix.file_descr
     -> Command.t
-    -> (Report.t, [ `Prog_not_available ]) result
+    -> (Report.t, Error.t) result
 
   val run_command_capturing_stdout_lines
     :  ?stdin:Unix.file_descr
     -> ?stderr:Unix.file_descr
     -> Command.t
-    -> (Report.t * string list, [ `Prog_not_available ]) result
+    -> (Report.t * string list, Error.t) result
 end
 
 module Eio : sig
@@ -72,3 +120,9 @@ module Eio : sig
     -> Command.t
     -> (string list, error) result
 end
+
+val run_batch_map_stdout_lines
+  :  Command.t list
+  -> Concurrency.Num_jobs.t
+  -> f:(string list -> 'a)
+  -> 'a list

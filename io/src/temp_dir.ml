@@ -5,7 +5,7 @@ let rng = lazy (Random.State.make_self_init ())
 
 (* Make a new directory in the system's temporary directory returning its
    path. Does not attempt to clean up after itself. *)
-let mkdir ~prefix ~suffix =
+let make ~prefix ~suffix =
   let perms = 0o755 in
   let rng = Lazy.force rng in
   let temp_dir_base = Filename.get_temp_dir_name () in
@@ -29,7 +29,7 @@ let mkdir ~prefix ~suffix =
 ;;
 
 let with_ ~prefix ~suffix ~f =
-  let path = mkdir ~prefix ~suffix in
+  let path = make ~prefix ~suffix in
   let ret = f path in
   File_ops.rm_rf path;
   ret

@@ -25,3 +25,10 @@ val get_deps
   -> Ocaml_compiler.t
   -> source_path:Absolute_path.non_root_t
   -> Ocaml_compiler.Deps.t
+
+val get_deps_batch
+  :  t
+  -> Ocaml_compiler.t
+  -> Alice_io.Concurrency.Num_jobs.t
+  -> source_paths:Absolute_path.non_root_t list
+  -> (Absolute_path.non_root_t * Ocaml_compiler.Deps.t) list

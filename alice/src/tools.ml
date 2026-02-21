@@ -233,7 +233,7 @@ let exec =
   in
   let open Alice_ui in
   match Alice_io.Process.Blocking.run ~env:augmented_env prog ~args with
-  | Error `Prog_not_available ->
+  | Error (`Prog_not_available prog) ->
     Alice_error.panic [ Pp.textf "The executable %s does not exist." prog ]
   | Ok { status = Exited code; _ } -> exit code
   | Ok { status = Signaled signal | Stopped signal; _ } ->

@@ -123,24 +123,23 @@ module Build_plan = struct
   ;;
 end
 
-let compilation_ops dir package_id build_dir ocaml_compiler io_ctx =
+let compilation_ops dir package_id build_dir ocaml_compiler (io_ctx : _ Alice_io.Io_ctx.t)
+  =
   let ocamldep_cache = Ocamldep_cache.load build_dir package_id in
-  let deps_key_value_pairs =
+  let source_paths =
     Dir_non_root.contents dir
     |> List.filter ~f:(fun file ->
       File_non_root.is_regular_or_link file
       && (Absolute_path.has_extension file.path ~ext:".ml"
           || Absolute_path.has_extension file.path ~ext:".mli"))
-    |> List.sort ~cmp:File_non_root.compare_by_path
-    |> List.map ~f:(fun (file : File_non_root.t) ->
-      fun () ->
-      ( file.path
-      , Ocamldep_cache.get_deps
-          ocamldep_cache
-          io_ctx
-          ocaml_compiler
-          ~source_path:file.path ))
-    |> Alice_io.Eio_fiber.all_values
+    |> List.map ~f:(fun (file : File_non_root.t) -> file.path)
+  in
+  let deps_key_value_pairs =
+    Ocamldep_cache.get_deps_batch
+      ocamldep_cache
+      ocaml_compiler
+      io_ctx.num_jobs
+      ~source_paths
   in
   let deps = Absolute_path.Non_root_map.of_list_exn deps_key_value_pairs in
   Ocamldep_cache.store ocamldep_cache deps;

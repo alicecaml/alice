@@ -5,3 +5,4 @@ val last : 'a t -> 'a option
 val split_last : 'a t -> ('a t * 'a) option
 val all : bool t -> bool
 val any : bool t -> bool
+val zip : 'a t -> 'b t -> ('a * 'b) t

@@ -30,6 +30,12 @@ end
     [file]. *)
 val depends_native : t -> _ Alice_io.Io_ctx.t -> Absolute_path.non_root_t -> Deps.t
 
+val depends_native_batch
+  :  t
+  -> Alice_io.Concurrency.Num_jobs.t
+  -> Absolute_path.non_root_t list
+  -> Deps.t list
+
 (** Returns the "standard_library" path from the output of running the compiler
     with "-config". *)
 val standard_library : t -> _ Alice_io.Io_ctx.t -> Absolute_path.non_root_t

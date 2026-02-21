@@ -16,3 +16,4 @@ let rec split_last = function
 
 let all t = for_all t ~f:Fun.id
 let any t = exists t ~f:Fun.id
+let zip a b = map2 a b ~f:(fun a b -> a, b)
