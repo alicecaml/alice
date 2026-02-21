@@ -23,13 +23,11 @@ module Deps : sig
   val to_dyn : t -> Dyn.t
 end
 
-(** [depends_native file] takes the path to a source or interface file and returns
-    the path to file which will contain its compiled output ([Deps.output]), as
-    well as the files which must be generated before compiling the given file
-    ([Deps.inputs]). Returned paths are relative to the directory containing
-    [file]. *)
-val depends_native : t -> _ Alice_io.Io_ctx.t -> Absolute_path.non_root_t -> Deps.t
-
+(** [depends_native_batch file] takes a batch of paths to source or interface files
+    and returns the corresponding paths to files which will contain their
+    compiled output ([Deps.output]), as well as the files which must be
+    generated before compiling the given file ([Deps.inputs]). Returned paths
+    are relative to the directory containing source files. *)
 val depends_native_batch
   :  t
   -> Alice_io.Concurrency.Num_jobs.t

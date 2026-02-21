@@ -15,13 +15,6 @@ let command { filename; env } ~args = Command.create filename ~args env
 module Depend = struct
   let command ocaml_compiler args = command ocaml_compiler ~args:("-depend" :: args)
 
-  let run_lines ocaml_compiler (io_ctx : _ Alice_io.Io_ctx.t) args =
-    let command = command ocaml_compiler args in
-    Alice_io.Concurrency.Limit.run io_ctx.limit ~f:(fun () ->
-      Alice_io.Process.Eio.run_command_capturing_stdout_lines io_ctx command
-      |> Alice_io.Process.Eio.result_ok_or_exn)
-  ;;
-
   module Deps = struct
     type t =
       { output : Basename.t
@@ -93,35 +86,10 @@ module Depend = struct
       Alice_io.Process.run_batch_map_stdout_lines commands num_jobs ~f:parse_stdout_lines
     ;;
   end
-
-  let native_deps ocaml_compiler io_ctx path =
-    if not (Alice_io.File_ops.exists path)
-    then
-      panic [ Pp.textf "File does not exist: %s" (Alice_ui.absolute_path_to_string path) ];
-    match
-      run_lines
-        ocaml_compiler
-        io_ctx
-        [ "-one-line"
-        ; "-native"
-        ; "-I"
-        ; Absolute_path.parent path |> Absolute_path.Root_or_non_root.to_filename
-        ; Absolute_path.to_filename path
-        ]
-    with
-    | [ line ] | [ line; "" ] -> Deps.of_line line
-    | [] -> panic [ Pp.text "Unexpected empty output!" ]
-    | lines ->
-      panic
-        [ Pp.text "Unexpected multiple lines of output:"
-        ; Pp.concat_map lines ~f:(Pp.textf "%S") ~sep:(Pp.text ", ")
-        ]
-  ;;
 end
 
 module Deps = Depend.Deps
 
-let depends_native = Depend.native_deps
 let depends_native_batch = Depend.Native_deps.run_batch
 
 module Config = struct

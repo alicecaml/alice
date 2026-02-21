@@ -17,15 +17,8 @@ val load : Build_dir.t -> Package_id.t -> t
 (** Overwrite the cache in the build directory with an updated dep table. *)
 val store : t -> dep_table -> unit
 
-(** Look up the deps of a given source file. The ocamldep executable will be
-    run in the event of a cache miss. *)
-val get_deps
-  :  t
-  -> _ Alice_io.Io_ctx.t
-  -> Ocaml_compiler.t
-  -> source_path:Absolute_path.non_root_t
-  -> Ocaml_compiler.Deps.t
-
+(** Look up the deps of a batch of source files, invoking ocamldep for files
+    not present or up to date in the cache. *)
 val get_deps_batch
   :  t
   -> Ocaml_compiler.t
