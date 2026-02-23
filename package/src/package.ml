@@ -86,6 +86,7 @@ module Typed = struct
 
   let package { package; _ } = package
   let name t = package t |> name
+  let id t = package t |> id
   let type_ { type_; _ } = type_
 
   let contains_exe : type exe lib. (exe, lib) t -> exe Type_bool.t =

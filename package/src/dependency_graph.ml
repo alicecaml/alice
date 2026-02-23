@@ -3,38 +3,19 @@ open Alice_package_meta
 open Alice_error
 open Alice_hierarchy
 
-module Node = struct
-  type t = Package.Typed.lib_only_t
-
-  module Name = Package_name
-
-  let to_dyn = Package.Typed.to_dyn
-  let equal = Package.Typed.equal
-  let name t = Package.Typed.package t |> Package.name
-
-  let dep_names t =
-    Package.Typed.package t
-    |> Package.dependencies
-    |> Dependencies.names
-    |> Package_name.Set.of_list
-  ;;
-
-  let show t = Package.Typed.package t |> Package.id |> Package_id.name_v_version_string
-end
-
 module Dependency_dag = struct
-  include Alice_dag.Make (Node)
+  include Alice_dag.Make_ (Package_name)
 
   type nonrec t =
-    { dag : t
-    ; all_nodes_in_dependency_order : Package.Typed.lib_only_t list
+    { dag : Package.Typed.lib_only_t t
+    ; all_nodes_in_dependency_order : Package.Typed.lib_only_t Node.t list
     }
 
   let to_dyn { dag; all_nodes_in_dependency_order } =
     Dyn.record
-      [ "dag", to_dyn dag
+      [ "dag", to_dyn Package.Typed.to_dyn dag
       ; ( "all_nodes_in_dependency_order"
-        , Dyn.list Package.Typed.to_dyn all_nodes_in_dependency_order )
+        , Dyn.list (Node.to_dyn Package.Typed.to_dyn) all_nodes_in_dependency_order )
       ]
   ;;
 
@@ -43,16 +24,10 @@ module Dependency_dag = struct
 
     let add_package_typed t package_typed =
       let name = Package.name (Package.Typed.package package_typed) in
-      match add t name package_typed with
-      | Ok t -> t
-      | Error (`Conflict existing) ->
-        Alice_error.panic
-          [ Pp.textf "Conflicting packages with name: %s" (Package_name.to_string name)
-          ; Pp.newline
-          ; Pp.textf "%s" (Node.to_dyn package_typed |> Dyn.to_string)
-          ; Pp.newline
-          ; Pp.textf "%s" (Node.to_dyn existing |> Dyn.to_string)
-          ]
+      let child_names =
+        Package.Typed.package package_typed |> Package.dependencies |> Dependencies.names
+      in
+      add_or_panic t name package_typed ~eq:Package.Typed.equal ~child_names
     ;;
 
     let finalize t =
@@ -68,7 +43,7 @@ module Dependency_dag = struct
              @ List.concat_map cycle ~f:(fun file ->
                [ Pp.textf " - %s" (Package_name.to_string file); Pp.newline ]))
       in
-      let all_nodes_in_dependency_order = all_nodes_in_dependency_order dag in
+      let all_nodes_in_dependency_order = all_nodes_in_child_first_order dag in
       { dag; all_nodes_in_dependency_order }
     ;;
   end
@@ -125,6 +100,8 @@ let transitive_dependency_closure package =
 type ('exe, 'lib) t =
   { root : ('exe, 'lib) Package.Typed.t
   ; dependency_dag : Dependency_dag.t
+    (* The root isn't in the dependency dag, as that only tracks dependencies of
+       the root package, not the root package itself. *)
   }
 
 let to_dyn { root; dependency_dag } =
@@ -147,12 +124,15 @@ let compute package_typed =
 ;;
 
 let to_string_graph t =
-  Dependency_dag.to_string_graph t.dependency_dag.dag
+  let value_to_string package_typed =
+    Package.Typed.id package_typed |> Package_id.name_v_version_string
+  in
+  Dependency_dag.to_string_graph t.dependency_dag.dag ~value_to_string
   |> String.Map.add
        ~key:(Package_id.name_v_version_string (Package.id (Package.Typed.package t.root)))
        ~data:
          (Dependency_dag.roots t.dependency_dag.dag
-          |> List.map ~f:Node.show
+          |> List.map ~f:(fun node -> Dependency_dag.Node.value node |> value_to_string)
           |> String.Set.of_list)
 ;;
 
@@ -172,28 +152,31 @@ module Package_with_deps = struct
   let name t = package t |> Package.name
   let id t = package t |> Package.id
 
-  let immediate_deps_in_dependency_order { package_typed; dependency_dag; _ } =
+  let immediate_deps_in_dependency_order t =
     let immediate_dep_names =
-      Package.Typed.package package_typed
-      |> Package.dependency_names
-      |> Package_name.Set.of_list
+      package t |> Package.dependency_names |> Package_name.Set.of_list
     in
-    List.filter_map dependency_dag.all_nodes_in_dependency_order ~f:(fun node ->
-      if Node.Name.Set.mem (Node.name node) immediate_dep_names
-      then Some { package_typed = node; dependency_dag; is_root = false }
+    List.filter_map t.dependency_dag.all_nodes_in_dependency_order ~f:(fun node ->
+      if Package_name.Set.mem (Dependency_dag.Node.name node) immediate_dep_names
+      then (
+        let package_typed = Dependency_dag.Node.value node in
+        Some { package_typed; dependency_dag = t.dependency_dag; is_root = false })
       else None)
   ;;
 
   let transitive_dependency_closure_excluding_package
         { package_typed; dependency_dag; is_root }
     =
-    if is_root
-    then dependency_dag.all_nodes_in_dependency_order
-    else
-      Dependency_dag.transitive_closure_in_dependency_order
-        dependency_dag.dag
-        ~start:(Package.Typed.name package_typed)
-        ~include_start:false
+    let nodes =
+      if is_root
+      then dependency_dag.all_nodes_in_dependency_order
+      else (
+        let start =
+          Dependency_dag.get_node (Package.Typed.name package_typed) dependency_dag.dag
+        in
+        Dependency_dag.transitive_closure_in_child_first_order ~start ~include_start:false)
+    in
+    List.map nodes ~f:Dependency_dag.Node.value
   ;;
 end
 
@@ -202,6 +185,7 @@ let root_package_with_deps { root; dependency_dag } =
 ;;
 
 let transitive_dependency_closure_in_dependency_order { dependency_dag; _ } =
-  List.map dependency_dag.all_nodes_in_dependency_order ~f:(fun package_typed ->
+  List.map dependency_dag.all_nodes_in_dependency_order ~f:(fun node ->
+    let package_typed = Dependency_dag.Node.value node in
     { Package_with_deps.package_typed; is_root = false; dependency_dag })
 ;;
