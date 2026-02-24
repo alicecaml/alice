@@ -4,21 +4,19 @@ open Alice_package
 open Alice_ocaml_compiler
 
 module Build_dag = struct
-  module Generated_file = struct
-    include Typed_op.Generated_file
+  let generated_file_to_string (generated_file : Typed_op.Generated_file.t) =
+    let path =
+      Alice_ui.basename_to_string (Typed_op.Generated_file.path generated_file)
+    in
+    match generated_file with
+    | Compiled compiled ->
+      (match Typed_op.Generated_file.Compiled.visibility compiled with
+       | Public_for_lsp -> sprintf "%s (for lsp)" path
+       | _ -> path)
+    | _ -> path
+  ;;
 
-    let to_string t =
-      let path = Alice_ui.basename_to_string (path t) in
-      match t with
-      | Compiled compiled ->
-        (match Typed_op.Generated_file.Compiled.visibility compiled with
-         | Public_for_lsp -> sprintf "%s (for lsp)" path
-         | _ -> path)
-      | _ -> path
-    ;;
-  end
-
-  include Alice_dag.Make (Generated_file)
+  include Alice_dag.Make (Typed_op.Generated_file)
 
   type nonrec t = Typed_op.t t
 
@@ -36,7 +34,7 @@ module Build_dag = struct
           Alice_error.panic
             [ Pp.textf
                 "Conflicting origins for file: %s"
-                (Generated_file.to_string artifact)
+                (generated_file_to_string artifact)
             ])
     ;;
 
@@ -45,12 +43,12 @@ module Build_dag = struct
       | Ok t -> t
       | Error (`Dangling dangling) ->
         Alice_error.panic
-          [ Pp.textf "No rule to build: %s" (Generated_file.to_string dangling) ]
+          [ Pp.textf "No rule to build: %s" (generated_file_to_string dangling) ]
       | Error (`Cycle cycle) ->
         Alice_error.panic
           ([ Pp.text "Dependency cycle:"; Pp.newline ]
            @ List.concat_map cycle ~f:(fun file ->
-             [ Pp.textf " - %s" (Generated_file.to_string file); Pp.newline ]))
+             [ Pp.textf " - %s" (generated_file_to_string file); Pp.newline ]))
     ;;
   end
 
@@ -445,7 +443,7 @@ let plan_lsp ({ build_dag; package_typed; _ } : (_, Type_bool.true_t) t) =
 
 let dot t =
   let node_to_string node =
-    Build_dag.Generated_file.to_string (Build_dag.Node.name node)
+    Build_dag.generated_file_to_string (Build_dag.Node.name node)
   in
   List.fold_left
     (Build_dag.all_nodes t.build_dag)

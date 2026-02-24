@@ -5,7 +5,6 @@ module type Name = sig
 
   val to_dyn : t -> Dyn.t
   val equal : t -> t -> bool
-  val to_string : t -> string
 
   module Set : Set.S with type elt = t
   module Map : Map.S with type key = t
@@ -158,7 +157,7 @@ module Make (Name : Name) = struct
         Alice_error.panic
           [ Pp.textf
               "DAG already contains node named %S with different value."
-              (Name.to_string name)
+              (Name.to_dyn name |> Dyn.to_string)
           ]
     ;;
 
@@ -235,12 +234,13 @@ module Make (Name : Name) = struct
       match finalize t with
       | Ok t -> t
       | Error (`Dangling dangling) ->
-        Alice_error.panic [ Pp.textf "No node with name: %s" (Name.to_string dangling) ]
+        Alice_error.panic
+          [ Pp.textf "No node with name: %s" (Name.to_dyn dangling |> Dyn.to_string) ]
       | Error (`Cycle cycle) ->
         Alice_error.panic
           ([ Pp.text "DAG would contain cycle:"; Pp.newline ]
            @ List.concat_map cycle ~f:(fun name ->
-             [ Pp.textf " - %s" (Name.to_string name); Pp.newline ]))
+             [ Pp.textf " - %s" (Name.to_dyn name |> Dyn.to_string); Pp.newline ]))
     ;;
   end
 

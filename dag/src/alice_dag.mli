@@ -5,7 +5,6 @@ module type Name = sig
 
   val to_dyn : t -> Dyn.t
   val equal : t -> t -> bool
-  val to_string : t -> string
 
   module Set : Set.S with type elt = t
   module Map : Map.S with type key = t
