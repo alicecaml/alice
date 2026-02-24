@@ -213,3 +213,6 @@ val to_dyn : t -> Dyn.t
 val source_input : t -> Absolute_path.non_root_t option
 val generated_inputs : t -> Generated_file.t list
 val outputs : t -> Generated_file.t list
+
+module Set : Set.S with type elt = t
+module Map : Map.S with type key = t

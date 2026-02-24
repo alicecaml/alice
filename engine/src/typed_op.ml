@@ -225,6 +225,18 @@ module File_type = struct
     | Cmti, Cmti -> true
     | O, O -> true
   ;;
+
+  let compare : type a. a t -> a t -> int =
+    fun a b ->
+    match a, b with
+    | Ml, Ml -> 0
+    | Mli, Mli -> 0
+    | Cmx, Cmx -> 0
+    | Cmi, Cmi -> 0
+    | Cmt, Cmt -> 0
+    | Cmti, Cmti -> 0
+    | O, O -> 0
+  ;;
 end
 
 open File_type
@@ -254,6 +266,12 @@ module File = struct
       | ".mli" -> Ok (`Mli (mli path))
       | unknown -> Error (`Unknown_extension unknown)
     ;;
+
+    let compare t { path; type_ } =
+      let open Compare in
+      let= () = Absolute_path.compare t.path path in
+      File_type.compare t.type_ type_
+    ;;
   end
 
   module Generated_source = struct
@@ -268,6 +286,12 @@ module File = struct
 
     let equal t { path; type_ } =
       Basename.equal t.path path && File_type.equal t.type_ type_
+    ;;
+
+    let compare t { path; type_ } =
+      let open Compare in
+      let= () = Basename.compare t.path path in
+      File_type.compare t.type_ type_
     ;;
 
     let ml path = { path; type_ = Ml }
@@ -294,6 +318,13 @@ module File = struct
       Basename.equal t.path path
       && File_type.equal t.type_ type_
       && Visibility.equal t.visibility visibility
+    ;;
+
+    let compare t { path; type_; visibility } =
+      let open Compare in
+      let= () = Basename.compare t.path path in
+      let= () = File_type.compare t.type_ type_ in
+      Visibility.compare t.visibility visibility
     ;;
 
     let of_path_checked path type_ ext ~visibility =
@@ -387,6 +418,14 @@ module File = struct
       | Exe a, Exe b -> Basename.equal a b
     ;;
 
+    let compare : type a. a t -> a t -> int =
+      fun a b ->
+      match a, b with
+      | Lib_cmxa, Lib_cmxa -> 0
+      | Lib_a, Lib_a -> 0
+      | Exe a, Exe b -> Basename.compare a b
+    ;;
+
     let generated_file : type a. a t -> Generated_file.t = function
       | Lib_cmxa -> Generated_file.Linked_library Cmxa
       | Lib_a -> Generated_file.Linked_library A
@@ -403,6 +442,7 @@ module Pack = struct
   type t = Package_name.t
 
   let equal = Package_name.equal
+  let compare = Package_name.compare
   let to_dyn = Package_name.to_dyn
   let of_package_name t = t
   let package_name t = t
@@ -445,6 +485,30 @@ module Compile_source = struct
     && Bool.equal t.stop_after_typing stop_after_typing
   ;;
 
+  let compare
+        t
+        { source_input
+        ; compiled_inputs
+        ; cmx_output
+        ; interface_output_if_no_matching_mli_is_present
+        ; stop_after_typing
+        }
+    =
+    let open Compare in
+    let= () = File.Source.compare t.source_input source_input in
+    let= () =
+      List.compare ~cmp:Generated_file.Compiled.compare t.compiled_inputs compiled_inputs
+    in
+    let= () = File.Compiled.compare t.cmx_output cmx_output in
+    let= () =
+      Option.compare
+        ~cmp:File.Compiled.compare
+        t.interface_output_if_no_matching_mli_is_present
+        interface_output_if_no_matching_mli_is_present
+    in
+    Bool.compare t.stop_after_typing stop_after_typing
+  ;;
+
   let to_dyn
         { source_input
         ; compiled_inputs
@@ -479,6 +543,16 @@ module Compile_interface = struct
     && Bool.equal t.stop_after_typing stop_after_typing
   ;;
 
+  let compare t { interface_input; compiled_inputs; cmi_output; stop_after_typing } =
+    let open Compare in
+    let= () = File.Source.compare t.interface_input interface_input in
+    let= () =
+      List.compare ~cmp:Generated_file.Compiled.compare t.compiled_inputs compiled_inputs
+    in
+    let= () = File.Compiled.compare t.cmi_output cmi_output in
+    Bool.compare t.stop_after_typing stop_after_typing
+  ;;
+
   let to_dyn { interface_input; compiled_inputs; cmi_output; stop_after_typing } =
     Dyn.record
       [ "interface_input", File.Source.to_dyn interface_input
@@ -499,6 +573,12 @@ module Pack_library = struct
     List.equal ~eq:File.Compiled.equal t.cmx_inputs cmx_inputs && Pack.equal t.pack pack
   ;;
 
+  let compare t { cmx_inputs; pack } =
+    let open Compare in
+    let= () = List.compare ~cmp:File.Compiled.compare t.cmx_inputs cmx_inputs in
+    Pack.compare t.pack pack
+  ;;
+
   let to_dyn { cmx_inputs; pack } =
     Dyn.record
       [ "cmx_inputs", Dyn.list File.Compiled.to_dyn cmx_inputs; "pack", Pack.to_dyn pack ]
@@ -509,6 +589,7 @@ module Generate_public_interface_to_open = struct
   type t = { ml_output : ml File.Generated_source.t }
 
   let equal t { ml_output } = File.Generated_source.equal t.ml_output ml_output
+  let compare t { ml_output } = File.Generated_source.compare t.ml_output ml_output
 
   let to_dyn { ml_output } =
     Dyn.record [ "ml_output", File.Generated_source.to_dyn ml_output ]
@@ -541,6 +622,16 @@ module Compile_public_interface_to_open = struct
     && File.Compiled.equal t.cmi_output cmi_output
   ;;
 
+  let compare t { generated_source_input; internal_modules_pack; cmx_output; cmi_output } =
+    let open Compare in
+    let= () =
+      File.Generated_source.compare t.generated_source_input generated_source_input
+    in
+    let= () = Pack.compare t.internal_modules_pack internal_modules_pack in
+    let= () = File.Compiled.compare t.cmx_output cmx_output in
+    File.Compiled.compare t.cmi_output cmi_output
+  ;;
+
   let to_dyn { generated_source_input; internal_modules_pack; cmx_output; cmi_output } =
     Dyn.record
       [ "generated_source_input", File.Generated_source.to_dyn generated_source_input
@@ -562,6 +653,13 @@ module Link_library = struct
     List.equal t.cmx_inputs cmx_inputs ~eq:File.Compiled.equal
     && File.Linked.equal t.cmxa_output cmxa_output
     && File.Linked.equal t.a_output a_output
+  ;;
+
+  let compare t { cmx_inputs; cmxa_output; a_output } =
+    let open Compare in
+    let= () = List.compare ~cmp:File.Compiled.compare t.cmx_inputs cmx_inputs in
+    let= () = File.Linked.compare t.cmxa_output cmxa_output in
+    File.Linked.compare t.a_output a_output
   ;;
 
   let to_dyn { cmx_inputs; cmxa_output; a_output } =
@@ -586,6 +684,12 @@ module Link_executable = struct
     && File.Linked.equal t.exe_output exe_output
   ;;
 
+  let compare t { cmx_inputs; exe_output } =
+    let open Compare in
+    let= () = List.compare ~cmp:File.Compiled.compare t.cmx_inputs cmx_inputs in
+    File.Linked.compare t.exe_output exe_output
+  ;;
+
   let to_dyn { cmx_inputs; exe_output } =
     Dyn.record
       [ "cmx_inputs", Dyn.list File.Compiled.to_dyn cmx_inputs
@@ -594,55 +698,86 @@ module Link_executable = struct
   ;;
 end
 
-type t =
-  | Compile_source of Compile_source.t
-  | Compile_interface of Compile_interface.t
-  | Pack_library of Pack_library.t
-  | Generate_public_interface_to_open of Generate_public_interface_to_open.t
-  | Compile_public_interface_to_open of Compile_public_interface_to_open.t
-  | Link_library of Link_library.t
-  | Link_executable of Link_executable.t
+module T = struct
+  type t =
+    | Compile_source of Compile_source.t
+    | Compile_interface of Compile_interface.t
+    | Pack_library of Pack_library.t
+    | Generate_public_interface_to_open of Generate_public_interface_to_open.t
+    | Compile_public_interface_to_open of Compile_public_interface_to_open.t
+    | Link_library of Link_library.t
+    | Link_executable of Link_executable.t
 
-let equal a b =
-  match a, b with
-  | Compile_source a, Compile_source b -> Compile_source.equal a b
-  | Compile_source _, _ -> false
-  | Compile_interface a, Compile_interface b -> Compile_interface.equal a b
-  | Compile_interface _, _ -> false
-  | Pack_library a, Pack_library b -> Pack_library.equal a b
-  | Pack_library _, _ -> false
-  | Generate_public_interface_to_open a, Generate_public_interface_to_open b ->
-    Generate_public_interface_to_open.equal a b
-  | Generate_public_interface_to_open _, _ -> false
-  | Compile_public_interface_to_open a, Compile_public_interface_to_open b ->
-    Compile_public_interface_to_open.equal a b
-  | Compile_public_interface_to_open _, _ -> false
-  | Link_library a, Link_library b -> Link_library.equal a b
-  | Link_library _, _ -> false
-  | Link_executable a, Link_executable b -> Link_executable.equal a b
-  | Link_executable _, _ -> false
-;;
+  let equal a b =
+    match a, b with
+    | Compile_source a, Compile_source b -> Compile_source.equal a b
+    | Compile_source _, _ -> false
+    | Compile_interface a, Compile_interface b -> Compile_interface.equal a b
+    | Compile_interface _, _ -> false
+    | Pack_library a, Pack_library b -> Pack_library.equal a b
+    | Pack_library _, _ -> false
+    | Generate_public_interface_to_open a, Generate_public_interface_to_open b ->
+      Generate_public_interface_to_open.equal a b
+    | Generate_public_interface_to_open _, _ -> false
+    | Compile_public_interface_to_open a, Compile_public_interface_to_open b ->
+      Compile_public_interface_to_open.equal a b
+    | Compile_public_interface_to_open _, _ -> false
+    | Link_library a, Link_library b -> Link_library.equal a b
+    | Link_library _, _ -> false
+    | Link_executable a, Link_executable b -> Link_executable.equal a b
+    | Link_executable _, _ -> false
+  ;;
 
-let to_dyn = function
-  | Compile_source compile_source ->
-    Dyn.variant "Compile_source" [ Compile_source.to_dyn compile_source ]
-  | Compile_interface compile_interface ->
-    Dyn.variant "Compile_interface" [ Compile_interface.to_dyn compile_interface ]
-  | Pack_library pack_library ->
-    Dyn.variant "Pack_library" [ Pack_library.to_dyn pack_library ]
-  | Generate_public_interface_to_open generate_public_interface_to_open ->
-    Dyn.variant
-      "Generate_public_interface_to_open"
-      [ Generate_public_interface_to_open.to_dyn generate_public_interface_to_open ]
-  | Compile_public_interface_to_open compile_generated_source ->
-    Dyn.variant
-      "Compile_public_interface_to_open"
-      [ Compile_public_interface_to_open.to_dyn compile_generated_source ]
-  | Link_library link_library ->
-    Dyn.variant "Link_library" [ Link_library.to_dyn link_library ]
-  | Link_executable link_executable ->
-    Dyn.variant "Link_executable" [ Link_executable.to_dyn link_executable ]
-;;
+  let compare a b =
+    match a, b with
+    | Compile_source a, Compile_source b -> Compile_source.compare a b
+    | Compile_source _, _ -> -1
+    | _, Compile_source _ -> 1
+    | Compile_interface a, Compile_interface b -> Compile_interface.compare a b
+    | Compile_interface _, _ -> -1
+    | _, Compile_interface _ -> 1
+    | Pack_library a, Pack_library b -> Pack_library.compare a b
+    | Pack_library _, _ -> -1
+    | _, Pack_library _ -> 1
+    | Generate_public_interface_to_open a, Generate_public_interface_to_open b ->
+      Generate_public_interface_to_open.compare a b
+    | Generate_public_interface_to_open _, _ -> -1
+    | _, Generate_public_interface_to_open _ -> 1
+    | Compile_public_interface_to_open a, Compile_public_interface_to_open b ->
+      Compile_public_interface_to_open.compare a b
+    | Compile_public_interface_to_open _, _ -> -1
+    | _, Compile_public_interface_to_open _ -> 1
+    | Link_library a, Link_library b -> Link_library.compare a b
+    | Link_library _, _ -> -1
+    | _, Link_library _ -> 1
+    | Link_executable a, Link_executable b -> Link_executable.compare a b
+  ;;
+
+  let to_dyn = function
+    | Compile_source compile_source ->
+      Dyn.variant "Compile_source" [ Compile_source.to_dyn compile_source ]
+    | Compile_interface compile_interface ->
+      Dyn.variant "Compile_interface" [ Compile_interface.to_dyn compile_interface ]
+    | Pack_library pack_library ->
+      Dyn.variant "Pack_library" [ Pack_library.to_dyn pack_library ]
+    | Generate_public_interface_to_open generate_public_interface_to_open ->
+      Dyn.variant
+        "Generate_public_interface_to_open"
+        [ Generate_public_interface_to_open.to_dyn generate_public_interface_to_open ]
+    | Compile_public_interface_to_open compile_generated_source ->
+      Dyn.variant
+        "Compile_public_interface_to_open"
+        [ Compile_public_interface_to_open.to_dyn compile_generated_source ]
+    | Link_library link_library ->
+      Dyn.variant "Link_library" [ Link_library.to_dyn link_library ]
+    | Link_executable link_executable ->
+      Dyn.variant "Link_executable" [ Link_executable.to_dyn link_executable ]
+  ;;
+end
+
+include T
+module Map = Map.Make (T)
+module Set = Set.Make (T)
 
 let source_input = function
   | Compile_source { source_input; _ } -> Some (File.Source.path source_input)
