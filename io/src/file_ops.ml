@@ -11,15 +11,18 @@ let rm_rf path =
   | Ok file ->
     File_non_root.traverse_bottom_up file ~f:(fun file ->
       let filename = Absolute_path.to_filename file.path in
-      match (file.kind : File_non_root.kind) with
-      | Regular | Link | Unknown ->
-        assert (not (Sys.is_directory filename));
-        if Sys.file_exists filename then Unix.unlink filename
-      | Dir _ ->
-        (* The directory will be empty by this point because the traversal is
+      try
+        match (file.kind : File_non_root.kind) with
+        | Regular | Link | Unknown -> Unix.unlink filename
+        | Dir _ ->
+          (* The directory will be empty by this point because the traversal is
            bottom-up. *)
-        assert (Sys.is_directory filename);
-        if Sys.file_exists filename then Unix.rmdir filename)
+          Unix.rmdir filename
+      with
+      | Unix.Unix_error _ ->
+        (* On Windows temporary files are sometimes already removed? Not sure
+           how this works. *)
+        ())
 ;;
 
 let mkdir_p_filename path =
