@@ -15,6 +15,14 @@ let to_dyn { package; transitive_dependency_closure_excluding_package } =
     ]
 ;;
 
+let equal t { package; transitive_dependency_closure_excluding_package } =
+  Package.equal t.package package
+  && List.equal
+       ~eq:Package.Typed.equal
+       t.transitive_dependency_closure_excluding_package
+       transitive_dependency_closure_excluding_package
+;;
+
 let of_package_with_deps package_with_deps =
   let package = Package_with_deps.package package_with_deps in
   let transitive_dependency_closure_excluding_package =

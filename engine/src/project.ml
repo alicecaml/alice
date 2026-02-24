@@ -76,19 +76,8 @@ let build_single_package
   let build_graph =
     Build_graph.create package_typed t.build_dir os_type ocaml_compiler io_ctx
   in
-  let build_plans =
-    match Package.Typed.type_ package_typed with
-    | Exe_only -> [ Build_graph.plan_exe build_graph ]
-    | Lib_only -> [ Build_graph.plan_lib build_graph; Build_graph.plan_lsp build_graph ]
-    | Exe_and_lib ->
-      [ Build_graph.plan_lib build_graph
-      ; Build_graph.plan_lsp build_graph
-      ; Build_graph.plan_exe build_graph
-      ]
-  in
-  Scheduler.eval_build_plans
-    io_ctx
-    build_plans
+  Scheduler.run
+    build_graph
     package_with_deps
     profile
     t.build_dir

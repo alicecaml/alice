@@ -149,6 +149,8 @@ module Package_with_deps = struct
 
   let package_typed { package_typed; _ } = package_typed
   let package t = package_typed t |> Package.Typed.package
+  let package_id t = package t |> Package.id
+  let type_ t = package_typed t |> Package.Typed.type_
   let name t = package t |> Package.name
   let id t = package t |> Package.id
 

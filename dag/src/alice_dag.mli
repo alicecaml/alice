@@ -19,9 +19,11 @@ module Make (Name : Name) : sig
     type 'a t
 
     val to_dyn : 'a Dyn.builder -> 'a t -> Dyn.t
+    val equal : 'a t -> 'a t -> eq:('a -> 'a -> bool) -> bool
     val name : _ t -> Name.t
     val value : 'a t -> 'a
     val children : 'a t -> 'a t list
+    val parents : 'a t -> 'a t list
 
     (** [transitive_closure_in_child_first_order t ~include_start] returns a
         list containing all nodes in the transitive closure of the node [t]
@@ -33,6 +35,7 @@ module Make (Name : Name) : sig
   end
 
   val roots : 'a t -> 'a Node.t list
+  val leaves : 'a t -> 'a Node.t list
   val get_node : 'a t -> name:Name.t -> 'a Node.t
 
   val to_string_graph
@@ -46,6 +49,8 @@ module Make (Name : Name) : sig
   (** Returns a list where each node in [t] appears exactly once, in such an
       order than a node will appear earlier than any parent nodes. *)
   val all_nodes_in_child_first_order : 'a t -> 'a Node.t list
+
+  val map : 'a t -> f:('a -> 'b) -> 'b t
 
   module Staging : sig
     type 'a dag := 'a t
@@ -85,6 +90,4 @@ module Make (Name : Name) : sig
     (** Like [finalize] but panics on error *)
     val finalize_or_panic : 'a t -> 'a dag
   end
-
-  val restage : 'a t -> 'a Staging.t
 end

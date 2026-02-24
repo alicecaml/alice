@@ -2,6 +2,7 @@ open! Alice_stdlib
 open Alice_hierarchy
 open Alice_package
 open Alice_error
+open Alice_ocaml_compiler
 module File_ops = Alice_io.File_ops
 module Log = Alice_log
 module Build_plan = Build_graph.Build_plan
@@ -27,6 +28,11 @@ module Generated_public_interface_to_open = struct
     { output_path : Absolute_path.non_root_t
     ; public_interface_to_open : Public_interface_to_open.t
     }
+
+  let equal t { output_path; public_interface_to_open } =
+    Absolute_path.equal t.output_path output_path
+    && Public_interface_to_open.equal t.public_interface_to_open public_interface_to_open
+  ;;
 end
 
 module Action = struct
@@ -34,11 +40,20 @@ module Action = struct
     | Command of Command.t
     | Generated_public_interface_to_open of Generated_public_interface_to_open.t
 
-  let run t proc_mgr =
+  let run_blocking t =
     match t with
     | Command command ->
-      Alice_io.Process.Eio.run_command proc_mgr command
-      |> Alice_io.Process.Eio.result_ok_or_exn
+      let report =
+        match Alice_io.Process.Blocking.run_command command with
+        | Ok report -> report
+        | Error (`Prog_not_available _) ->
+          panic [ Pp.textf "Can't find program: %s" command.prog ]
+      in
+      (match report.status with
+       | Exited 0 -> ()
+       | _ ->
+         Alice_error.user_exn
+           [ Pp.textf "Command failed: %s" (Command.to_string_ignore_env command) ])
     | Generated_public_interface_to_open { output_path; public_interface_to_open } ->
       (* TODO write the public interface file with eio *)
       Log.debug
@@ -49,6 +64,15 @@ module Action = struct
       File_ops.write_text_file
         output_path
         (Public_interface_to_open.source_code public_interface_to_open)
+  ;;
+
+  let equal a b =
+    match a, b with
+    | Command a, Command b -> Command.equal a b
+    | Command _, _ -> false
+    | Generated_public_interface_to_open a, Generated_public_interface_to_open b ->
+      Generated_public_interface_to_open.equal a b
+    | Generated_public_interface_to_open _, _ -> false
   ;;
 end
 
@@ -247,88 +271,6 @@ let op_action op package_with_deps profile build_dir ocaml_compiler =
            ))
 ;;
 
-module File_is_built = struct
-  type t =
-    { condvar : Eio.Condition.t
-    ; state : bool ref
-    ; file : Generated_file.t
-    }
-
-  let create file = { condvar = Eio.Condition.create (); state = ref false; file }
-
-  let wait { condvar; state; file = _ } =
-    if not !state
-    then Eio.Condition.loop_no_mutex condvar (fun () -> if !state then Some () else None)
-  ;;
-
-  let wait_multi ts = List.iter ts ~f:wait
-
-  let broadcast { condvar; state; file = _ } =
-    state := true;
-    Eio.Condition.broadcast condvar
-  ;;
-
-  let broadcast_multi ts = List.iter ts ~f:broadcast
-end
-
-module Task = struct
-  (* A computation that can perform side effects and knows the tasks that must
-     be completed before this task can start. *)
-  type t =
-    { package_id : Package_id.t
-    ; action : Action.t
-    ; build_plan : Build_plan.t
-    ; build_dir : Build_dir.t
-    ; profile : Profile.t
-    ; finished : File_is_built.t list
-    ; deps_finished : File_is_built.t list
-    }
-
-  let assert_expected_files_exist { package_id; build_plan; build_dir; profile; _ } =
-    let open Alice_ui in
-    let outputs = Build_plan.outputs build_plan in
-    Log.info
-      ~package_id
-      [ Pp.textf
-          "Building targets: %s"
-          (Generated_file.Set.to_list outputs
-           |> List.map ~f:(fun gen_file ->
-             Generated_file.path gen_file |> basename_to_string)
-           |> String.concat ~sep:", ")
-      ];
-    (match Build_plan.source_input build_plan with
-     | None -> ()
-     | Some source_input ->
-       if not (File_ops.exists source_input)
-       then
-         Alice_error.panic
-           [ Pp.textf "Missing source file: %s" (absolute_path_to_string source_input) ]);
-    List.iter (Build_plan.generated_inputs build_plan) ~f:(fun generated_file ->
-      let compiled_path =
-        Build_dir.package_generated_file build_dir package_id profile generated_file
-      in
-      if not (File_ops.exists compiled_path)
-      then
-        Alice_error.panic
-          [ Pp.textf
-              "Missing file which should have been compiled by this point: %s"
-              (absolute_path_to_string compiled_path)
-          ])
-  ;;
-
-  let run t (io_ctx : _ Io_ctx.t) =
-    File_is_built.wait_multi t.deps_finished;
-    Limit.run io_ctx.limit ~f:(fun () ->
-      assert_expected_files_exist t;
-      Action.run t.action io_ctx);
-    File_is_built.broadcast_multi t.finished
-  ;;
-
-  let run_multi ts io_ctx =
-    List.map ts ~f:(fun t -> fun () -> run t io_ctx) |> Eio.Fiber.all
-  ;;
-end
-
 (* Determines which files need to be (re)built. A file needs to be rebuilt if
    any of its dependencies need to be rebuilt, or if its mtime is earlier than
    any of its source dependencies. *)
@@ -368,7 +310,58 @@ let incremental_files_to_build build_plan package_id profile build_dir =
   loop build_plan
 ;;
 
-let tasks_of_build_plans
+module Action_graph = struct
+  (* This DAG is keyed by [Typed_op] because each action will have a unique
+     operation, and knows the operations of their dependencies. *)
+  include Alice_dag.Make (Typed_op)
+
+  module Entry = struct
+    type t =
+      { action : Action.t
+      ; package_id : Package_id.t
+      ; build_plan : Build_plan.t
+      ; remaining_children_to_build : int ref
+      }
+
+    let equal t { action; package_id; build_plan; remaining_children_to_build } =
+      Action.equal t.action action
+      && Package_id.equal t.package_id package_id
+      && Build_plan.equal t.build_plan build_plan
+      && Int.equal !(t.remaining_children_to_build) !remaining_children_to_build
+    ;;
+  end
+
+  type nonrec t = Entry.t t
+
+  module Staging = struct
+    include Staging
+
+    let add_or_panic t name entry ~child_names =
+      add_or_panic t name entry ~eq:Entry.equal ~child_names
+    ;;
+  end
+
+  let run (t : t) =
+    all_nodes_in_child_first_order t
+    |> List.iter ~f:(fun node ->
+      let open Alice_ui in
+      let entry : Entry.t = Node.value node in
+      let outputs = Build_plan.outputs entry.build_plan in
+      Log.info
+        ~package_id:entry.package_id
+        [ Pp.textf
+            "Building targets: %s"
+            (Generated_file.Set.to_list outputs
+             |> List.map ~f:(fun gen_file ->
+               Generated_file.path gen_file |> basename_to_string)
+             |> String.concat ~sep:", ")
+        ];
+      Action.run_blocking entry.action)
+  ;;
+end
+
+let make_action_graph
+      build_graph
       build_plans
       package_with_deps
       profile
@@ -376,71 +369,7 @@ let tasks_of_build_plans
       ocaml_compiler
       ~any_dep_rebuilt
   =
-  let package = Dependency_graph.Package_with_deps.package package_with_deps in
-  let package_id = Package.id package in
-  let make_tasks ~files_to_build ~files_are_built build_plan =
-    let rec loop ~files_to_build ~tasks_rev build_plan =
-      let remaining_files_to_build, tasks_rev =
-        List.fold_left
-          (Build_plan.deps build_plan)
-          ~init:(files_to_build, tasks_rev)
-          ~f:(fun (files_to_build, tasks_rev) dep ->
-            let files_to_build, tasks_rev = loop ~files_to_build ~tasks_rev dep in
-            files_to_build, tasks_rev)
-      in
-      let outputs = Build_plan.outputs build_plan in
-      let need_to_build =
-        not
-          (Generated_file.Set.is_empty
-             (Generated_file.Set.inter remaining_files_to_build outputs))
-      in
-      match need_to_build with
-      | false -> remaining_files_to_build, tasks_rev
-      | true ->
-        let action =
-          op_action
-            (Build_plan.op build_plan)
-            package_with_deps
-            profile
-            build_dir
-            ocaml_compiler
-        in
-        let deps_finished =
-          Build_plan.deps build_plan
-          |> List.map ~f:Build_plan.outputs
-          |> Generated_file.Set.union_all
-          |> Generated_file.Set.to_list
-          |> List.map ~f:(fun output ->
-            Generated_file.Map.find_opt output files_are_built)
-          |> List.filter_opt
-        in
-        let finished =
-          Generated_file.Set.to_list outputs
-          |> List.map ~f:(fun output ->
-            Generated_file.Map.find_opt output files_are_built)
-          |> List.filter_opt
-        in
-        let task =
-          { Task.package_id
-          ; action
-          ; build_plan
-          ; build_dir
-          ; profile
-          ; finished
-          ; deps_finished
-          }
-        in
-        let remaining_files_to_build =
-          Generated_file.Set.diff remaining_files_to_build (Build_plan.outputs build_plan)
-        in
-        remaining_files_to_build, task :: tasks_rev
-    in
-    let remaining_files_to_build, tasks_rev =
-      loop ~files_to_build ~tasks_rev:[] build_plan
-    in
-    remaining_files_to_build, List.rev tasks_rev
-  in
-  Build_dir.package_dirs build_dir package_id profile |> List.iter ~f:File_ops.mkdir_p;
+  let package_id = Dependency_graph.Package_with_deps.package_id package_with_deps in
   let files_to_build =
     if any_dep_rebuilt
     then
@@ -456,60 +385,84 @@ let tasks_of_build_plans
         |> Generated_file.Set.union acc)
   in
   if Generated_file.Set.is_empty files_to_build
-  then []
+  then None
   else (
-    let files_are_built =
-      Generated_file.Set.to_list files_to_build
-      |> List.map ~f:(fun file -> file, File_is_built.create file)
-      |> Generated_file.Map.of_list_exn
+    let all_ops =
+      List.concat_map build_plans ~f:Build_plan.transitive_closure
+      |> List.map ~f:Build_plan.op
+      |> Typed_op.Set.of_list
     in
-    let remaining_files_to_build_should_be_empty, tasks =
-      List.fold_left
-        build_plans
-        ~init:(files_to_build, [])
-        ~f:(fun (files_to_build, all_tasks) build_plan ->
-          let remaining_files_to_build, tasks =
-            make_tasks ~files_to_build ~files_are_built build_plan
+    let ops_that_need_to_run =
+      Typed_op.Set.filter all_ops ~f:(fun op ->
+        List.exists (Typed_op.outputs op) ~f:(fun output ->
+          Generated_file.Set.mem output files_to_build))
+    in
+    let action_graph =
+      Typed_op.Set.fold
+        ops_that_need_to_run
+        ~init:Action_graph.Staging.empty
+        ~f:(fun op staging ->
+          let build_plan = Build_graph.build_plan build_graph ~op in
+          let child_names =
+            Build_plan.deps build_plan
+            |> List.filter_map ~f:(fun build_plan ->
+              let op = Build_plan.op build_plan in
+              if Typed_op.Set.mem op ops_that_need_to_run then Some op else None)
           in
-          remaining_files_to_build, all_tasks @ tasks)
+          let action = op_action op package_with_deps profile build_dir ocaml_compiler in
+          let entry =
+            { Action_graph.Entry.action
+            ; package_id
+            ; build_plan
+            ; remaining_children_to_build = ref (List.length child_names)
+            }
+          in
+          Action_graph.Staging.add_or_panic staging op entry ~child_names)
+      |> Action_graph.Staging.finalize_or_panic
     in
-    if not (Generated_file.Set.is_empty remaining_files_to_build_should_be_empty)
-    then
-      Alice_error.panic
-        [ Pp.textf
-            "Not all files were built. Missing files: %s"
-            (Generated_file.Set.to_dyn remaining_files_to_build_should_be_empty
-             |> Dyn.to_string)
-        ];
-    tasks)
+    Some action_graph)
 ;;
 
-let eval_build_plans
-      io_ctx
-      build_plans
-      package_with_deps
-      profile
-      build_dir
-      ocaml_compiler
-      ~any_dep_rebuilt
+let run
+  : type exe lib.
+    (exe, lib) Build_graph.t
+    -> (exe, lib) Package_with_deps.t
+    -> Profile.t
+    -> Build_dir.t
+    -> Ocaml_compiler.t
+    -> any_dep_rebuilt:bool
+    -> Package_built.t
   =
+  fun build_graph package_with_deps profile build_dir ocaml_compiler ~any_dep_rebuilt ->
   let open Alice_ui in
-  let tasks =
-    tasks_of_build_plans
+  let build_plans =
+    match Package_with_deps.type_ package_with_deps with
+    | Exe_only -> [ Build_graph.plan_exe build_graph ]
+    | Lib_only -> [ Build_graph.plan_lib build_graph; Build_graph.plan_lsp build_graph ]
+    | Exe_and_lib ->
+      [ Build_graph.plan_lib build_graph
+      ; Build_graph.plan_lsp build_graph
+      ; Build_graph.plan_exe build_graph
+      ]
+  in
+  match
+    make_action_graph
+      build_graph
       build_plans
       package_with_deps
       profile
       build_dir
       ocaml_compiler
       ~any_dep_rebuilt
-  in
-  match tasks with
-  | [] -> Package_built.Not_rebuilt
-  | tasks ->
+  with
+  | None -> Package_built.Not_rebuilt
+  | Some action_graph ->
     println
       (verb_message
          `Compiling
          (Package_id.name_v_version_string (Package_with_deps.id package_with_deps)));
-    Task.run_multi tasks io_ctx;
+    let package_id = Dependency_graph.Package_with_deps.package_id package_with_deps in
+    Build_dir.package_dirs build_dir package_id profile |> List.iter ~f:File_ops.mkdir_p;
+    Action_graph.run action_graph;
     Rebuilt
 ;;

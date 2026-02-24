@@ -11,69 +11,41 @@ module type Name = sig
 end
 
 module Make (Name : Name) = struct
-  module Staging_node = struct
-    type 'a t =
-      { name : Name.t
-      ; value : 'a
-      ; child_names : Name.t list
-      }
-
-    let equal t ~eq { name; value; child_names } =
-      Name.equal t.name name
-      && eq t.value value
-      && List.equal ~eq:Name.equal t.child_names child_names
-    ;;
-
-    let to_dyn builder { name; value; child_names } =
-      Dyn.record
-        [ "name", Name.to_dyn name
-        ; "value", builder value
-        ; "child_names", Dyn.list Name.to_dyn child_names
-        ]
-    ;;
-  end
-
-  type 'a staging = 'a Staging_node.t Name.Map.t
-
   module Node = struct
     type 'a t =
-      { name : Name.t
+      { index : int
+      ; name : Name.t
       ; value : 'a
       ; child_names : Name.t list
       ; mutable children : 'a t list
       ; mutable parents : 'a t list
-      ; mutable children_by_name : 'a t Name.Map.t
-      ; mutable parents_by_name : 'a t Name.Map.t
       }
 
-    let to_dyn
-          builder
-          { name
-          ; value
-          ; child_names
-          ; children
-          ; parents
-          ; children_by_name
-          ; parents_by_name
-          }
-      =
+    let equal t { index; name; value; child_names; children = _; parents = _ } ~eq =
+      Int.equal t.index index
+      && Name.equal t.name name
+      && eq t.value value
+      && List.equal ~eq:Name.equal t.child_names child_names
+    ;;
+
+    let to_dyn builder { index; name; value; child_names; children; parents } =
       Dyn.record
-        [ "name", Name.to_dyn name
+        [ "index", Dyn.int index
+        ; "name", Name.to_dyn name
         ; "value", builder value
         ; "child_names", Dyn.list Name.to_dyn child_names
         ; "children", Dyn.opaque children
         ; "parents", Dyn.opaque parents
-        ; "children_by_name", Dyn.opaque children_by_name
-        ; "parents_by_name", Dyn.opaque parents_by_name
         ]
     ;;
 
     let name t = t.name
     let value t = t.value
     let children t = t.children
+    let parents t = t.parents
 
     (* Takes multiple start nodes and returns the transitive closure in an order
-     such that nodes preceed their children. *)
+       such that nodes preceed their children. *)
     let transitive_closure_multi_in_parent_first_order ts =
       let rec loop t seen acc =
         if Name.Set.mem t.name seen
@@ -102,20 +74,29 @@ module Make (Name : Name) = struct
   end
 
   type 'a t =
-    { nodes_by_name : 'a Node.t Name.Map.t
-    ; roots : 'a Node.t list
-    ; staging : 'a staging
+    { nodes : 'a Node.t array
+    ; nodes_by_name : 'a Node.t Name.Map.t
     }
 
-  let to_dyn builder { nodes_by_name; roots; staging } =
+  let to_dyn builder { nodes; nodes_by_name } =
     Dyn.record
-      [ "nodes_by_name", Name.Map.to_dyn (Node.to_dyn builder) nodes_by_name
-      ; "roots", Dyn.list (Node.to_dyn builder) roots
-      ; "staging", Name.Map.to_dyn (Staging_node.to_dyn builder) staging
+      [ "nodes", Dyn.array (Node.to_dyn builder) nodes
+      ; "nodes_by_name", Name.Map.to_dyn (Node.to_dyn builder) nodes_by_name
       ]
   ;;
 
-  let roots t = t.roots
+  let roots t =
+    Array.to_seq t.nodes
+    |> Seq.filter ~f:(fun node -> List.is_empty (Node.parents node))
+    |> List.of_seq
+  ;;
+
+  let leaves t =
+    Array.to_seq t.nodes
+    |> Seq.filter ~f:(fun node -> List.is_empty (Node.children node))
+    |> List.of_seq
+  ;;
+
   let get_node t ~name = Name.Map.find name t.nodes_by_name
 
   let to_string_graph t ~node_to_string =
@@ -133,11 +114,11 @@ module Make (Name : Name) = struct
     |> String.Map.of_list_exn
   ;;
 
-  let all_nodes t = Name.Map.values t.nodes_by_name
+  let all_nodes t = Array.to_list t.nodes
   let all_names t = Name.Map.keys t.nodes_by_name
 
   let all_nodes_in_child_first_order t =
-    match Nonempty_list.of_list_opt t.roots with
+    match Nonempty_list.of_list_opt (roots t) with
     | None -> []
     | Some roots ->
       Node.transitive_closure_multi_in_parent_first_order roots
@@ -145,8 +126,46 @@ module Make (Name : Name) = struct
       |> List.rev
   ;;
 
+  let map t ~f =
+    let nodes =
+      Array.map t.nodes ~f:(fun (node : _ Node.t) ->
+        { Node.index = node.index
+        ; name = node.name
+        ; value = f node.value
+        ; child_names = [] (* only used during original construction *)
+        ; children = []
+        ; parents = []
+        })
+    in
+    Array.iter2 t.nodes nodes ~f:(fun (in_node : _ Node.t) (out_node : _ Node.t) ->
+      List.iter in_node.children ~f:(fun (child : _ Node.t) ->
+        out_node.children <- nodes.(child.index) :: out_node.children);
+      List.iter in_node.parents ~f:(fun (parent : _ Node.t) ->
+        out_node.parents <- nodes.(parent.index) :: out_node.parents));
+    let nodes_by_name =
+      Array.to_seq nodes
+      |> Seq.map ~f:(fun (node : _ Node.t) -> node.name, node)
+      |> Name.Map.of_seq
+    in
+    { nodes; nodes_by_name }
+  ;;
+
   module Staging = struct
-    type 'a t = 'a staging
+    module Staging_node = struct
+      type 'a t =
+        { name : Name.t
+        ; value : 'a
+        ; child_names : Name.t list
+        }
+
+      let equal t ~eq { name; value; child_names } =
+        Name.equal t.name name
+        && eq t.value value
+        && List.equal ~eq:Name.equal t.child_names child_names
+      ;;
+    end
+
+    type 'a t = 'a Staging_node.t Name.Map.t
 
     let empty = Name.Map.empty
 
@@ -216,31 +235,30 @@ module Make (Name : Name) = struct
     let finalize t =
       let open Result.O in
       let+ () = validate t in
-      let nodes_by_name =
-        Name.Map.map t ~f:(fun (staging_node : _ Staging_node.t) ->
-          { Node.name = staging_node.name
+      let nodes =
+        Name.Map.to_seq t
+        |> Seq.mapi ~f:(fun index ((_, staging_node) : _ * _ Staging_node.t) ->
+          { Node.index
+          ; name = staging_node.name
           ; value = staging_node.value
           ; child_names = staging_node.child_names
           ; children = []
           ; parents = []
-          ; children_by_name = Name.Map.empty
-          ; parents_by_name = Name.Map.empty
           })
+        |> Array.of_seq
+      in
+      let nodes_by_name =
+        Array.to_seq nodes
+        |> Seq.map ~f:(fun (node : _ Node.t) -> node.name, node)
+        |> Name.Map.of_seq
       in
       let get_node name = Name.Map.find name nodes_by_name in
-      Name.Map.iter nodes_by_name ~f:(fun ~key:node_name ~data:(node : _ Node.t) ->
+      Array.iter nodes ~f:(fun (node : _ Node.t) ->
         List.iter node.child_names ~f:(fun child_name ->
           let child_node = get_node child_name in
-          node.children_by_name
-          <- Name.Map.add node.children_by_name ~key:child_name ~data:child_node;
-          child_node.parents_by_name
-          <- Name.Map.add child_node.parents_by_name ~key:node_name ~data:node));
-      Name.Map.iter nodes_by_name ~f:(fun ~key:_ ~data:(node : _ Node.t) ->
-        node.children <- Name.Map.values node.children_by_name;
-        node.parents <- Name.Map.values node.parents_by_name);
-      let root_names = find_roots t in
-      let roots = Name.Set.to_list root_names |> List.map ~f:get_node in
-      { nodes_by_name; roots; staging = t }
+          node.children <- child_node :: node.children;
+          child_node.parents <- node :: child_node.parents));
+      { nodes; nodes_by_name }
     ;;
 
     let finalize_or_panic t =
@@ -248,14 +266,15 @@ module Make (Name : Name) = struct
       | Ok t -> t
       | Error (`Dangling dangling) ->
         Alice_error.panic
-          [ Pp.textf "No node with name: %s" (Name.to_dyn dangling |> Dyn.to_string) ]
+          [ Pp.textf
+              "While finalizing DAG, no node with name: %s"
+              (Name.to_dyn dangling |> Dyn.to_string)
+          ]
       | Error (`Cycle cycle) ->
         Alice_error.panic
-          ([ Pp.text "DAG would contain cycle:"; Pp.newline ]
+          ([ Pp.text "While finalizing DAG, DAG would contain cycle:"; Pp.newline ]
            @ List.concat_map cycle ~f:(fun name ->
              [ Pp.textf " - %s" (Name.to_dyn name |> Dyn.to_string); Pp.newline ]))
     ;;
   end
-
-  let restage t = t.staging
 end

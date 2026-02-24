@@ -140,16 +140,16 @@ module Build_plan = struct
 
   type nonrec t = unit t
 
+  let equal = equal ~eq:Unit.equal
   let deps t = children t
   let op t = name t
   let source_input t = Typed_op.source_input (op t)
   let generated_inputs t = Typed_op.generated_inputs (op t)
   let outputs t = Typed_op.outputs (op t) |> Typed_op.Generated_file.Set.of_list
+  let transitive_closure t = transitive_closure_in_child_first_order t ~include_start:true
 
   let transitive_closure_outputs t =
-    transitive_closure_in_child_first_order t ~include_start:true
-    |> List.map ~f:outputs
-    |> Typed_op.Generated_file.Set.union_all
+    transitive_closure t |> List.map ~f:outputs |> Typed_op.Generated_file.Set.union_all
   ;;
 end
 
@@ -485,6 +485,8 @@ let create
   in
   { build_dag; package_typed; lsp_ops }
 ;;
+
+let build_plan { build_dag; _ } ~op = Build_dag.get_node build_dag ~name:op
 
 let plan_exe ({ build_dag; _ } : (Type_bool.true_t, _) t) =
   Build_dag.link_executable_op_node_or_panic build_dag
