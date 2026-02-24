@@ -41,6 +41,7 @@ module Make (Name : Name) : sig
     -> String.Set.t String.Map.t
 
   val all_nodes : 'a t -> 'a Node.t list
+  val all_names : _ t -> Name.t list
 
   (** Returns a list where each node in [t] appears exactly once, in such an
       order than a node will appear earlier than any parent nodes. *)

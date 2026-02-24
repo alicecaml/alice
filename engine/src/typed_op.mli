@@ -89,6 +89,7 @@ module File : sig
   module Compiled : sig
     type 'a t
 
+    val equal : 'a t -> 'a t -> bool
     val path : _ t -> Basename.t
     val cmx_private : Basename.t -> cmx t
     val cmi_private : Basename.t -> cmi t
@@ -106,6 +107,7 @@ module File : sig
     val generated_file : _ t -> Generated_file.t
     val generated_file_compiled : _ t -> Generated_file.Compiled.t
     val lib_cmx : cmx t
+    val lib_cmi : cmi t
     val exe_cmx : cmx t
     val rename : 'a t -> name_without_extension:string -> Visibility.t -> 'a t
 
@@ -146,6 +148,8 @@ module Compile_source : sig
     ; interface_output_if_no_matching_mli_is_present : cmi File.Compiled.t option
     ; stop_after_typing : bool
     }
+
+  val to_dyn : t -> Dyn.t
 end
 
 module Compile_interface : sig
@@ -155,6 +159,8 @@ module Compile_interface : sig
     ; cmi_output : cmi File.Compiled.t
     ; stop_after_typing : bool
     }
+
+  val to_dyn : t -> Dyn.t
 end
 
 module Pack_library : sig

@@ -11,6 +11,30 @@ module type Name = sig
 end
 
 module Make (Name : Name) = struct
+  module Staging_node = struct
+    type 'a t =
+      { name : Name.t
+      ; value : 'a
+      ; child_names : Name.t list
+      }
+
+    let equal t ~eq { name; value; child_names } =
+      Name.equal t.name name
+      && eq t.value value
+      && List.equal ~eq:Name.equal t.child_names child_names
+    ;;
+
+    let to_dyn builder { name; value; child_names } =
+      Dyn.record
+        [ "name", Name.to_dyn name
+        ; "value", builder value
+        ; "child_names", Dyn.list Name.to_dyn child_names
+        ]
+    ;;
+  end
+
+  type 'a staging = 'a Staging_node.t Name.Map.t
+
   module Node = struct
     type 'a t =
       { name : Name.t
@@ -80,12 +104,14 @@ module Make (Name : Name) = struct
   type 'a t =
     { nodes_by_name : 'a Node.t Name.Map.t
     ; roots : 'a Node.t list
+    ; staging : 'a staging
     }
 
-  let to_dyn builder { nodes_by_name; roots } =
+  let to_dyn builder { nodes_by_name; roots; staging } =
     Dyn.record
       [ "nodes_by_name", Name.Map.to_dyn (Node.to_dyn builder) nodes_by_name
       ; "roots", Dyn.list (Node.to_dyn builder) roots
+      ; "staging", Name.Map.to_dyn (Staging_node.to_dyn builder) staging
       ]
   ;;
 
@@ -108,6 +134,7 @@ module Make (Name : Name) = struct
   ;;
 
   let all_nodes t = Name.Map.values t.nodes_by_name
+  let all_names t = Name.Map.keys t.nodes_by_name
 
   let all_nodes_in_child_first_order t =
     match Nonempty_list.of_list_opt t.roots with
@@ -119,21 +146,7 @@ module Make (Name : Name) = struct
   ;;
 
   module Staging = struct
-    module Staging_node = struct
-      type 'a t =
-        { name : Name.t
-        ; value : 'a
-        ; child_names : Name.t list
-        }
-
-      let equal t ~eq { name; value; child_names } =
-        Name.equal t.name name
-        && eq t.value value
-        && List.equal ~eq:Name.equal t.child_names child_names
-      ;;
-    end
-
-    type 'a t = 'a Staging_node.t Name.Map.t
+    type 'a t = 'a staging
 
     let empty = Name.Map.empty
 
@@ -227,7 +240,7 @@ module Make (Name : Name) = struct
         node.parents <- Name.Map.values node.parents_by_name);
       let root_names = find_roots t in
       let roots = Name.Set.to_list root_names |> List.map ~f:get_node in
-      { nodes_by_name; roots }
+      { nodes_by_name; roots; staging = t }
     ;;
 
     let finalize_or_panic t =
@@ -244,12 +257,5 @@ module Make (Name : Name) = struct
     ;;
   end
 
-  let node_to_staging_node (node : _ Node.t) =
-    { Staging.Staging_node.name = node.name
-    ; value = node.value
-    ; child_names = node.child_names
-    }
-  ;;
-
-  let restage t = Name.Map.map t.nodes_by_name ~f:node_to_staging_node
+  let restage t = t.staging
 end

@@ -370,6 +370,7 @@ module File = struct
 
     let generated_file t = Generated_file.Compiled (generated_file_compiled t)
     let lib_cmx = cmx_private lib_cmx
+    let lib_cmi = cmi_private lib_cmi
     let exe_cmx = cmx_private exe_cmx
     let visibility { visibility; _ } = visibility
 

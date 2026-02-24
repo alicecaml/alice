@@ -4,106 +4,152 @@ open Alice_package
 open Alice_ocaml_compiler
 
 module Build_dag = struct
-  let generated_file_to_string (generated_file : Typed_op.Generated_file.t) =
-    let path =
-      Alice_ui.basename_to_string (Typed_op.Generated_file.path generated_file)
-    in
-    match generated_file with
-    | Compiled compiled ->
-      (match Typed_op.Generated_file.Compiled.visibility compiled with
-       | Public_for_lsp -> sprintf "%s (for lsp)" path
-       | _ -> path)
-    | _ -> path
-  ;;
+  include Alice_dag.Make (Typed_op)
 
-  include Alice_dag.Make (Typed_op.Generated_file)
+  type nonrec t = unit t
 
-  type nonrec t = Typed_op.t t
-
-  let to_dyn = to_dyn Typed_op.to_dyn
-
-  module Staging = struct
-    include Staging
-
-    let add_op t op =
-      let child_names = Typed_op.generated_inputs op in
-      List.fold_left (Typed_op.outputs op) ~init:t ~f:(fun t artifact ->
-        match add t artifact op ~eq:Typed_op.equal ~child_names with
-        | Ok t -> t
-        | Error `Conflict ->
-          Alice_error.panic
-            [ Pp.textf
-                "Conflicting origins for file: %s"
-                (generated_file_to_string artifact)
-            ])
-    ;;
-
-    let finalize t =
-      match finalize t with
-      | Ok t -> t
-      | Error (`Dangling dangling) ->
-        Alice_error.panic
-          [ Pp.textf "No rule to build: %s" (generated_file_to_string dangling) ]
-      | Error (`Cycle cycle) ->
-        Alice_error.panic
-          ([ Pp.text "Dependency cycle:"; Pp.newline ]
-           @ List.concat_map cycle ~f:(fun file ->
-             [ Pp.textf " - %s" (generated_file_to_string file); Pp.newline ]))
-    ;;
-  end
+  let to_dyn = to_dyn Dyn.unit
 
   let of_ops ops =
-    List.fold_left ops ~init:Staging.empty ~f:Staging.add_op |> Staging.finalize
+    let ops_by_output_files =
+      List.concat_map ops ~f:(fun op ->
+        List.map (Typed_op.outputs op) ~f:(fun output -> output, op))
+      |> Typed_op.Generated_file.Map.of_list_exn
+    in
+    let op_deps op =
+      Typed_op.generated_inputs op
+      |> List.map ~f:(fun input ->
+        Typed_op.Generated_file.Map.find input ops_by_output_files)
+    in
+    List.fold_left ops ~init:Staging.empty ~f:(fun acc op ->
+      Staging.add_or_panic acc op () ~eq:Unit.equal ~child_names:(op_deps op))
+    |> Staging.finalize_or_panic
   ;;
 
-  (* Returns the cmx files in build order which must be built before the files
-     listed in [starts], including the files in [starts]. *)
-  let cmx_files_in_build_order t ~start =
+  (* Returns the cmx files in build order produced by [node] and all the nodes
+     which [node] transitively depends on. *)
+  let cmx_files_in_build_order node =
     let open Typed_op in
-    let start = get_node t ~name:start in
-    Node.transitive_closure_in_child_first_order start ~include_start:true
+    Node.transitive_closure_in_child_first_order node ~include_start:true
     |> List.filter_map ~f:(fun node ->
-      match Node.value node with
-      | Compile_source { cmx_output; _ } ->
-        if Generated_file.equal (Node.name node) (File.Compiled.generated_file cmx_output)
-        then
-          (* Multiple artifacts are built from the same command, but here we're
-             only interested in the cmx artifact. *)
-          Some cmx_output
-        else None
+      match Node.name node with
+      | Compile_source { cmx_output; _ } -> Some cmx_output
       | _ -> None)
   ;;
 
+  let link_library_op_node_or_panic t =
+    match
+      all_nodes t
+      |> List.filter_map ~f:(fun node ->
+        match Node.name node with
+        | Typed_op.Link_library _ -> Some node
+        | _ -> None)
+    with
+    | [] -> Alice_error.panic [ Pp.text "No ops would link library!" ]
+    | [ node ] -> node
+    | _multiple -> Alice_error.panic [ Pp.text "Multiple ops would link library!" ]
+  ;;
+
+  let link_executable_op_node_or_panic t =
+    match
+      all_nodes t
+      |> List.filter_map ~f:(fun node ->
+        match Node.name node with
+        | Typed_op.Link_executable _ -> Some node
+        | _ -> None)
+    with
+    | [] -> Alice_error.panic [ Pp.text "No ops would link executable!" ]
+    | [ node ] -> node
+    | _multiple -> Alice_error.panic [ Pp.text "Multiple ops would link executable!" ]
+  ;;
+
+  let compile_library_cmx_node_or_panic t =
+    match
+      all_nodes t
+      |> List.filter_map ~f:(fun node ->
+        match Node.name node with
+        | Compile_source { cmx_output; _ }
+          when Typed_op.File.Compiled.equal cmx_output Typed_op.File.Compiled.lib_cmx ->
+          Some node
+        | _ -> None)
+    with
+    | [] -> Alice_error.panic [ Pp.text "No ops would compile library cmx!" ]
+    | [ node ] -> node
+    | _multiple -> Alice_error.panic [ Pp.text "Multiple ops would compile library cmx!" ]
+  ;;
+
+  let compile_executable_cmx_node_or_panic t =
+    match
+      all_nodes t
+      |> List.filter_map ~f:(fun node ->
+        match Node.name node with
+        | Compile_source { cmx_output; _ }
+          when Typed_op.File.Compiled.equal cmx_output Typed_op.File.Compiled.exe_cmx ->
+          Some node
+        | _ -> None)
+    with
+    | [] -> Alice_error.panic [ Pp.text "No ops would compile executable cmx!" ]
+    | [ node ] -> node
+    | _multiple ->
+      Alice_error.panic [ Pp.text "Multiple ops would compile executable cmx!" ]
+  ;;
+
+  let library_cmx_compile_source_or_panic t =
+    match
+      all_nodes t
+      |> List.filter_map ~f:(fun node ->
+        match Node.name node with
+        | Compile_source ({ cmx_output; _ } as compile_source)
+          when Typed_op.File.Compiled.equal cmx_output Typed_op.File.Compiled.lib_cmx ->
+          Some compile_source
+        | _ -> None)
+    with
+    | [] -> Alice_error.panic [ Pp.text "No ops would compile library cmx!" ]
+    | [ compile_source ] -> compile_source
+    | _multiple -> Alice_error.panic [ Pp.text "Multiple ops would compile library cmx!" ]
+  ;;
+
+  let library_cmi_compile_interface_or_panic t =
+    match
+      all_nodes t
+      |> List.filter_map ~f:(fun node ->
+        match Node.name node with
+        | Compile_interface ({ cmi_output; _ } as compile_interface)
+          when Typed_op.File.Compiled.equal cmi_output Typed_op.File.Compiled.lib_cmi ->
+          Some compile_interface
+        | _ -> None)
+    with
+    | [] -> Alice_error.panic [ Pp.text "No ops would compile library cmi!" ]
+    | [ compile_interface ] -> compile_interface
+    | _multiple -> Alice_error.panic [ Pp.text "Multiple ops would compile library cmi!" ]
+  ;;
+
   (* The cmx files needed to build the library cmx target in build order. *)
-  let cmx_files_in_build_order_for_lib t =
-    cmx_files_in_build_order
-      t
-      ~start:(Typed_op.File.Compiled.generated_file Typed_op.File.Compiled.lib_cmx)
+  let cmx_files_in_build_order_for_library t =
+    cmx_files_in_build_order (compile_library_cmx_node_or_panic t)
   ;;
 
   (* The cmx files needed to build the executable cmx target in build order. *)
-  let cmx_files_in_build_order_for_exe t =
-    cmx_files_in_build_order
-      t
-      ~start:(Typed_op.File.Compiled.generated_file Typed_op.File.Compiled.exe_cmx)
+  let cmx_files_in_build_order_for_executable t =
+    cmx_files_in_build_order (compile_executable_cmx_node_or_panic t)
   ;;
 end
 
 module Build_plan = struct
   include Build_dag.Node
 
-  type nonrec t = Typed_op.t t
+  type nonrec t = unit t
 
   let deps t = children t
-  let op t = value t
+  let op t = name t
   let source_input t = Typed_op.source_input (op t)
   let generated_inputs t = Typed_op.generated_inputs (op t)
   let outputs t = Typed_op.outputs (op t) |> Typed_op.Generated_file.Set.of_list
 
   let transitive_closure_outputs t =
     transitive_closure_in_child_first_order t ~include_start:true
-    |> List.map ~f:name
-    |> Typed_op.Generated_file.Set.of_list
+    |> List.map ~f:outputs
+    |> Typed_op.Generated_file.Set.union_all
   ;;
 end
 
@@ -214,76 +260,72 @@ let compilation_ops dir package_id build_dir ocaml_compiler (io_ctx : _ Alice_io
         { interface_input; compiled_inputs; cmi_output; stop_after_typing = false })
 ;;
 
+type lsp_ops =
+  { lsp_ops_compile_source : Typed_op.Compile_source.t
+  ; lsp_ops_compile_interface : Typed_op.Compile_interface.t option
+  }
+
 let lsp_ops build_dag_compilation_only package =
   let open Typed_op in
-  let lib_cmx_plan =
-    Build_dag.get_node build_dag_compilation_only ~name:Typed_op.Generated_file.lib_cmx
-  in
   let package_name_s = Package_name.to_string (Package.name package) in
   let compile_source =
-    match Build_plan.op lib_cmx_plan with
-    | Compile_source
-        { source_input
+    let { Compile_source.source_input
         ; compiled_inputs
         ; cmx_output
         ; interface_output_if_no_matching_mli_is_present
         ; stop_after_typing = _
-        } ->
-      let cmx_output =
+        }
+      =
+      Build_dag.library_cmx_compile_source_or_panic build_dag_compilation_only
+    in
+    let cmx_output =
+      Typed_op.File.Compiled.rename
+        cmx_output
+        ~name_without_extension:package_name_s
+        Public_for_lsp
+    in
+    let interface_output_if_no_matching_mli_is_present =
+      Option.map interface_output_if_no_matching_mli_is_present ~f:(fun cmi_output ->
         Typed_op.File.Compiled.rename
-          cmx_output
+          cmi_output
           ~name_without_extension:package_name_s
-          Public_for_lsp
-      in
-      let interface_output_if_no_matching_mli_is_present =
-        Option.map interface_output_if_no_matching_mli_is_present ~f:(fun cmi_output ->
-          Typed_op.File.Compiled.rename
-            cmi_output
+          Public_for_lsp)
+    in
+    let compiled_inputs =
+      List.map compiled_inputs ~f:(fun input ->
+        if
+          Typed_op.Generated_file.Compiled.equal
+            input
+            Typed_op.Generated_file.Compiled.lib_cmi
+        then
+          (* If the package has a lib.mli file then lib.cmx will depend
+             on lib.cmi. Swap the dependency out for <package>.cmi here. *)
+          Generated_file.Compiled.rename
+            input
             ~name_without_extension:package_name_s
-            Public_for_lsp)
+            Public_for_lsp
+        else input)
+    in
+    let compiled_inputs =
+      let pack_output =
+        let pack = Typed_op.Pack.of_package_name (Package.name package) in
+        Typed_op.Pack.cmx_file pack |> Typed_op.File.Compiled.generated_file_compiled
       in
-      let compiled_inputs =
-        List.map compiled_inputs ~f:(fun input ->
-          if
-            Typed_op.Generated_file.Compiled.equal
-              input
-              Typed_op.Generated_file.Compiled.lib_cmi
-          then
-            (* If the package has a lib.mli file then lib.cmx will depend
-               on lib.cmi. Swap the dependency out for <package>.cmi here. *)
-            Generated_file.Compiled.rename
-              input
-              ~name_without_extension:package_name_s
-              Public_for_lsp
-          else input)
-      in
-      let compiled_inputs =
-        let pack_output =
-          let pack = Typed_op.Pack.of_package_name (Package.name package) in
-          Typed_op.Pack.cmx_file pack |> Typed_op.File.Compiled.generated_file_compiled
-        in
-        (* Add the package's internal modules pack to the dependencies of this
-           node. When building the cmt file we'll open this package own
-           internal modules pack to handle the situation where there's a file
-           in the package with the same name as the package. In this situation
-           there's a <package>.cmx in the package's private build directory, and
-           this seems to confuse the compiler when generating a file with the same
-           name in the public_for_lsp build directory. *)
-        pack_output :: compiled_inputs
-      in
-      { Compile_source.source_input
-      ; compiled_inputs
-      ; cmx_output
-      ; interface_output_if_no_matching_mli_is_present
-      ; stop_after_typing = true
-      }
-    | other ->
-      Alice_error.panic
-        [ Pp.textf
-            "Expected library cmx file to be generated by a [Compile_source] op, but \
-             instead op is %s"
-            (Typed_op.to_dyn other |> Dyn.to_string)
-        ]
+      (* Add the package's internal modules pack to the dependencies of this
+         node. When building the cmt file we'll open this package's own
+         internal modules pack to handle the situation where there's a file
+         in the package with the same name as the package. In this situation
+         there's a <package>.cmx in the package's private build directory, and
+         this seems to confuse the compiler when generating a file with the same
+         name in the public_for_lsp build directory. *)
+      pack_output :: compiled_inputs
+    in
+    { Compile_source.source_input
+    ; compiled_inputs
+    ; cmx_output
+    ; interface_output_if_no_matching_mli_is_present
+    ; stop_after_typing = true
+    }
   in
   let compile_interface =
     match compile_source.interface_output_if_no_matching_mli_is_present with
@@ -291,54 +333,62 @@ let lsp_ops build_dag_compilation_only package =
       (* .cmi file is produced by compiling the source *)
       None
     | None ->
-      let lib_cmi_plan =
-        Build_dag.get_node
-          build_dag_compilation_only
-          ~name:Typed_op.Generated_file.lib_cmi
+      let { Compile_interface.interface_input
+          ; compiled_inputs
+          ; cmi_output
+          ; stop_after_typing = _
+          }
+        =
+        Build_dag.library_cmi_compile_interface_or_panic build_dag_compilation_only
       in
-      (match Build_plan.op lib_cmi_plan with
-       | Compile_interface
-           { interface_input; compiled_inputs; cmi_output; stop_after_typing = _ } ->
-         let compiled_inputs =
-           let pack_output =
-             let pack = Typed_op.Pack.of_package_name (Package.name package) in
-             Typed_op.Pack.cmx_file pack |> Typed_op.File.Compiled.generated_file_compiled
-           in
-           (* Add the package's internal modules pack to the dependencies of this
-              node. *)
-           pack_output :: compiled_inputs
-         in
-         let cmi_output =
-           Typed_op.File.Compiled.rename
-             cmi_output
-             ~name_without_extension:package_name_s
-             Public_for_lsp
-         in
-         Some
-           (Compile_interface
-              { interface_input; compiled_inputs; cmi_output; stop_after_typing = true })
-       | other ->
-         Alice_error.panic
-           [ Pp.textf
-               "Expected library cmx file to be generated by a [Compile_source] op, but \
-                instead op is %s"
-               (Typed_op.to_dyn other |> Dyn.to_string)
-           ])
+      let compiled_inputs =
+        let pack_output =
+          let pack = Typed_op.Pack.of_package_name (Package.name package) in
+          Typed_op.Pack.cmx_file pack |> Typed_op.File.Compiled.generated_file_compiled
+        in
+        (* Add the package's internal modules pack to the dependencies of this
+           node. *)
+        pack_output :: compiled_inputs
+      in
+      let cmi_output =
+        Typed_op.File.Compiled.rename
+          cmi_output
+          ~name_without_extension:package_name_s
+          Public_for_lsp
+      in
+      Some
+        { Compile_interface.interface_input
+        ; compiled_inputs
+        ; cmi_output
+        ; stop_after_typing = true
+        }
   in
-  [ Compile_source compile_source ] @ Option.to_list compile_interface
+  { lsp_ops_compile_source = compile_source
+  ; lsp_ops_compile_interface = compile_interface
+  }
 ;;
 
 type ('exe, 'lib) t =
   { build_dag : Build_dag.t
-  ; exe_file : Typed_op.File_type.exe Typed_op.File.Linked.t
   ; package_typed : ('exe, 'lib) Package.Typed.t
+  ; lsp_ops : lsp_ops option
   }
 
-let to_dyn { build_dag; exe_file; package_typed } =
+let to_dyn { build_dag; package_typed; lsp_ops } =
   Dyn.record
     [ "build_dag", Build_dag.to_dyn build_dag
-    ; "exe_file", Typed_op.File.Linked.to_dyn exe_file
     ; "package_typed", Package.Typed.to_dyn package_typed
+    ; ( "lsp_ops"
+      , Dyn.option
+          (fun { lsp_ops_compile_source; lsp_ops_compile_interface } ->
+             Dyn.record
+               [ ( "lsp_ops_compile_source"
+                 , Typed_op.Compile_source.to_dyn lsp_ops_compile_source )
+               ; ( "lsp_ops_compile_interface"
+                 , Dyn.option Typed_op.Compile_interface.to_dyn lsp_ops_compile_interface
+                 )
+               ])
+          lsp_ops )
     ]
 ;;
 
@@ -361,7 +411,7 @@ let create
   let build_dag_compilation_only = Build_dag.of_ops compilation_ops in
   let link_library () =
     let cmx_files =
-      Build_dag.cmx_files_in_build_order_for_lib build_dag_compilation_only
+      Build_dag.cmx_files_in_build_order_for_library build_dag_compilation_only
     in
     let pack = Typed_op.Pack.of_package_name (Package.name package) in
     let pack_op = Pack_library { cmx_inputs = cmx_files; pack } in
@@ -402,7 +452,7 @@ let create
   in
   let link_executable () =
     let cmx_files =
-      Build_dag.cmx_files_in_build_order_for_exe build_dag_compilation_only
+      Build_dag.cmx_files_in_build_order_for_executable build_dag_compilation_only
     in
     [ Link_executable { exe_output = exe_file; cmx_inputs = cmx_files } ]
   in
@@ -414,48 +464,68 @@ let create
   in
   let lsp_ops =
     match Package.Typed.type_ package_typed with
-    | Exe_only -> []
-    | Lib_only | Exe_and_lib -> lsp_ops build_dag_compilation_only package
+    | Exe_only -> None
+    | Lib_only | Exe_and_lib -> Some (lsp_ops build_dag_compilation_only package)
   in
   let build_dag =
-    List.fold_left
-      (link_ops @ lsp_ops)
-      ~init:(Build_dag.restage build_dag_compilation_only)
-      ~f:Build_dag.Staging.add_op
-    |> Build_dag.Staging.finalize
+    let lsp_ops =
+      match lsp_ops with
+      | None -> []
+      | Some { lsp_ops_compile_source; lsp_ops_compile_interface = None } ->
+        [ Compile_source lsp_ops_compile_source ]
+      | Some
+          { lsp_ops_compile_source
+          ; lsp_ops_compile_interface = Some lsp_ops_compile_interface
+          } ->
+        [ Compile_source lsp_ops_compile_source
+        ; Compile_interface lsp_ops_compile_interface
+        ]
+    in
+    Build_dag.of_ops (compilation_ops @ link_ops @ lsp_ops)
   in
-  { build_dag; exe_file; package_typed }
+  { build_dag; package_typed; lsp_ops }
 ;;
 
-let plan_exe ({ build_dag; exe_file; _ } : (Type_bool.true_t, _) t) =
-  Build_dag.get_node build_dag ~name:(Typed_op.File.Linked.generated_file exe_file)
+let plan_exe ({ build_dag; _ } : (Type_bool.true_t, _) t) =
+  Build_dag.link_executable_op_node_or_panic build_dag
 ;;
 
 let plan_lib ({ build_dag; _ } : (_, Type_bool.true_t) t) =
-  Build_dag.get_node build_dag ~name:(Typed_op.Generated_file.Linked_library Cmxa)
+  Build_dag.link_library_op_node_or_panic build_dag
 ;;
 
-let plan_lsp ({ build_dag; package_typed; _ } : (_, Type_bool.true_t) t) =
-  Build_dag.get_node
-    build_dag
-    ~name:(Typed_op.Generated_file.cmt_for_lsp (Package.Typed.name package_typed))
+let plan_lsp ({ build_dag; lsp_ops; _ } : (_, Type_bool.true_t) t) =
+  let lsp_ops = Option.get lsp_ops in
+  Build_dag.get_node build_dag ~name:(Compile_source lsp_ops.lsp_ops_compile_source)
 ;;
 
-let dot t =
-  let node_to_string node =
-    Build_dag.generated_file_to_string (Build_dag.Node.name node)
+let dot { build_dag; _ } =
+  let generated_file_to_string (generated_file : Typed_op.Generated_file.t) =
+    let path =
+      Alice_ui.basename_to_string (Typed_op.Generated_file.path generated_file)
+    in
+    match generated_file with
+    | Compiled compiled ->
+      (match Typed_op.Generated_file.Compiled.visibility compiled with
+       | Public_for_lsp -> sprintf "%s (for lsp)" path
+       | _ -> path)
+    | _ -> path
   in
-  List.fold_left
-    (Build_dag.all_nodes t.build_dag)
-    ~init:(Build_dag.to_string_graph t.build_dag ~node_to_string)
-    ~f:(fun string_graph build_plan ->
-      match Typed_op.source_input (Build_plan.op build_plan) with
-      | None -> string_graph
-      | Some source_path_abs ->
-        let source_basename = Absolute_path.basename source_path_abs in
-        let source_path_string = Basename.to_filename source_basename in
-        String.Map.update string_graph ~key:(node_to_string build_plan) ~f:(function
-          | None -> Some (String.Set.singleton source_path_string)
-          | Some existing -> Some (String.Set.add source_path_string existing)))
+  Build_dag.all_nodes build_dag
+  |> List.fold_left ~init:String.Map.empty ~f:(fun acc node ->
+    let op = Build_plan.op node in
+    let inputs =
+      (Typed_op.generated_inputs op |> List.map ~f:generated_file_to_string)
+      @ (Typed_op.source_input op
+         |> Option.map ~f:(fun path ->
+           Absolute_path.basename path |> Basename.to_filename)
+         |> Option.to_list)
+      |> String.Set.of_list
+    in
+    let outputs = Typed_op.outputs op |> List.map ~f:generated_file_to_string in
+    List.fold_left outputs ~init:acc ~f:(fun acc output ->
+      String.Map.update acc ~key:output ~f:(function
+        | None -> Some inputs
+        | Some existing -> Some (String.Set.union existing inputs))))
   |> Alice_graphviz.dot_src_of_string_graph
 ;;

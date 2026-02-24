@@ -66,6 +66,7 @@ Print the dependency graph of the project:
     "main.cmt" -> {"lib.cmx", "main.ml"}
     "main.cmx" -> {"lib.cmx", "main.ml"}
     "public_interface_to_open_of_foo.cmx" -> {"internal_modules_of_foo.cmx", "public_interface_to_open_of_foo.ml"}
+    "public_interface_to_open_of_foo.ml" -> {}
   }
 
 Test that the project can be built an run:
