@@ -3,56 +3,40 @@ open Alice_hierarchy
 open Alice_package
 open Alice_ocaml_compiler
 
-module Build_node = struct
-  module Name = Typed_op.Generated_file
-
-  (* For the sake of simplicity, each node in the build graph corresponds to a
-     single file. Most build operations produce multiple files, so the same
-     operation may be associated with multiple nodes in the graph. When
-     evaluating the build graph, care should be taken to not run the same
-     operation multiple times. *)
-  type t =
-    { artifact : Name.t (** A single file produced by the associated operation. *)
-    ; op : Typed_op.t
-      (** An operation which creates [artifact], but which may also create other files. *)
-    }
-
-  let to_dyn { artifact; op } =
-    Dyn.record [ "artifact", Name.to_dyn artifact; "op", Typed_op.to_dyn op ]
-  ;;
-
-  let equal t { artifact; op } = Name.equal t.artifact artifact && Typed_op.equal t.op op
-  let name { artifact; _ } = artifact
-  let op { op; _ } = op
-  let dep_names t = Typed_op.generated_inputs t.op |> Name.Set.of_list
-
-  let show_name name =
-    let path = Alice_ui.basename_to_string (Name.path name) in
-    match (name : Typed_op.Generated_file.t) with
-    | Compiled compiled ->
-      (match Typed_op.Generated_file.Compiled.visibility compiled with
-       | Public_for_lsp -> sprintf "%s (for lsp)" path
-       | _ -> path)
-    | _ -> path
-  ;;
-
-  let show t = show_name t.artifact
-end
-
 module Build_dag = struct
-  include Alice_dag.Make (Build_node)
+  module Generated_file = struct
+    include Typed_op.Generated_file
+
+    let to_string t =
+      let path = Alice_ui.basename_to_string (path t) in
+      match t with
+      | Compiled compiled ->
+        (match Typed_op.Generated_file.Compiled.visibility compiled with
+         | Public_for_lsp -> sprintf "%s (for lsp)" path
+         | _ -> path)
+      | _ -> path
+    ;;
+  end
+
+  include Alice_dag.Make (Generated_file)
+
+  type nonrec t = Typed_op.t t
+
+  let to_dyn = to_dyn Typed_op.to_dyn
 
   module Staging = struct
     include Staging
 
     let add_op t op =
+      let child_names = Typed_op.generated_inputs op in
       List.fold_left (Typed_op.outputs op) ~init:t ~f:(fun t artifact ->
-        let build_node = { Build_node.artifact; op } in
-        match add t artifact build_node with
+        match add t artifact op ~eq:Typed_op.equal ~child_names with
         | Ok t -> t
-        | Error (`Conflict _) ->
+        | Error `Conflict ->
           Alice_error.panic
-            [ Pp.textf "Conflicting origins for file: %s" (Build_node.show_name artifact)
+            [ Pp.textf
+                "Conflicting origins for file: %s"
+                (Generated_file.to_string artifact)
             ])
     ;;
 
@@ -61,12 +45,12 @@ module Build_dag = struct
       | Ok t -> t
       | Error (`Dangling dangling) ->
         Alice_error.panic
-          [ Pp.textf "No rule to build: %s" (Build_node.show_name dangling) ]
+          [ Pp.textf "No rule to build: %s" (Generated_file.to_string dangling) ]
       | Error (`Cycle cycle) ->
         Alice_error.panic
           ([ Pp.text "Dependency cycle:"; Pp.newline ]
            @ List.concat_map cycle ~f:(fun file ->
-             [ Pp.textf " - %s" (Build_node.show_name file); Pp.newline ]))
+             [ Pp.textf " - %s" (Generated_file.to_string file); Pp.newline ]))
     ;;
   end
 
@@ -74,17 +58,16 @@ module Build_dag = struct
     List.fold_left ops ~init:Staging.empty ~f:Staging.add_op |> Staging.finalize
   ;;
 
-  let traverse t ~output = traverse t ~name:output
-
   (* Returns the cmx files in build order which must be built before the files
      listed in [starts], including the files in [starts]. *)
   let cmx_files_in_build_order t ~start =
     let open Typed_op in
-    transitive_closure_in_dependency_order t ~start ~include_start:true
-    |> List.filter_map ~f:(fun (node : Build_node.t) ->
-      match node.op with
+    let start = get_node t ~name:start in
+    Node.transitive_closure_in_child_first_order start ~include_start:true
+    |> List.filter_map ~f:(fun node ->
+      match Node.value node with
       | Compile_source { cmx_output; _ } ->
-        if Generated_file.equal node.artifact (File.Compiled.generated_file cmx_output)
+        if Generated_file.equal (Node.name node) (File.Compiled.generated_file cmx_output)
         then
           (* Multiple artifacts are built from the same command, but here we're
              only interested in the cmx artifact. *)
@@ -109,16 +92,19 @@ module Build_dag = struct
 end
 
 module Build_plan = struct
-  include Build_dag.Traverse
+  include Build_dag.Node
 
-  let op t = (node t).op
+  type nonrec t = Typed_op.t t
+
+  let deps t = children t
+  let op t = value t
   let source_input t = Typed_op.source_input (op t)
   let generated_inputs t = Typed_op.generated_inputs (op t)
   let outputs t = Typed_op.outputs (op t) |> Typed_op.Generated_file.Set.of_list
 
   let transitive_closure_outputs t =
-    transitive_closure_in_dependency_order t
-    |> List.map ~f:Build_node.name
+    transitive_closure_in_child_first_order t ~include_start:true
+    |> List.map ~f:name
     |> Typed_op.Generated_file.Set.of_list
   ;;
 end
@@ -233,7 +219,7 @@ let compilation_ops dir package_id build_dir ocaml_compiler (io_ctx : _ Alice_io
 let lsp_ops build_dag_compilation_only package =
   let open Typed_op in
   let lib_cmx_plan =
-    Build_dag.traverse build_dag_compilation_only ~output:Typed_op.Generated_file.lib_cmx
+    Build_dag.get_node build_dag_compilation_only ~name:Typed_op.Generated_file.lib_cmx
   in
   let package_name_s = Package_name.to_string (Package.name package) in
   let compile_source =
@@ -308,9 +294,9 @@ let lsp_ops build_dag_compilation_only package =
       None
     | None ->
       let lib_cmi_plan =
-        Build_dag.traverse
+        Build_dag.get_node
           build_dag_compilation_only
-          ~output:Typed_op.Generated_file.lib_cmi
+          ~name:Typed_op.Generated_file.lib_cmi
       in
       (match Build_plan.op lib_cmi_plan with
        | Compile_interface
@@ -444,30 +430,33 @@ let create
 ;;
 
 let plan_exe ({ build_dag; exe_file; _ } : (Type_bool.true_t, _) t) =
-  Build_dag.traverse build_dag ~output:(Typed_op.File.Linked.generated_file exe_file)
+  Build_dag.get_node build_dag ~name:(Typed_op.File.Linked.generated_file exe_file)
 ;;
 
 let plan_lib ({ build_dag; _ } : (_, Type_bool.true_t) t) =
-  Build_dag.traverse build_dag ~output:(Typed_op.Generated_file.Linked_library Cmxa)
+  Build_dag.get_node build_dag ~name:(Typed_op.Generated_file.Linked_library Cmxa)
 ;;
 
 let plan_lsp ({ build_dag; package_typed; _ } : (_, Type_bool.true_t) t) =
-  Build_dag.traverse
+  Build_dag.get_node
     build_dag
-    ~output:(Typed_op.Generated_file.cmt_for_lsp (Package.Typed.name package_typed))
+    ~name:(Typed_op.Generated_file.cmt_for_lsp (Package.Typed.name package_typed))
 ;;
 
 let dot t =
+  let node_to_string node =
+    Build_dag.Generated_file.to_string (Build_dag.Node.name node)
+  in
   List.fold_left
-    (Build_dag.nodes t.build_dag)
-    ~init:(Build_dag.to_string_graph t.build_dag)
-    ~f:(fun string_graph node ->
-      match Typed_op.source_input (Build_node.op node) with
+    (Build_dag.all_nodes t.build_dag)
+    ~init:(Build_dag.to_string_graph t.build_dag ~node_to_string)
+    ~f:(fun string_graph build_plan ->
+      match Typed_op.source_input (Build_plan.op build_plan) with
       | None -> string_graph
       | Some source_path_abs ->
         let source_basename = Absolute_path.basename source_path_abs in
         let source_path_string = Basename.to_filename source_basename in
-        String.Map.update string_graph ~key:(Build_node.show node) ~f:(function
+        String.Map.update string_graph ~key:(node_to_string build_plan) ~f:(function
           | None -> Some (String.Set.singleton source_path_string)
           | Some existing -> Some (String.Set.add source_path_string existing)))
   |> Alice_graphviz.dot_src_of_string_graph

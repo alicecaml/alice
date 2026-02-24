@@ -4,7 +4,7 @@ open Alice_error
 open Alice_hierarchy
 
 module Dependency_dag = struct
-  include Alice_dag.Make_ (Package_name)
+  include Alice_dag.Make (Package_name)
 
   type nonrec t =
     { dag : Package.Typed.lib_only_t t
@@ -124,15 +124,15 @@ let compute package_typed =
 ;;
 
 let to_string_graph t =
-  let value_to_string package_typed =
-    Package.Typed.id package_typed |> Package_id.name_v_version_string
+  let node_to_string node =
+    Dependency_dag.Node.value node |> Package.Typed.id |> Package_id.name_v_version_string
   in
-  Dependency_dag.to_string_graph t.dependency_dag.dag ~value_to_string
+  Dependency_dag.to_string_graph t.dependency_dag.dag ~node_to_string
   |> String.Map.add
        ~key:(Package_id.name_v_version_string (Package.id (Package.Typed.package t.root)))
        ~data:
          (Dependency_dag.roots t.dependency_dag.dag
-          |> List.map ~f:(fun node -> Dependency_dag.Node.value node |> value_to_string)
+          |> List.map ~f:node_to_string
           |> String.Set.of_list)
 ;;
 
@@ -172,9 +172,13 @@ module Package_with_deps = struct
       then dependency_dag.all_nodes_in_dependency_order
       else (
         let start =
-          Dependency_dag.get_node (Package.Typed.name package_typed) dependency_dag.dag
+          Dependency_dag.get_node
+            dependency_dag.dag
+            ~name:(Package.Typed.name package_typed)
         in
-        Dependency_dag.transitive_closure_in_child_first_order ~start ~include_start:false)
+        Dependency_dag.Node.transitive_closure_in_child_first_order
+          start
+          ~include_start:false)
     in
     List.map nodes ~f:Dependency_dag.Node.value
   ;;
