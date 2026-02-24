@@ -50,8 +50,6 @@ module Make (Name : Name) : sig
       order than a node will appear earlier than any parent nodes. *)
   val all_nodes_in_child_first_order : 'a t -> 'a Node.t list
 
-  val map : 'a t -> f:('a -> 'b) -> 'b t
-
   module Staging : sig
     type 'a dag := 'a t
 

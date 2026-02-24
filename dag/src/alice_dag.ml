@@ -13,25 +13,22 @@ end
 module Make (Name : Name) = struct
   module Node = struct
     type 'a t =
-      { index : int
-      ; name : Name.t
+      { name : Name.t
       ; value : 'a
       ; child_names : Name.t list
       ; mutable children : 'a t list
       ; mutable parents : 'a t list
       }
 
-    let equal t { index; name; value; child_names; children = _; parents = _ } ~eq =
-      Int.equal t.index index
-      && Name.equal t.name name
+    let equal t { name; value; child_names; children = _; parents = _ } ~eq =
+      Name.equal t.name name
       && eq t.value value
       && List.equal ~eq:Name.equal t.child_names child_names
     ;;
 
-    let to_dyn builder { index; name; value; child_names; children; parents } =
+    let to_dyn builder { name; value; child_names; children; parents } =
       Dyn.record
-        [ "index", Dyn.int index
-        ; "name", Name.to_dyn name
+        [ "name", Name.to_dyn name
         ; "value", builder value
         ; "child_names", Dyn.list Name.to_dyn child_names
         ; "children", Dyn.opaque children
@@ -126,30 +123,6 @@ module Make (Name : Name) = struct
       |> List.rev
   ;;
 
-  let map t ~f =
-    let nodes =
-      Array.map t.nodes ~f:(fun (node : _ Node.t) ->
-        { Node.index = node.index
-        ; name = node.name
-        ; value = f node.value
-        ; child_names = [] (* only used during original construction *)
-        ; children = []
-        ; parents = []
-        })
-    in
-    Array.iter2 t.nodes nodes ~f:(fun (in_node : _ Node.t) (out_node : _ Node.t) ->
-      List.iter in_node.children ~f:(fun (child : _ Node.t) ->
-        out_node.children <- nodes.(child.index) :: out_node.children);
-      List.iter in_node.parents ~f:(fun (parent : _ Node.t) ->
-        out_node.parents <- nodes.(parent.index) :: out_node.parents));
-    let nodes_by_name =
-      Array.to_seq nodes
-      |> Seq.map ~f:(fun (node : _ Node.t) -> node.name, node)
-      |> Name.Map.of_seq
-    in
-    { nodes; nodes_by_name }
-  ;;
-
   module Staging = struct
     module Staging_node = struct
       type 'a t =
@@ -237,9 +210,8 @@ module Make (Name : Name) = struct
       let+ () = validate t in
       let nodes =
         Name.Map.to_seq t
-        |> Seq.mapi ~f:(fun index ((_, staging_node) : _ * _ Staging_node.t) ->
-          { Node.index
-          ; name = staging_node.name
+        |> Seq.map ~f:(fun ((_, staging_node) : _ * _ Staging_node.t) ->
+          { Node.name = staging_node.name
           ; value = staging_node.value
           ; child_names = staging_node.child_names
           ; children = []
