@@ -10,12 +10,16 @@ let rm_rf path =
     ()
   | Ok file ->
     File_non_root.traverse_bottom_up file ~f:(fun file ->
+      let filename = Absolute_path.to_filename file.path in
       match (file.kind : File_non_root.kind) with
-      | Regular | Link | Unknown -> Unix.unlink (Absolute_path.to_filename file.path)
+      | Regular | Link | Unknown ->
+        assert (not (Sys.is_directory filename));
+        if Sys.file_exists filename then Unix.unlink filename
       | Dir _ ->
         (* The directory will be empty by this point because the traversal is
            bottom-up. *)
-        Unix.rmdir (Absolute_path.to_filename file.path))
+        assert (Sys.is_directory filename);
+        if Sys.file_exists filename then Unix.rmdir filename)
 ;;
 
 let mkdir_p_filename path =
