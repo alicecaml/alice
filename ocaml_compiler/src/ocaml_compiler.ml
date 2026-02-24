@@ -96,7 +96,6 @@ module Config = struct
   let command ocaml_compiler = command ocaml_compiler ~args:[ "-config" ]
 
   let run_lines ocaml_compiler =
-    let open Alice_io in
     let command = command ocaml_compiler in
     match Alice_io.Process.Blocking.run_command_capturing_stdout_lines command with
     | Ok (report, output) ->
