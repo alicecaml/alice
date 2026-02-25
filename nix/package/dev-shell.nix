@@ -1,4 +1,4 @@
-{ graphviz, pkgsMusl, }:
+{ graphviz, pkgsMusl }:
 
 pkgsMusl.mkShell {
   nativeBuildInputs = [ graphviz ];
