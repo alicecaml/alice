@@ -43,6 +43,12 @@ module Report = struct
     else sprintf "%d" exit_code
   ;;
 
+  let is_exit_0 t =
+    match t.status with
+    | Exited 0 -> true
+    | _ -> false
+  ;;
+
   let error_unless_exit_0 t =
     let error message =
       Alice_error.user_exn
@@ -92,6 +98,8 @@ module Running = struct
     let pid, status = Unix.waitpid [ Unix.WNOHANG ] pid in
     if pid == 0 then None else Some { Report.status = Status.of_unix status; command }
   ;;
+
+  let kill { pid; _ } = Unix.kill pid Sys.sigkill
 end
 
 module Running_capturing_stdout = struct

@@ -8,6 +8,13 @@ let of_list_opt = function
 ;;
 
 let to_list (x :: xs) = List.(x :: xs)
+
+let of_seq_opt seq =
+  match seq () with
+  | Seq.Nil -> None
+  | Seq.Cons (x, xs) -> Some (x :: List.of_seq xs)
+;;
+
 let to_dyn f t = Dyn.list f (to_list t)
 let append (x :: xs) (y :: ys) = x :: List.concat [ xs; [ y ]; ys ]
 let cons x xs = x :: to_list xs

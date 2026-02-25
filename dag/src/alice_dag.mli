@@ -34,8 +34,8 @@ module Make (Name : Name) : sig
     val transitive_closure_in_child_first_order : 'a t -> include_start:bool -> 'a t list
   end
 
-  val roots : 'a t -> 'a Node.t list
-  val leaves : 'a t -> 'a Node.t list
+  val roots : 'a t -> 'a Node.t Seq.t
+  val leaves : 'a t -> 'a Node.t Seq.t
   val get_node : 'a t -> name:Name.t -> 'a Node.t
 
   val to_string_graph
@@ -45,6 +45,7 @@ module Make (Name : Name) : sig
 
   val all_nodes : 'a t -> 'a Node.t list
   val all_names : _ t -> Name.t list
+  val num_nodes : _ t -> int
 
   (** Returns a list where each node in [t] appears exactly once, in such an
       order than a node will appear earlier than any parent nodes. *)

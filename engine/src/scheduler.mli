@@ -1,6 +1,7 @@
 open! Alice_stdlib
 open Alice_package
 open Alice_ocaml_compiler
+module Num_jobs = Alice_io.Concurrency.Num_jobs
 
 module Package_built : sig
   type t
@@ -14,5 +15,6 @@ val run
   -> Profile.t
   -> Build_dir.t
   -> Ocaml_compiler.t
+  -> Num_jobs.t
   -> any_dep_rebuilt:bool
   -> Package_built.t

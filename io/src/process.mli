@@ -15,6 +15,7 @@ module Report : sig
     ; command : Command.t
     }
 
+  val is_exit_0 : t -> bool
   val error_unless_exit_0 : t -> unit
 end
 
@@ -23,10 +24,7 @@ module Running : sig
 
   val wait : t -> Report.t
   val poll : t -> Report.t option
-end
-
-module Error : sig
-  type t = [ `Prog_not_available of string ]
+  val kill : t -> unit
 end
 
 module Running_capturing_stdout : sig
@@ -34,6 +32,10 @@ module Running_capturing_stdout : sig
 
   val wait_stdout_lines : t -> Report.t * string list
   val poll_stdout_lines : t -> (Report.t * string list) option
+end
+
+module Error : sig
+  type t = [ `Prog_not_available of string ]
 end
 
 val run

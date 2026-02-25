@@ -132,8 +132,8 @@ let to_string_graph t =
        ~key:(Package_id.name_v_version_string (Package.id (Package.Typed.package t.root)))
        ~data:
          (Dependency_dag.roots t.dependency_dag.dag
-          |> List.map ~f:node_to_string
-          |> String.Set.of_list)
+          |> Seq.map ~f:node_to_string
+          |> String.Set.of_seq)
 ;;
 
 let dot t = to_string_graph t |> Alice_graphviz.dot_src_of_string_graph

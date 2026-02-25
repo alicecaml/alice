@@ -82,6 +82,7 @@ let build_single_package
     profile
     t.build_dir
     ocaml_compiler
+    io_ctx.num_jobs
     ~any_dep_rebuilt
 ;;
 

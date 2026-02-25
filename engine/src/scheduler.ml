@@ -10,6 +10,7 @@ module Generated_file = Typed_op.Generated_file
 module Package_with_deps = Dependency_graph.Package_with_deps
 module Limit = Alice_io.Concurrency.Limit
 module Io_ctx = Alice_io.Io_ctx
+module Num_jobs = Alice_io.Concurrency.Num_jobs
 
 module Package_built = struct
   type t =
@@ -40,22 +41,20 @@ module Action = struct
     | Command of Command.t
     | Generated_public_interface_to_open of Generated_public_interface_to_open.t
 
-  let run_blocking t =
+  (* If the action can be done by the current process then do it immediately
+     and return [`Done]. If the action requires spawning a process, return a thunk
+     that will spawn the process when called, allowing the scheduler to control the
+     maximum number of processes running in parallel. *)
+  let run_or_defer_spawn_process t =
     match t with
     | Command command ->
-      let report =
-        match Alice_io.Process.Blocking.run_command command with
-        | Ok report -> report
-        | Error (`Prog_not_available _) ->
-          panic [ Pp.textf "Can't find program: %s" command.prog ]
-      in
-      (match report.status with
-       | Exited 0 -> ()
-       | _ ->
-         Alice_error.user_exn
-           [ Pp.textf "Command failed: %s" (Command.to_string_ignore_env command) ])
+      `Spawn
+        (fun () ->
+          match Alice_io.Process.run_command command with
+          | Ok running -> running
+          | Error (`Prog_not_available _) ->
+            Alice_error.user_exn [ Pp.textf "Can't find program: %s" command.prog ])
     | Generated_public_interface_to_open { output_path; public_interface_to_open } ->
-      (* TODO write the public interface file with eio *)
       Log.debug
         [ Pp.textf
             "Generating public interface source file: %s"
@@ -63,7 +62,8 @@ module Action = struct
         ];
       File_ops.write_text_file
         output_path
-        (Public_interface_to_open.source_code public_interface_to_open)
+        (Public_interface_to_open.source_code public_interface_to_open);
+      `Done
   ;;
 
   let equal a b =
@@ -320,14 +320,23 @@ module Action_graph = struct
       { action : Action.t
       ; package_id : Package_id.t
       ; build_plan : Build_plan.t
-      ; remaining_children_to_build : int ref
+      ; mutable remaining_children_to_build : int
       }
 
     let equal t { action; package_id; build_plan; remaining_children_to_build } =
       Action.equal t.action action
       && Package_id.equal t.package_id package_id
       && Build_plan.equal t.build_plan build_plan
-      && Int.equal !(t.remaining_children_to_build) !remaining_children_to_build
+      && Int.equal t.remaining_children_to_build remaining_children_to_build
+    ;;
+
+    let decrement_remaining_children_to_build t =
+      t.remaining_children_to_build <- t.remaining_children_to_build - 1
+    ;;
+
+    let is_ready t =
+      assert (t.remaining_children_to_build >= 0);
+      t.remaining_children_to_build == 0
     ;;
   end
 
@@ -341,22 +350,130 @@ module Action_graph = struct
     ;;
   end
 
-  let run (t : t) =
-    all_nodes_in_child_first_order t
-    |> List.iter ~f:(fun node ->
-      let open Alice_ui in
-      let entry : Entry.t = Node.value node in
-      let outputs = Build_plan.outputs entry.build_plan in
-      Log.info
-        ~package_id:entry.package_id
-        [ Pp.textf
-            "Building targets: %s"
-            (Generated_file.Set.to_list outputs
-             |> List.map ~f:(fun gen_file ->
-               Generated_file.path gen_file |> basename_to_string)
-             |> String.concat ~sep:", ")
-        ];
-      Action.run_blocking entry.action)
+  module Static_vec = struct
+    (* A vector with a maximum capacity *)
+    type 'a t =
+      { array : 'a option array
+      ; mutable cursor : int
+      }
+
+    let create capacity = { array = Array.make capacity None; cursor = 0 }
+    let is_empty t = t.cursor == 0
+    let is_full t = t.cursor == Array.length t.array
+
+    let iter t ~f =
+      for i = 0 to t.cursor - 1 do
+        f (Option.get t.array.(i))
+      done
+    ;;
+
+    let push t x =
+      assert (not (is_full t));
+      t.array.(t.cursor) <- Some x;
+      t.cursor <- t.cursor + 1
+    ;;
+
+    let swap_remove t i =
+      assert (i < t.cursor);
+      t.cursor <- t.cursor - 1;
+      if i != t.cursor then t.array.(i) <- t.array.(t.cursor)
+    ;;
+
+    let swap_remove_filter_map t ~f =
+      let i = ref 0 in
+      let ret = ref [] in
+      while !i < t.cursor do
+        match f (Option.get t.array.(!i)) with
+        | Some x ->
+          swap_remove t !i;
+          ret := x :: !ret
+        | None -> i := !i + 1
+      done;
+      !ret
+    ;;
+  end
+
+  let log_build node =
+    let open Alice_ui in
+    let entry : Entry.t = Node.value node in
+    let outputs = Build_plan.outputs entry.build_plan in
+    Log.info
+      ~package_id:entry.package_id
+      [ Pp.textf
+          "Building targets: %s"
+          (Generated_file.Set.to_list outputs
+           |> List.map ~f:(fun gen_file ->
+             Generated_file.path gen_file |> basename_to_string)
+           |> String.concat ~sep:", ")
+      ]
+  ;;
+
+  let run_parallel (t : t) num_jobs =
+    let open Alice_io in
+    let num_jobs =
+      match (num_jobs : Num_jobs.t) with
+      | Limited limited -> limited
+      | Unlimited -> num_nodes t
+    in
+    (* Nodes whose actions are currently running, along with a handle to the
+       running processes. *)
+    let running = Static_vec.create num_jobs in
+    (* Nodes whose actions are ready to run, but which haven't been started yet. *)
+    let ready = Queue.create () in
+    let rec complete_node (node : Entry.t Node.t) =
+      (* Entries maintain a count of the number of their children that still
+         need to be built. Decrement the count for each parent of the node that
+         was just built, and if any of the counts become zero then enqueue
+         those parents as they are now ready to be built themselves. *)
+      List.iter (Node.parents node) ~f:(fun parent ->
+        let entry = Node.value parent in
+        Entry.decrement_remaining_children_to_build entry;
+        if Entry.is_ready entry then enqueue_node parent)
+    and enqueue_node (node : Entry.t Node.t) =
+      let entry = Node.value node in
+      assert (Entry.is_ready entry);
+      match Action.run_or_defer_spawn_process entry.action with
+      | `Done ->
+        log_build node;
+        complete_node node
+      | `Spawn spawn_thunk -> Queue.push (node, spawn_thunk) ready
+    in
+    let spawn node spawn_thunk =
+      assert (not (Static_vec.is_full running));
+      let process_running = spawn_thunk () in
+      log_build node;
+      Static_vec.push running (node, process_running)
+    in
+    let spawn_all_ready_up_to_job_limit () =
+      while (not (Static_vec.is_full running)) && not (Queue.is_empty ready) do
+        let node, spawn_thunk = Queue.take ready in
+        spawn node spawn_thunk
+      done
+    in
+    Seq.iter (leaves t) ~f:enqueue_node;
+    spawn_all_ready_up_to_job_limit ();
+    let exception Process_exited_non_zero of Process.Report.t in
+    try
+      while not (Static_vec.is_empty running) do
+        Unix.sleepf 0.001;
+        let complete_with_reports =
+          Static_vec.swap_remove_filter_map running ~f:(fun (node, running_process) ->
+            Option.map (Alice_io.Process.Running.poll running_process) ~f:(fun report ->
+              node, report))
+        in
+        List.iter complete_with_reports ~f:(fun (_, report) ->
+          if not (Process.Report.is_exit_0 report)
+          then raise (Process_exited_non_zero report));
+        List.iter complete_with_reports ~f:(fun (node, _) -> complete_node node);
+        spawn_all_ready_up_to_job_limit ()
+      done;
+      assert (Queue.is_empty ready)
+    with
+    | Process_exited_non_zero report ->
+      Static_vec.iter running ~f:(fun (_, running_process) ->
+        Process.Running.kill running_process);
+      Alice_error.user_exn
+        [ Pp.textf "Command failed: %s" (Command.to_string_ignore_env report.command) ]
   ;;
 end
 
@@ -414,7 +531,7 @@ let make_action_graph
             { Action_graph.Entry.action
             ; package_id
             ; build_plan
-            ; remaining_children_to_build = ref (List.length child_names)
+            ; remaining_children_to_build = List.length child_names
             }
           in
           Action_graph.Staging.add_or_panic staging op entry ~child_names)
@@ -430,10 +547,17 @@ let run
     -> Profile.t
     -> Build_dir.t
     -> Ocaml_compiler.t
+    -> Num_jobs.t
     -> any_dep_rebuilt:bool
     -> Package_built.t
   =
-  fun build_graph package_with_deps profile build_dir ocaml_compiler ~any_dep_rebuilt ->
+  fun build_graph
+    package_with_deps
+    profile
+    build_dir
+    ocaml_compiler
+    num_jobs
+    ~any_dep_rebuilt ->
   let open Alice_ui in
   let build_plans =
     match Package_with_deps.type_ package_with_deps with
@@ -463,6 +587,6 @@ let run
          (Package_id.name_v_version_string (Package_with_deps.id package_with_deps)));
     let package_id = Dependency_graph.Package_with_deps.package_id package_with_deps in
     Build_dir.package_dirs build_dir package_id profile |> List.iter ~f:File_ops.mkdir_p;
-    Action_graph.run action_graph;
+    Action_graph.run_parallel action_graph num_jobs;
     Rebuilt
 ;;

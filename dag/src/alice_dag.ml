@@ -83,15 +83,11 @@ module Make (Name : Name) = struct
   ;;
 
   let roots t =
-    Array.to_seq t.nodes
-    |> Seq.filter ~f:(fun node -> List.is_empty (Node.parents node))
-    |> List.of_seq
+    Array.to_seq t.nodes |> Seq.filter ~f:(fun node -> List.is_empty (Node.parents node))
   ;;
 
   let leaves t =
-    Array.to_seq t.nodes
-    |> Seq.filter ~f:(fun node -> List.is_empty (Node.children node))
-    |> List.of_seq
+    Array.to_seq t.nodes |> Seq.filter ~f:(fun node -> List.is_empty (Node.children node))
   ;;
 
   let get_node t ~name = Name.Map.find name t.nodes_by_name
@@ -113,9 +109,10 @@ module Make (Name : Name) = struct
 
   let all_nodes t = Array.to_list t.nodes
   let all_names t = Name.Map.keys t.nodes_by_name
+  let num_nodes t = Array.length t.nodes
 
   let all_nodes_in_child_first_order t =
-    match Nonempty_list.of_list_opt (roots t) with
+    match Nonempty_list.of_seq_opt (roots t) with
     | None -> []
     | Some roots ->
       Node.transitive_closure_multi_in_parent_first_order roots
