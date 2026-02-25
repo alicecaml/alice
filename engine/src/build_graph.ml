@@ -153,8 +153,7 @@ module Build_plan = struct
   ;;
 end
 
-let compilation_ops dir package_id build_dir ocaml_compiler (io_ctx : _ Alice_io.Io_ctx.t)
-  =
+let compilation_ops dir package_id build_dir ocaml_compiler num_jobs =
   let ocamldep_cache = Ocamldep_cache.load build_dir package_id in
   let source_paths =
     Dir_non_root.contents dir
@@ -165,11 +164,7 @@ let compilation_ops dir package_id build_dir ocaml_compiler (io_ctx : _ Alice_io
     |> List.map ~f:(fun (file : File_non_root.t) -> file.path)
   in
   let deps_key_value_pairs =
-    Ocamldep_cache.get_deps_batch
-      ocamldep_cache
-      ocaml_compiler
-      io_ctx.num_jobs
-      ~source_paths
+    Ocamldep_cache.get_deps_batch ocamldep_cache ocaml_compiler num_jobs ~source_paths
   in
   let deps = Absolute_path.Non_root_map.of_list_exn deps_key_value_pairs in
   Ocamldep_cache.store ocamldep_cache deps;
@@ -398,15 +393,15 @@ let create
     -> Build_dir.t
     -> Alice_env.Os_type.t
     -> Ocaml_compiler.t
-    -> _ Alice_io.Io_ctx.t
+    -> Alice_io.Num_jobs.t
     -> (exe, lib) t
   =
-  fun package_typed build_dir os_type ocaml_compiler io_ctx ->
+  fun package_typed build_dir os_type ocaml_compiler num_jobs ->
   let open Typed_op in
   let package = Package.Typed.package package_typed in
   let src_dir = Package.src_dir_exn package in
   let compilation_ops =
-    compilation_ops src_dir (Package.id package) build_dir ocaml_compiler io_ctx
+    compilation_ops src_dir (Package.id package) build_dir ocaml_compiler num_jobs
   in
   let build_dag_compilation_only = Build_dag.of_ops compilation_ops in
   let link_library () =

@@ -12,18 +12,18 @@ val of_package : Package.t -> t
 
 val build
   :  t
-  -> _ Alice_io.Io_ctx.t
   -> Profile.t
   -> Alice_env.Os_type.t
   -> Ocaml_compiler.t
+  -> Alice_io.Num_jobs.t
   -> unit
 
 val run
   :  t
-  -> _ Alice_io.Io_ctx.t
   -> Profile.t
   -> Alice_env.Os_type.t
   -> Ocaml_compiler.t
+  -> Alice_io.Num_jobs.t
   -> args:string list
   -> unit
 
@@ -31,9 +31,9 @@ val clean : t -> unit
 
 val dot_build_artifacts
   :  t
-  -> _ Alice_io.Io_ctx.t
   -> Alice_env.Os_type.t
   -> Ocaml_compiler.t
+  -> Alice_io.Num_jobs.t
   -> string
 
 val dot_dependencies : t -> string

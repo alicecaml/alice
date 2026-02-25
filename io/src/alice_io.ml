@@ -6,6 +6,4 @@ module Process = Process
 module Read_hierarchy = Read_hierarchy
 module Temp_dir = Temp_dir
 module Uname = Uname
-module Concurrency = Concurrency
-module Io_ctx = Io_ctx
-module Eio_fiber = Eio_fiber
+module Num_jobs = Num_jobs

@@ -47,7 +47,6 @@ ocamlPackages.buildDunePackage {
         '';
       }))
       climate
-      eio_main
     ] ++ extraDependencies;
 
   postInstall = lib.optionalString withBashCompletions # sh

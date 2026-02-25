@@ -95,14 +95,24 @@ let depends_native_batch = Depend.Native_deps.run_batch
 module Config = struct
   let command ocaml_compiler = command ocaml_compiler ~args:[ "-config" ]
 
-  let run_lines ocaml_compiler io_ctx =
+  let run_lines ocaml_compiler =
+    let open Alice_io in
     let command = command ocaml_compiler in
-    Alice_io.Process.Eio.run_command_capturing_stdout_lines io_ctx command
-    |> Alice_io.Process.Eio.result_ok_or_exn
+    match Alice_io.Process.Blocking.run_command_capturing_stdout_lines command with
+    | Ok (report, output) ->
+      Alice_io.Process.Report.error_unless_exit_0 report;
+      output
+    | Error (`Prog_not_available prog) ->
+      user_exn
+        [ Pp.textf
+            "Program %S not found while trying to run command: %s"
+            prog
+            (Command.to_string_ignore_env command)
+        ]
   ;;
 
-  let standard_library ocaml_compiler io_ctx =
-    let lines = run_lines ocaml_compiler io_ctx in
+  let standard_library ocaml_compiler =
+    let lines = run_lines ocaml_compiler in
     let path_opt =
       List.find_map lines ~f:(fun line ->
         match String.lsplit2 line ~on:' ' with

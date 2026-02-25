@@ -246,81 +246,6 @@ module Blocking = struct
   ;;
 end
 
-module Eio = struct
-  type error =
-    [ `Program_not_available of string
-    | `Generic_error of string
-    ]
-
-  let handle_errors f =
-    let stderr_buffer = Buffer.create 0 in
-    let stderr = Eio.Flow.buffer_sink stderr_buffer in
-    try Ok (f ~stderr) with
-    | Eio.Io (err, _ctx) ->
-      (match err with
-       | Eio.Process.E (Eio.Process.Executable_not_found prog) ->
-         Error (`Program_not_available prog)
-       | _ ->
-         let stderr_string = String.of_bytes (Buffer.to_bytes stderr_buffer) in
-         Error (`Generic_error stderr_string))
-  ;;
-
-  let result_ok_or_exn result =
-    match result with
-    | Ok x -> x
-    | Error (`Program_not_available prog) ->
-      Alice_error.user_exn [ Pp.textf "Program %S not found!" prog ]
-    | Error (`Generic_error message) ->
-      Printf.eprintf "%s" message;
-      exit 1
-  ;;
-
-  let run (io_ctx : _ Io_ctx.t) prog ~args ~env =
-    match io_ctx.proc_mgr with
-    | None ->
-      (match Blocking.run prog ~args ~env with
-       | Ok report ->
-         (match report.status with
-          | Exited 0 -> ()
-          | _ -> exit 1);
-         Ok ()
-       | Error (`Prog_not_available prog) -> Error (`Program_not_available prog))
-    | Some proc_mgr ->
-      let env_arr = Env.to_raw env in
-      let args = prog :: args in
-      Log.debug [ Pp.textf "Running command: %s" (String.concat ~sep:" " args) ];
-      handle_errors (fun ~stderr -> Eio.Process.run ~stderr proc_mgr ~env:env_arr args)
-  ;;
-
-  let run_command io_ctx { Command.prog; args; env } = run io_ctx prog ~args ~env
-
-  let run_capturing_stdout_lines (io_ctx : _ Io_ctx.t) prog ~args ~env =
-    match io_ctx.proc_mgr with
-    | None ->
-      (match Blocking.run_capturing_stdout_lines prog ~args ~env with
-       | Ok (report, lines) ->
-         (match report.status with
-          | Exited 0 -> ()
-          | _ -> exit 1);
-         Ok lines
-       | Error (`Prog_not_available prog) -> Error (`Program_not_available prog))
-    | Some proc_mgr ->
-      let env_arr = Env.to_raw env in
-      let args = prog :: args in
-      Log.debug [ Pp.textf "Running command: %s" (String.concat ~sep:" " args) ];
-      handle_errors (fun ~stderr ->
-        let stdin_parser = Eio.Buf_read.take_all in
-        let output_string =
-          Eio.Process.parse_out ~stderr proc_mgr stdin_parser ~env:env_arr args
-        in
-        String.split_on_char output_string ~sep:'\n')
-  ;;
-
-  let run_command_capturing_stdout_lines io_ctx { Command.prog; args; env } =
-    run_capturing_stdout_lines io_ctx prog ~args ~env
-  ;;
-end
-
 let run_batch_map_stdout_lines commands num_jobs ~f =
   let next_command =
     let remaining_commands_with_indices =
@@ -335,7 +260,7 @@ let run_batch_map_stdout_lines commands num_jobs ~f =
   in
   let num_commands = List.length commands in
   let num_jobs =
-    match (num_jobs : Concurrency.Num_jobs.t) with
+    match (num_jobs : Num_jobs.t) with
     | Limited limit -> Int.min limit num_commands
     | Unlimited -> num_commands
   in

@@ -12,8 +12,7 @@
   alice_installation
   alice_env
   climate
-  sha
-  eio_main))
+  sha))
 
 (env
  (static

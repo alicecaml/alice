@@ -28,7 +28,7 @@ val create
   -> Build_dir.t
   -> Alice_env.Os_type.t
   -> Ocaml_compiler.t
-  -> _ Alice_io.Io_ctx.t
+  -> Alice_io.Num_jobs.t
   -> ('exe, 'lib) t
 
 val build_plan : (_, _) t -> op:Typed_op.t -> Build_plan.t

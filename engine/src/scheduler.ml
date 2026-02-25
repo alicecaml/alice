@@ -8,9 +8,6 @@ module Log = Alice_log
 module Build_plan = Build_graph.Build_plan
 module Generated_file = Typed_op.Generated_file
 module Package_with_deps = Dependency_graph.Package_with_deps
-module Limit = Alice_io.Concurrency.Limit
-module Io_ctx = Alice_io.Io_ctx
-module Num_jobs = Alice_io.Concurrency.Num_jobs
 
 module Package_built = struct
   type t =
@@ -411,7 +408,7 @@ module Action_graph = struct
   let run_parallel (t : t) num_jobs =
     let open Alice_io in
     let num_jobs =
-      match (num_jobs : Num_jobs.t) with
+      match (num_jobs : Alice_io.Num_jobs.t) with
       | Limited limited -> limited
       | Unlimited -> num_nodes t
     in
@@ -547,7 +544,7 @@ let run
     -> Profile.t
     -> Build_dir.t
     -> Ocaml_compiler.t
-    -> Num_jobs.t
+    -> Alice_io.Num_jobs.t
     -> any_dep_rebuilt:bool
     -> Package_built.t
   =

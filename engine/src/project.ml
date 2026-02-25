@@ -4,7 +4,6 @@ open Alice_hierarchy
 open Alice_error
 module File_ops = Alice_io.File_ops
 module Package_with_deps = Dependency_graph.Package_with_deps
-module Io_ctx = Alice_io.Io_ctx
 open Alice_ocaml_compiler
 
 type t =
@@ -63,18 +62,18 @@ let write_dot_gitignore { package; _ } = Dot_gitignore.write (Package.root packa
 let build_single_package
   : type exe lib.
     t
-    -> _ Io_ctx.t
     -> (exe, lib) Package_with_deps.t
     -> Profile.t
     -> Alice_env.Os_type.t
     -> Ocaml_compiler.t
+    -> Alice_io.Num_jobs.t
     -> any_dep_rebuilt:bool
     -> Scheduler.Package_built.t
   =
-  fun t io_ctx package_with_deps profile os_type ocaml_compiler ~any_dep_rebuilt ->
+  fun t package_with_deps profile os_type ocaml_compiler num_jobs ~any_dep_rebuilt ->
   let package_typed = Package_with_deps.package_typed package_with_deps in
   let build_graph =
-    Build_graph.create package_typed t.build_dir os_type ocaml_compiler io_ctx
+    Build_graph.create package_typed t.build_dir os_type ocaml_compiler num_jobs
   in
   Scheduler.run
     build_graph
@@ -82,19 +81,19 @@ let build_single_package
     profile
     t.build_dir
     ocaml_compiler
-    io_ctx.num_jobs
+    num_jobs
     ~any_dep_rebuilt
 ;;
 
-let build_dependency_graph t io_ctx dependency_graph profile os_type ocaml_compiler =
+let build_dependency_graph t dependency_graph profile os_type ocaml_compiler num_jobs =
   let build_single_package package_with_deps ~any_dep_rebuilt =
     build_single_package
       t
-      io_ctx
       package_with_deps
       profile
       os_type
       ocaml_compiler
+      num_jobs
       ~any_dep_rebuilt
   in
   let rec build_package_building_deps_first
@@ -138,36 +137,29 @@ let build_dependency_graph t io_ctx dependency_graph profile os_type ocaml_compi
   ()
 ;;
 
-let build_package_typed
-      t
-      (io_ctx : _ Io_ctx.t)
-      package_typed
-      profile
-      os_type
-      ocaml_compiler
-  =
+let build_package_typed t package_typed profile os_type ocaml_compiler num_jobs =
   let dependency_graph = Dependency_graph.compute package_typed in
-  let ocamllib_path = Ocaml_compiler.standard_library ocaml_compiler io_ctx in
+  let ocamllib_path = Ocaml_compiler.standard_library ocaml_compiler in
   write_dot_merlin
     t
     (Dependency_graph.root_package_with_deps dependency_graph)
     profile
     ~ocamllib_path;
-  build_dependency_graph t io_ctx dependency_graph profile os_type ocaml_compiler
+  build_dependency_graph t dependency_graph profile os_type ocaml_compiler num_jobs
 ;;
 
-let build_package t io_ctx package profile ocaml_compiler =
+let build_package t package profile ocaml_compiler num_jobs =
   Package.with_typed
     { f =
         (fun package_typed ->
-          build_package_typed t io_ctx package_typed profile ocaml_compiler)
+          build_package_typed t package_typed profile ocaml_compiler num_jobs)
     }
     package
 ;;
 
-let build t io_ctx profile os_type ocaml_compiler =
+let build t profile os_type ocaml_compiler num_jobs =
   let open Alice_ui in
-  build_package t io_ctx t.package profile os_type ocaml_compiler;
+  build_package t t.package profile os_type ocaml_compiler num_jobs;
   println
     (verb_message
        `Finished
@@ -177,7 +169,7 @@ let build t io_ctx profile os_type ocaml_compiler =
           (Package_id.name_v_version_string (Package.id t.package))))
 ;;
 
-let run t (io_ctx : _ Io_ctx.t) profile os_type ocaml_compiler ~args =
+let run t profile os_type ocaml_compiler num_jobs ~args =
   let open Alice_ui in
   let package_typed =
     match Package.typed t.package with
@@ -185,7 +177,7 @@ let run t (io_ctx : _ Io_ctx.t) profile os_type ocaml_compiler ~args =
     | `Exe_only pt -> pt
     | `Exe_and_lib pt -> Package.Typed.limit_to_exe_only pt
   in
-  build_package_typed t io_ctx package_typed profile os_type ocaml_compiler;
+  build_package_typed t package_typed profile os_type ocaml_compiler num_jobs;
   let exe_name =
     Package.name t.package
     |> Package_name.to_string
@@ -199,21 +191,29 @@ let run t (io_ctx : _ Io_ctx.t) profile os_type ocaml_compiler ~args =
   println (verb_message `Running (absolute_path_to_string exe_path));
   print_newline ();
   match
-    Alice_io.Process.Eio.run
-      io_ctx
+    Alice_io.Process.Blocking.run
       exe_filename
       ~args
       ~env:(Ocaml_compiler.env ocaml_compiler)
   with
-  | Error (`Program_not_available _) ->
+  | Error (`Prog_not_available prog) ->
     panic
       [ Pp.textf
-          "The executable %s does not exist. Alice was supposed to create that file. \
+          "The executable %S does not exist. Alice was supposed to create that file. \
            This is a bug in Alice."
-          exe_filename
+          prog
       ]
-  | Error (`Generic_error message) -> Printf.eprintf "%s" message
-  | Ok () -> ()
+  | Ok (report : Alice_io.Process.Report.t) ->
+    (match report.status with
+     | Exited code -> exit code
+     | Signaled signal | Stopped signal ->
+       println
+         (raw_message
+            (sprintf
+               "The executable %s was stopped by a signal (%d)."
+               exe_filename
+               signal));
+       exit 0)
 ;;
 
 let clean t =
@@ -223,11 +223,11 @@ let clean t =
   File_ops.rm_rf to_remove
 ;;
 
-let dot_package_build_artifacts t (io_ctx : _ Io_ctx.t) package os_type ocaml_compiler =
+let dot_package_build_artifacts t package os_type ocaml_compiler num_jobs =
   Package.with_typed
     { f =
         (fun pt ->
-          Build_graph.create pt t.build_dir os_type ocaml_compiler io_ctx
+          Build_graph.create pt t.build_dir os_type ocaml_compiler num_jobs
           |> Build_graph.dot)
     }
     package
@@ -239,5 +239,5 @@ let dot_package_dependencies package =
     package
 ;;
 
-let dot_build_artifacts t io_ctx = dot_package_build_artifacts t io_ctx t.package
+let dot_build_artifacts t num_jobs = dot_package_build_artifacts t t.package num_jobs
 let dot_dependencies t = dot_package_dependencies t.package

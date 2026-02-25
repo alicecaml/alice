@@ -10,5 +10,4 @@
   alice_package
   alice_which
   alice_ocaml_compiler
-  alice_graphviz
-  eio))
+  alice_graphviz))

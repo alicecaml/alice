@@ -100,31 +100,8 @@ module Blocking : sig
     -> (Report.t * string list, Error.t) result
 end
 
-module Eio : sig
-  type error =
-    [ `Program_not_available of string
-    | `Generic_error of string
-    ]
-
-  val result_ok_or_exn : ('a, error) result -> 'a
-  val run : _ Io_ctx.t -> string -> args:string list -> env:Env.t -> (unit, error) result
-  val run_command : _ Io_ctx.t -> Command.t -> (unit, error) result
-
-  val run_capturing_stdout_lines
-    :  _ Io_ctx.t
-    -> string
-    -> args:string list
-    -> env:Env.t
-    -> (string list, error) result
-
-  val run_command_capturing_stdout_lines
-    :  _ Io_ctx.t
-    -> Command.t
-    -> (string list, error) result
-end
-
 val run_batch_map_stdout_lines
   :  Command.t list
-  -> Concurrency.Num_jobs.t
+  -> Num_jobs.t
   -> f:(string list -> 'a)
   -> 'a list
