@@ -6,7 +6,7 @@ open Alice_package_meta
 let manifest_name = Basename.of_filename "Alice.kdl"
 
 module Parse_kdl_manifest = struct
-  let simple_string_node (node : Kdl.node) =
+  let simple_node (node : Kdl.node) ~f =
     match node with
     | { annot = Some annot; _ } ->
       Error
@@ -37,11 +37,26 @@ module Parse_kdl_manifest = struct
     | { args = [ (Some annot, _) ]; _ } ->
       Error
         [ Pp.textf "Node %S must not have type annotations. Found: %S" node.name annot ]
-    | { args = [ (None, `String string_arg) ]; _ } -> Ok string_arg
-    | { args = [ (None, arg) ]; _ } ->
-      Kdl.pp_value Format.str_formatter arg;
-      let arg_s = Format.flush_str_formatter () in
-      Error [ Pp.textf "Node %S must have a string argument. Found: %S" node.name arg_s ]
+    | { args = [ (None, value) ]; _ } -> f value
+  ;;
+
+  let simple_string_node node =
+    simple_node node ~f:(function
+      | `String string_value -> Ok string_value
+      | other ->
+        Kdl.pp_value Format.str_formatter other;
+        let arg_s = Format.flush_str_formatter () in
+        Error
+          [ Pp.textf "Node %S must have a string argument. Found: %S" node.name arg_s ])
+  ;;
+
+  let simple_bool_node node =
+    simple_node node ~f:(function
+      | `Bool bool_value -> Ok bool_value
+      | other ->
+        Kdl.pp_value Format.str_formatter other;
+        let arg_s = Format.flush_str_formatter () in
+        Error [ Pp.textf "Node %S must have a bool argument. Found: %S" node.name arg_s ])
   ;;
 
   module Dependency_field_names = struct
@@ -149,7 +164,8 @@ module Parse_kdl_manifest = struct
     let name = "name"
     let version = "version"
     let dependencies = "dependencies"
-    let all = [ name; version; dependencies ]
+    let unix = "unix"
+    let all = [ name; version; dependencies; unix ]
   end
 
   let package_node_children (children : Kdl.node list) =
@@ -169,6 +185,7 @@ module Parse_kdl_manifest = struct
     let name = find_node F.name in
     let version = find_node F.version in
     let dependencies = find_node F.dependencies in
+    let unix = find_node F.unix in
     match name, version with
     | None, _ ->
       Error [ Pp.textf "Node \"package\" is missing required field: %S" F.name ]
@@ -185,7 +202,14 @@ module Parse_kdl_manifest = struct
           let+ dependencies = dependencies_node dependencies in
           Some dependencies
       in
-      let meta = Package_meta.create ~id ~dependencies in
+      let* unix =
+        match unix with
+        | None -> Ok None
+        | Some unix_node ->
+          let+ unix = simple_bool_node unix_node in
+          Some unix
+      in
+      let meta = Package_meta.create ~id ~dependencies ~unix in
       Ok meta
   ;;
 
@@ -267,13 +291,18 @@ module Generate_kdl_manifest = struct
     Kdl.node Parse_kdl_manifest.Package_field_names.dependencies children
   ;;
 
+  let unix unix =
+    Kdl.node Parse_kdl_manifest.Package_field_names.unix ~args:[ None, `Bool unix ] []
+  ;;
+
   let package package_meta =
     let name = name (Package_meta.name package_meta) in
     let version = version (Package_meta.version package_meta) in
     let dependencies =
       Package_meta.dependencies_ package_meta |> Option.map ~f:dependencies
     in
-    Kdl.node "package" (List.filter_opt [ Some name; Some version; dependencies ])
+    let unix = Package_meta.unix_ package_meta |> Option.map ~f:unix in
+    Kdl.node "package" (List.filter_opt [ Some name; Some version; dependencies; unix ])
   ;;
 
   let document package_meta = [ package package_meta ]

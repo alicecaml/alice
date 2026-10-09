@@ -40,11 +40,7 @@ let make_project name path kind =
             (Alice_ui.absolute_path_to_string src_path)
         ; Pp.text "Delete this file before proceeding."
         ];
-  let manifest =
-    Package_meta.create
-      ~id:{ name; version = Semantic_version.of_string_exn "0.1.0" }
-      ~dependencies:None
-  in
+  let version = Semantic_version.of_string_exn "0.1.0" in
   File_ops.mkdir_p src_path;
   (match kind with
    | `Exe ->
@@ -55,7 +51,25 @@ let make_project name path kind =
      File_ops.write_text_file
        (src_path / Package.lib_root_ml)
        "let add lhs rhs = lhs + rhs");
-  Alice_manifest.write_package_manifest ~manifest_path manifest;
+  let manifest_text =
+    (* The initial manifest is generated explicitly rather than serializing a
+       manifest with [Alice_manifest.write_package_manifest] so that manifest
+       can contain comments and the explicit empty list of dependencies. *)
+    sprintf
+      {|package {
+  name %s
+  version "%s"
+
+  dependencies {
+  }
+
+  // Allow access to the [Unix] module.
+  unix #true
+}|}
+      (Package_name.to_string name)
+      (Semantic_version.to_string version)
+  in
+  File_ops.write_text_file manifest_path manifest_text;
   let project = Project.of_package (Package.read_root path) in
   Project.write_dot_merlin_initial project;
   Project.write_dot_gitignore project
