@@ -197,17 +197,17 @@ module Parse_kdl_manifest = struct
       let id = { Package_id.name; version } in
       let* dependencies =
         match dependencies with
-        | None -> Ok None
-        | Some dependencies ->
-          let+ dependencies = dependencies_node dependencies in
-          Some dependencies
+        | None ->
+          (* Dependencies are empty if unspecified. *)
+          Ok Dependencies.empty
+        | Some dependencies -> dependencies_node dependencies
       in
       let* unix =
         match unix with
-        | None -> Ok None
-        | Some unix_node ->
-          let+ unix = simple_bool_node unix_node in
-          Some unix
+        | None ->
+          (* Unix is false if unspecified. *)
+          Ok false
+        | Some unix_node -> simple_bool_node unix_node
       in
       let meta = Package_meta.create ~id ~dependencies ~unix in
       Ok meta
@@ -298,11 +298,9 @@ module Generate_kdl_manifest = struct
   let package package_meta =
     let name = name (Package_meta.name package_meta) in
     let version = version (Package_meta.version package_meta) in
-    let dependencies =
-      Package_meta.dependencies_ package_meta |> Option.map ~f:dependencies
-    in
-    let unix = Package_meta.unix_ package_meta |> Option.map ~f:unix in
-    Kdl.node "package" (List.filter_opt [ Some name; Some version; dependencies; unix ])
+    let dependencies = dependencies (Package_meta.dependencies package_meta) in
+    let unix = unix (Package_meta.unix package_meta) in
+    Kdl.node "package" [ name; version; dependencies; unix ]
   ;;
 
   let document package_meta = [ package package_meta ]
