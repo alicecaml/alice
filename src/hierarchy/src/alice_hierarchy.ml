@@ -22,6 +22,8 @@ module Basename = struct
     check_filename filename |> Result.map ~f:(Fun.const filename)
   ;;
 
+  let of_filename_opt filename = of_filename_result filename |> Result.to_option
+
   let of_filename filename =
     match of_filename_result filename with
     | Ok t -> t
@@ -55,6 +57,7 @@ module Relative_path = struct
   let to_dyn = Filename.to_dyn
   let equal = Filename.equal
   let of_basename t = t
+  let to_basename_opt = Basename.of_filename_opt
 
   let of_filename_result filename =
     if Filename.is_relative filename then Ok filename else Error `Not_relative
@@ -164,6 +167,15 @@ module Absolute_path = struct
   let chop_prefix t ~prefix =
     let filename = Filename.chop_prefix (to_filename t) ~prefix:(to_filename prefix) in
     Relative_path.of_filename filename
+  ;;
+
+  let chop_prefix_opt t ~prefix =
+    Filename.chop_prefix_opt (to_filename t) ~prefix:(to_filename prefix)
+    |> Option.map ~f:Relative_path.of_filename
+  ;;
+
+  let is_prefix t ~prefix =
+    Filename.is_prefix (to_filename t) ~prefix:(to_filename prefix)
   ;;
 
   module Non_root = struct

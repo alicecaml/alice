@@ -23,5 +23,6 @@ val get_deps_batch
   :  t
   -> Ocaml_compiler.t
   -> Alice_io.Num_jobs.t
-  -> source_paths:Absolute_path.non_root_t list
+  -> local_src_dir_path:Absolute_path.non_root_t
+  -> src_file_names:Basename.t list
   -> (Absolute_path.non_root_t * Ocaml_compiler.Deps.t) list

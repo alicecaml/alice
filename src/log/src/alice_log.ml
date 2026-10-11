@@ -17,6 +17,7 @@ let to_int = function
   | `Error -> 3
 ;;
 
+let is_enabled level = to_int level >= to_int !current_level
 let tag_debug = Ansi_style.create ~color:`Magenta ()
 let tag_info = Ansi_style.create ~color:`Blue ()
 let tag_warn = Ansi_style.create ~color:`Yellow ()

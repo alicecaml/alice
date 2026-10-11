@@ -28,6 +28,9 @@ module Relative_path : sig
   val equal : t -> t -> bool
   val of_basename : Basename.t -> t
 
+  (** Returns [None] if passed a relative path with multiple components. *)
+  val to_basename_opt : t -> Basename.t option
+
   (** Panics if the given filename is not a relative path. *)
   val of_filename : Filename.t -> t
 
@@ -92,6 +95,8 @@ module Absolute_path : sig
   val basename : non_root_t -> Basename.t
   val is_root : 'is_root t -> 'is_root Type_bool.t
   val chop_prefix : _ t -> prefix:_ t -> Relative_path.t
+  val chop_prefix_opt : _ t -> prefix:_ t -> Relative_path.t option
+  val is_prefix : _ t -> prefix:_ t -> bool
 end
 
 module Either_path : sig

@@ -46,13 +46,14 @@ let store t (dep_table : dep_table) =
     Marshal.to_channel channel dep_table [])
 ;;
 
-let get_deps_batch t ocaml_compiler num_jobs ~source_paths =
+let get_deps_batch t ocaml_compiler num_jobs ~local_src_dir_path ~src_file_names =
   let path = Build_dir.package_ocamldeps_cache_file t.build_dir t.package_id in
-  let source_paths_to_compute_deps_for, known_deps =
-    List.partition_map source_paths ~f:(fun source_path ->
+  let src_file_names_to_compute_deps_for, known_deps =
+    List.partition_map src_file_names ~f:(fun src_file_name ->
+      let source_path = Absolute_path.concat_basename local_src_dir_path src_file_name in
       let source_mtime = File_ops.mtime source_path in
       if source_mtime > t.mtime
-      then Left source_path
+      then Left src_file_name
       else (
         match Absolute_path.Non_root_map.find_opt source_path t.dep_table with
         | Some deps -> Right (source_path, deps)
@@ -68,23 +69,40 @@ let get_deps_batch t ocaml_compiler num_jobs ~source_paths =
                 (Alice_ui.absolute_path_to_string path)
                 (Alice_ui.absolute_path_to_string source_path)
             ];
-          Left source_path))
+          Left src_file_name))
   in
   let computed_deps =
-    List.iter source_paths_to_compute_deps_for ~f:(fun source_path ->
-      Log.info
-        ~package_id:t.package_id
-        [ Pp.textf
-            "Analyzing dependencies of file: %s"
-            (Alice_ui.absolute_path_to_string source_path)
-        ]);
+    if Alice_log.is_enabled `Info
+    then
+      List.iter src_file_names_to_compute_deps_for ~f:(fun src_file_name ->
+        Log.info
+          ~package_id:t.package_id
+          [ Pp.textf
+              "Analyzing dependencies of file: %s"
+              (Alice_ui.absolute_path_to_string
+                 (Absolute_path.concat_basename local_src_dir_path src_file_name))
+          ]);
     let deps =
       Ocaml_compiler.depends_native_batch
         ocaml_compiler
         num_jobs
-        source_paths_to_compute_deps_for
+        ~local_src_dir_path
+        ~src_file_names:src_file_names_to_compute_deps_for
     in
-    List.zip source_paths_to_compute_deps_for deps
+    if Alice_log.is_enabled `Debug
+    then
+      List.iter deps ~f:(fun { Ocaml_compiler.Deps.output; inputs } ->
+        Alice_log.debug
+          [ Pp.textf
+              "Deps of %s: %s"
+              (Basename.to_filename output)
+              (List.map inputs ~f:Basename.to_filename |> String.concat ~sep:", ")
+          ]);
+    List.zip
+      (List.map
+         src_file_names_to_compute_deps_for
+         ~f:(Absolute_path.concat_basename local_src_dir_path))
+      deps
   in
   List.append known_deps computed_deps
 ;;

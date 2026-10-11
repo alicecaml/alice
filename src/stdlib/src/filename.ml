@@ -115,6 +115,8 @@ let chop_prefix ~prefix t =
       (Invalid_argument (Printf.sprintf "Path %S doesn't start with prefix %S" t prefix))
 ;;
 
+let is_prefix ~prefix t = Option.is_some (chop_prefix_opt ~prefix t)
+
 let normalize_components components =
   let rec loop remaining non_parent_stack parent_prefix_count =
     match remaining with

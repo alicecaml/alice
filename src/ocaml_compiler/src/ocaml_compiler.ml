@@ -12,86 +12,6 @@ let filename { filename; _ } = filename
 let env { env; _ } = env
 let command { filename; env } ~args = Command.create filename ~args env
 
-module Depend = struct
-  let command ocaml_compiler args = command ocaml_compiler ~args:("-depend" :: args)
-
-  module Deps = struct
-    type t =
-      { output : Basename.t
-      ; inputs : Basename.t list
-      }
-
-    let to_dyn { output; inputs } =
-      Dyn.record
-        [ "output", Basename.to_dyn output; "inputs", Dyn.list Basename.to_dyn inputs ]
-    ;;
-
-    let separator_pattern = lazy (Re.str " : " |> Re.compile)
-
-    let of_line line =
-      let parts = Re.split_delim (Lazy.force separator_pattern) line in
-      let left, right =
-        match parts with
-        | [] | _ :: _ :: _ :: _ ->
-          panic
-            [ Pp.textf
-                "Expected line of the form \"<output> : <inputs>\", but got %S"
-                line
-            ]
-        | [ left ] -> String.trim left, ""
-        | [ left; right ] ->
-          let left = String.trim left in
-          let right = String.trim right in
-          left, right
-      in
-      let output =
-        Absolute_path.of_filename_assert_non_root left |> Absolute_path.basename
-      in
-      let inputs =
-        if String.is_empty right
-        then []
-        else
-          String.split_on_char right ~sep:' '
-          |> List.map ~f:(fun filename ->
-            Absolute_path.of_filename_assert_non_root filename |> Absolute_path.basename)
-      in
-      { output; inputs }
-    ;;
-  end
-
-  module Native_deps = struct
-    let command ocaml_compiler path =
-      command
-        ocaml_compiler
-        [ "-one-line"
-        ; "-native"
-        ; "-I"
-        ; Absolute_path.parent path |> Absolute_path.Root_or_non_root.to_filename
-        ; Absolute_path.to_filename path
-        ]
-    ;;
-
-    let parse_stdout_lines = function
-      | [ line ] | [ line; "" ] -> Deps.of_line line
-      | [] -> panic [ Pp.text "Unexpected empty output!" ]
-      | lines ->
-        panic
-          [ Pp.text "Unexpected multiple lines of output:"
-          ; Pp.concat_map lines ~f:(Pp.textf "%S") ~sep:(Pp.text ", ")
-          ]
-    ;;
-
-    let run_batch ocaml_compiler num_jobs paths =
-      let commands = List.map paths ~f:(command ocaml_compiler) in
-      Alice_io.Process.run_batch_map_stdout_lines commands num_jobs ~f:parse_stdout_lines
-    ;;
-  end
-end
-
-module Deps = Depend.Deps
-
-let depends_native_batch = Depend.Native_deps.run_batch
-
 module Config = struct
   let command ocaml_compiler = command ocaml_compiler ~args:[ "-config" ]
 
@@ -132,4 +52,110 @@ module Config = struct
   ;;
 end
 
+module Depend = struct
+  let command ocaml_compiler args = command ocaml_compiler ~args:("-depend" :: args)
+
+  module Deps = struct
+    type t =
+      { output : Basename.t
+      ; inputs : Basename.t list
+      }
+
+    let to_dyn { output; inputs } =
+      Dyn.record
+        [ "output", Basename.to_dyn output; "inputs", Dyn.list Basename.to_dyn inputs ]
+    ;;
+
+    let separator_pattern = lazy (Re.str " : " |> Re.compile)
+
+    let of_line ~local_src_dir_path line =
+      let parts = Re.split_delim (Lazy.force separator_pattern) line in
+      let left, right =
+        match parts with
+        | [] | _ :: _ :: _ :: _ ->
+          panic
+            [ Pp.textf
+                "Expected line of the form \"<output> : <inputs>\", but got %S"
+                line
+            ]
+        | [ left ] -> String.trim left, ""
+        | [ left; right ] ->
+          let left = String.trim left in
+          let right = String.trim right in
+          left, right
+      in
+      let output_absolute = Absolute_path.of_filename_assert_non_root left in
+      let output = Absolute_path.basename output_absolute in
+      let inputs =
+        if String.is_empty right
+        then []
+        else
+          String.split_on_char right ~sep:' '
+          |> List.map ~f:(fun filename ->
+            let input_path = Absolute_path.of_filename_assert_non_root filename in
+            match Absolute_path.chop_prefix_opt input_path ~prefix:local_src_dir_path with
+            | Some local_src_file ->
+              (match Relative_path.to_basename_opt local_src_file with
+               | Some basename -> basename
+               | None ->
+                 Alice_error.panic
+                   [ Pp.textf
+                       "Expected all dependencies under local src dir to be at a depth \
+                        of 1 but encountered dependency %S while enumerating \
+                        dependencies of %S."
+                       (Absolute_path.to_filename input_path)
+                       (Absolute_path.to_filename output_absolute)
+                   ])
+            | None ->
+              Alice_error.panic
+                [ Pp.textf
+                    "Expected all dependencies to be under local src dir but encountered \
+                     dependency %S while enumerating dependencies of %S."
+                    (Absolute_path.to_filename input_path)
+                    (Absolute_path.to_filename output_absolute)
+                ])
+      in
+      { output; inputs }
+    ;;
+  end
+
+  module Native_deps = struct
+    let command ocaml_compiler path =
+      command
+        ocaml_compiler
+        [ "-one-line"
+        ; "-native"
+        ; "-I"
+        ; Absolute_path.parent path |> Absolute_path.Root_or_non_root.to_filename
+        ; Absolute_path.to_filename path
+        ]
+    ;;
+
+    let parse_stdout_lines ~local_src_dir_path = function
+      | [ line ] | [ line; "" ] -> Deps.of_line ~local_src_dir_path line
+      | [] -> panic [ Pp.text "Unexpected empty output!" ]
+      | lines ->
+        panic
+          [ Pp.text "Unexpected multiple lines of output:"
+          ; Pp.concat_map lines ~f:(Pp.textf "%S") ~sep:(Pp.text ", ")
+          ]
+    ;;
+
+    let run_batch ocaml_compiler num_jobs ~local_src_dir_path ~src_file_names =
+      let commands =
+        List.map src_file_names ~f:(fun src_file_name ->
+          Absolute_path.concat_basename local_src_dir_path src_file_name
+          |> command ocaml_compiler)
+      in
+      Alice_io.Process.run_batch_map_stdout_lines
+        commands
+        num_jobs
+        ~f:(parse_stdout_lines ~local_src_dir_path)
+    ;;
+  end
+end
+
+module Deps = Depend.Deps
+
+let depends_native_batch = Depend.Native_deps.run_batch
 let standard_library = Config.standard_library

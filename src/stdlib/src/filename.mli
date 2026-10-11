@@ -34,8 +34,17 @@ val to_components : t -> Components.t
     path separators. *)
 val equal_components : t -> t -> bool
 
+(** Removes the given prefix from t returning the remaining path. A path is a
+    prefix of another path if its components are identical to a leading
+    sequence of components from the second path. Prefixes within names are not
+    considered, ie. this is different from removing the prefixf from the string
+    representation of the path.
+
+    Returns [None] if [prefix] is not a prefix of the path. *)
 val chop_prefix_opt : prefix:t -> t -> t option
+
 val chop_prefix : prefix:t -> t -> t
+val is_prefix : prefix:t -> t -> bool
 
 (** Is this a filesystem root. On unix this is true only for the system's root
     directory. On windows this is true for the root of any drive. *)

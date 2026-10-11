@@ -44,4 +44,9 @@ module Make (Key : Key) : S with type key = Key.t = struct
 
   let keys t = to_seq t |> Seq.map ~f:fst |> List.of_seq
   let values t = to_seq t |> Seq.map ~f:snd |> List.of_seq
+
+  let find k t =
+    try find k t with
+    | Not_found -> Panic.panic "Key not found in map"
+  ;;
 end

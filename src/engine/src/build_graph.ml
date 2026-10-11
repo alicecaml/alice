@@ -19,7 +19,14 @@ module Build_dag = struct
     let op_deps op =
       Typed_op.generated_inputs op
       |> List.map ~f:(fun input ->
-        Typed_op.Generated_file.Map.find input ops_by_output_files)
+        match Typed_op.Generated_file.Map.find_opt input ops_by_output_files with
+        | Some x -> x
+        | None ->
+          Alice_error.panic
+            [ Pp.textf
+                "Unable to find generated file named %S"
+                (Typed_op.Generated_file.path input |> Basename.to_filename)
+            ])
     in
     List.fold_left ops ~init:Staging.empty ~f:(fun acc op ->
       Staging.add_or_panic acc op () ~eq:Unit.equal ~child_names:(op_deps op))
@@ -153,18 +160,28 @@ module Build_plan = struct
   ;;
 end
 
-let compilation_ops dir package_id build_dir ocaml_compiler num_jobs =
+let compilation_ops src_dir package_id build_dir ocaml_compiler num_jobs =
   let ocamldep_cache = Ocamldep_cache.load build_dir package_id in
-  let source_paths =
-    Dir_non_root.contents dir
-    |> List.filter ~f:(fun file ->
-      File_non_root.is_regular_or_link file
-      && (Absolute_path.has_extension file.path ~ext:".ml"
-          || Absolute_path.has_extension file.path ~ext:".mli"))
-    |> List.map ~f:(fun (file : File_non_root.t) -> file.path)
+  let src_file_names =
+    Dir_non_root.contents src_dir
+    |> List.filter_map ~f:(fun (file : File_non_root.t) ->
+      (* The build rules will only consider .ml and .mli files from the source directory. *)
+      if
+        File_non_root.is_regular_or_link file
+        && (Absolute_path.has_extension file.path ~ext:".ml"
+            || Absolute_path.has_extension file.path ~ext:".mli")
+      then (
+        let basename = Absolute_path.basename file.path in
+        Some basename)
+      else None)
   in
   let deps_key_value_pairs =
-    Ocamldep_cache.get_deps_batch ocamldep_cache ocaml_compiler num_jobs ~source_paths
+    Ocamldep_cache.get_deps_batch
+      ocamldep_cache
+      ocaml_compiler
+      num_jobs
+      ~src_file_names
+      ~local_src_dir_path:(Dir_non_root.path src_dir)
   in
   let deps = Absolute_path.Non_root_map.of_list_exn deps_key_value_pairs in
   Ocamldep_cache.store ocamldep_cache deps;
@@ -209,7 +226,7 @@ let compilation_ops dir package_id build_dir ocaml_compiler num_jobs =
       in
       let matching_mli_file = Absolute_path.replace_extension source_path ~ext:".mli" in
       let interface_output_if_no_matching_mli_is_present =
-        if Dir_non_root.contains dir matching_mli_file
+        if Dir_non_root.contains src_dir matching_mli_file
         then None
         else
           Some

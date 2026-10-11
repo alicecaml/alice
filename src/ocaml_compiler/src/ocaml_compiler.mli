@@ -23,15 +23,17 @@ module Deps : sig
   val to_dyn : t -> Dyn.t
 end
 
-(** [depends_native_batch file] takes a batch of paths to source or interface files
+(** [depends_native_batch num_jobs files ~local_src_dir_path] takes a batch of
+    source or interface files which exist in the directory at [local_src_dir_path]
     and returns the corresponding paths to files which will contain their
-    compiled output ([Deps.output]), as well as the files which must be
-    generated before compiling the given file ([Deps.inputs]). Returned paths
-    are relative to the directory containing source files. *)
+    compiled output ([Deps.output]), as well as the files which must be generated
+    before compiling the given file ([Deps.inputs]). Returned paths are relative
+    to the directory containing source files. *)
 val depends_native_batch
   :  t
   -> Alice_io.Num_jobs.t
-  -> Absolute_path.non_root_t list
+  -> local_src_dir_path:Absolute_path.non_root_t
+  -> src_file_names:Basename.t list
   -> Deps.t list
 
 (** Returns the "standard_library" path from the output of running the compiler

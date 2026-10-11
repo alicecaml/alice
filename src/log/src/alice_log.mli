@@ -10,6 +10,7 @@ type level =
 type package_id := Alice_package_meta.Package_id.t
 
 val set_level : level -> unit
+val is_enabled : level -> bool
 
 (** The type of __POS__ (the current file position) for convenience passing the
     value of __POS__ to logging functions. *)

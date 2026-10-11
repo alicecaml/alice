@@ -20,5 +20,6 @@ module Set = Set
 module String = String
 module Type_bool = Type_bool
 module Xdg = Xdg
+module Panic = Panic
 
 let sprintf = Printf.sprintf

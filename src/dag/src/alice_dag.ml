@@ -90,7 +90,14 @@ module Make (Name : Name) = struct
     Array.to_seq t.nodes |> Seq.filter ~f:(fun node -> List.is_empty (Node.children node))
   ;;
 
-  let get_node t ~name = Name.Map.find name t.nodes_by_name
+  let get_node t ~name =
+    match Name.Map.find_opt name t.nodes_by_name with
+    | Some node -> node
+    | None ->
+      Alice_error.panic
+        [ Pp.textf "Failed to find node with name: %s" (Name.to_dyn name |> Dyn.to_string)
+        ]
+  ;;
 
   let to_string_graph t ~node_to_string =
     Name.Map.values t.nodes_by_name
@@ -182,7 +189,16 @@ module Make (Name : Name) = struct
     (* Returns any cycle from the graph, if one exists. *)
     let get_cycle (t : _ t) =
       let rec loop name seen path =
-        let node = Name.Map.find name t in
+        let node =
+          match Name.Map.find_opt name t with
+          | Some node -> node
+          | None ->
+            Alice_error.panic
+              [ Pp.textf
+                  "While checking for cycles in DAG, unable to find node named %S."
+                  (Name.to_dyn name |> Dyn.to_string)
+              ]
+        in
         if Name.Set.mem name seen
         then Some path
         else (
@@ -221,7 +237,16 @@ module Make (Name : Name) = struct
         |> Seq.map ~f:(fun (node : _ Node.t) -> node.name, node)
         |> Name.Map.of_seq
       in
-      let get_node name = Name.Map.find name nodes_by_name in
+      let get_node name =
+        match Name.Map.find_opt name nodes_by_name with
+        | Some node -> node
+        | None ->
+          Alice_error.panic
+            [ Pp.textf
+                "While finalizing DAG, no node with name: %s"
+                (Name.to_dyn name |> Dyn.to_string)
+            ]
+      in
       Array.iter nodes ~f:(fun (node : _ Node.t) ->
         List.iter node.child_names ~f:(fun child_name ->
           let child_node = get_node child_name in
