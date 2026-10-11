@@ -63,6 +63,7 @@ module Typed : sig
   val package : (_, _) t -> package
   val name : (_, _) t -> Package_name.t
   val id : (_, _) t -> Package_id.t
+  val unix : (_, _) t -> bool
   val type_ : ('exe, 'lib) t -> ('exe, 'lib) type_
   val contains_exe : ('exe, _) t -> 'exe Type_bool.t
   val contains_lib : (_, 'lib) t -> 'lib Type_bool.t

@@ -73,212 +73,287 @@ module Action = struct
   ;;
 end
 
-let op_action op package_with_deps profile build_dir ocaml_compiler =
-  let open Typed_op.File in
-  let package = Package_with_deps.package package_with_deps in
-  let transitive_dep_libs =
-    Package_with_deps.transitive_dependency_closure_excluding_package package_with_deps
-  in
-  let immediate_dep_libs =
-    Package_with_deps.immediate_deps_in_dependency_order package_with_deps
-  in
-  let lib_open_args =
-    List.concat_map immediate_dep_libs ~f:(fun dep_lib ->
-      let module_name =
-        Package_with_deps.name dep_lib |> Module_name.public_interface_to_open
+module Action_builder = struct
+  open Typed_op.File
+
+  type compile_args =
+    { unix : string list
+    ; lsp_only : string list
+    ; non_lsp_only : string list
+    ; stop_after_typing : string list
+    }
+
+  type dep_args =
+    { cmxa_files : string list
+    ; include_ : string list
+    ; open_ : string list
+    }
+
+  type dirs =
+    { private_ : Absolute_path.non_root_t
+    ; public : Absolute_path.non_root_t
+    ; public_for_lsp : Absolute_path.non_root_t
+    ; executable : Absolute_path.non_root_t
+    }
+
+  (** All the information necessary to compute a build command from a
+      [Typed_op.t] *)
+  type ('exe, 'lib) t =
+    { package_with_deps : ('exe, 'lib) Package_with_deps.t
+    ; profile : Profile.t
+    ; build_dir : Build_dir.t
+    ; ocaml_compiler : Ocaml_compiler.t
+    ; compile_args : compile_args
+    ; dep_args : dep_args
+    ; dirs : dirs
+    ; any_dep_requires_unix : bool
+    }
+
+  let create package_with_deps profile build_dir ocaml_compiler =
+    let package = Package_with_deps.package package_with_deps in
+    let transitive_dep_libs =
+      Package_with_deps.transitive_dependency_closure_excluding_package package_with_deps
+    in
+    let package_id = Package.id package in
+    let package_pack = Typed_op.Pack.of_package_name (Package.name package) in
+    let dep_args =
+      let cmxa_files =
+        let transitive_dep_libs =
+          Package_with_deps.transitive_dependency_closure_excluding_package
+            package_with_deps
+        in
+        List.map transitive_dep_libs ~f:(fun dep_lib ->
+          let package_id = Package.Typed.package dep_lib |> Package.id in
+          let public = Build_dir.package_public_dir build_dir package_id profile in
+          public / Linked.path Linked.lib_cmxa |> Absolute_path.to_filename)
       in
-      [ "-open"; Module_name.to_string_uppercase_first_letter module_name ])
-  in
-  let lib_include_args =
-    List.concat_map transitive_dep_libs ~f:(fun dep_lib ->
-      let package_id = Package.Typed.package dep_lib |> Package.id in
-      [ "-I"
-      ; Build_dir.package_public_dir build_dir package_id profile
-        |> Absolute_path.to_filename
-      ])
-  in
-  let lib_cmxa_files =
-    List.map transitive_dep_libs ~f:(fun dep_lib ->
-      let package_id = Package.Typed.package dep_lib |> Package.id in
+      let immediate_dep_libs =
+        Package_with_deps.immediate_deps_in_dependency_order package_with_deps
+      in
+      let open_ =
+        List.concat_map immediate_dep_libs ~f:(fun dep_lib ->
+          let module_name =
+            Package_with_deps.name dep_lib |> Module_name.public_interface_to_open
+          in
+          [ "-open"; Module_name.to_string_uppercase_first_letter module_name ])
+      in
+      let include_ =
+        List.concat_map transitive_dep_libs ~f:(fun dep_lib ->
+          let package_id = Package.Typed.package dep_lib |> Package.id in
+          [ "-I"
+          ; Build_dir.package_public_dir build_dir package_id profile
+            |> Absolute_path.to_filename
+          ])
+      in
+      { cmxa_files; open_; include_ }
+    in
+    let dirs : dirs =
+      let private_ = Build_dir.package_private_dir build_dir package_id profile in
       let public = Build_dir.package_public_dir build_dir package_id profile in
-      public / Linked.path Linked.lib_cmxa |> Absolute_path.to_filename)
-  in
-  let package_id = Package.id package in
-  let private_ = Build_dir.package_private_dir build_dir package_id profile in
-  let public = Build_dir.package_public_dir build_dir package_id profile in
-  let public_for_lsp =
-    Build_dir.package_public_for_lsp_dir build_dir package_id profile
-  in
-  let compiled_absolute_filename compiled =
-    let compiled = Typed_op.File.Compiled.generated_file_compiled compiled in
-    Build_dir.package_generated_file_compiled build_dir package_id profile compiled
-    |> Absolute_path.to_filename
-  in
-  let executable = Build_dir.package_executable_dir build_dir package_id profile in
-  let package_pack = Typed_op.Pack.of_package_name (Package.name package) in
-  let stop_after_typing_args = [ "-stop-after"; "typing" ] in
-  let compile_args_common_not_lsp =
-    [ "-I"
-    ; Absolute_path.to_filename private_
-    ; "-for-pack"
-    ; Typed_op.Pack.module_name package_pack
-      |> Module_name.to_string_uppercase_first_letter
-    ]
-  in
-  let compile_args_common_lsp =
-    [ (* Open this package's own internal module pack so modules with the same name
+      let public_for_lsp =
+        Build_dir.package_public_for_lsp_dir build_dir package_id profile
+      in
+      let executable = Build_dir.package_executable_dir build_dir package_id profile in
+      { private_; public; public_for_lsp; executable }
+    in
+    let compile_args =
+      let unix =
+        if Package_with_deps.unix package_with_deps then [ "-I"; "+unix" ] else []
+      in
+      let lsp_only =
+        [ (* Open this package's own internal module pack so modules with the same name
          as the package are still visible when generating a different (and largely
          unrelated!) module also named after the package. *)
-      "-open"
-    ; Module_name.internal_modules (Package.name package)
-      |> Module_name.to_string_uppercase_first_letter
-    ; (* The package's own public directory must be part of the search
+          "-open"
+        ; Module_name.internal_modules (Package.name package)
+          |> Module_name.to_string_uppercase_first_letter
+        ; (* The package's own public directory must be part of the search
          path so its internal module package can be opened. *)
-      "-I"
-    ; Absolute_path.to_filename public
-    ]
-  in
-  let compile_args_unix =
-    if Package_with_deps.unix package_with_deps then [ "-I"; "+unix" ] else []
-  in
-  let link_args_unix =
-    if Package_with_deps.unix package_with_deps
-    then [ Ocaml_compiler.unix_cmxa ocaml_compiler |> Absolute_path.to_filename ]
-    else []
-  in
-  match (op : Typed_op.t) with
-  | Compile_source { source_input; cmx_output; stop_after_typing; _ } ->
-    let stop_after_typing_args =
-      if stop_after_typing then stop_after_typing_args else []
+          "-I"
+        ; Absolute_path.to_filename dirs.public
+        ]
+      in
+      let non_lsp_only =
+        [ "-I"
+        ; Absolute_path.to_filename dirs.private_
+        ; "-for-pack"
+        ; Typed_op.Pack.module_name package_pack
+          |> Module_name.to_string_uppercase_first_letter
+        ]
+      in
+      let stop_after_typing = [ "-stop-after"; "typing" ] in
+      { unix; lsp_only; non_lsp_only; stop_after_typing }
     in
-    let lsp_output_args =
-      match Typed_op.File.Compiled.visibility cmx_output with
-      | Public_for_lsp ->
-        compile_args_common_lsp
-        @ [ (* Include the public_for_lsp directory in the search path so packages
+    let any_dep_requires_unix =
+      Package_with_deps.unix package_with_deps
+      || List.exists transitive_dep_libs ~f:Package.Typed.unix
+    in
+    { package_with_deps
+    ; profile
+    ; build_dir
+    ; ocaml_compiler
+    ; dep_args
+    ; compile_args
+    ; dirs
+    ; any_dep_requires_unix
+    }
+  ;;
+
+  let compiled_absolute_filename t compiled =
+    let compiled = Typed_op.File.Compiled.generated_file_compiled compiled in
+    Build_dir.package_generated_file_compiled
+      t.build_dir
+      (Package_with_deps.package_id t.package_with_deps)
+      t.profile
+      compiled
+    |> Absolute_path.to_filename
+  ;;
+
+  let op_action t op : Action.t =
+    match (op : Typed_op.t) with
+    | Compile_source { source_input; cmx_output; stop_after_typing; _ } ->
+      let stop_after_typing_args =
+        if stop_after_typing then t.compile_args.stop_after_typing else []
+      in
+      let lsp_output_args =
+        match Typed_op.File.Compiled.visibility cmx_output with
+        | Public_for_lsp ->
+          t.compile_args.lsp_only
+          @ [ (* Include the public_for_lsp directory in the search path so packages
                with a lib.mli file can have their <package>.cmx file compiled
                against an already-existing <package>.cmi file in public_for_lsp. *)
-            "-I"
-          ; Absolute_path.to_filename public_for_lsp
-          ]
-      | _ -> compile_args_common_not_lsp
-    in
-    Action.Command
-      (Profile.ocaml_compiler_command
-         profile
-         ocaml_compiler
-         ~args:
-           (lib_include_args
-            @ lib_open_args
-            @ stop_after_typing_args
-            @ lsp_output_args
-            @ compile_args_unix
-            @ [ "-c"
-              ; "-bin-annot" (* Needed for LSP *)
-              ; "-o"
-              ; compiled_absolute_filename cmx_output
-              ; "-impl"
-              ; Absolute_path.to_filename @@ Source.path source_input
-              ]))
-  | Compile_interface { interface_input; cmi_output; stop_after_typing; _ } ->
-    let stop_after_typing_args =
-      if stop_after_typing then stop_after_typing_args else []
-    in
-    let lsp_output_args =
-      match Typed_op.File.Compiled.visibility cmi_output with
-      | Public_for_lsp -> compile_args_common_lsp
-      | _ -> compile_args_common_not_lsp
-    in
-    Command
-      (Profile.ocaml_compiler_command
-         profile
-         ocaml_compiler
-         ~args:
-           (lib_include_args
-            @ lib_open_args
-            @ stop_after_typing_args
-            @ lsp_output_args
-            @ compile_args_unix
-            @ [ "-c"
-              ; "-bin-annot" (* Needed for LSP *)
-              ; "-o"
-              ; compiled_absolute_filename cmi_output
-              ; "-intf"
-              ; Source.path interface_input |> Absolute_path.to_filename
-              ]))
-  | Pack_library { cmx_inputs; pack; _ } ->
-    if not (Typed_op.Pack.equal pack package_pack)
-    then
-      panic
-        [ Pp.textf
-            "Tried to generate pack module for package %S but we're currently building a \
-             different package (%S)."
-            (Package_name.to_string @@ Typed_op.Pack.package_name pack)
-            (Package_name.to_string @@ Typed_op.Pack.package_name package_pack)
-        ];
-    Command
-      (Profile.ocaml_compiler_command
-         profile
-         ocaml_compiler
-         ~args:
-           (List.map cmx_inputs ~f:compiled_absolute_filename
-            @ [ "-pack"; "-o"; compiled_absolute_filename (Typed_op.Pack.cmx_file pack) ]
-           ))
-  | Generate_public_interface_to_open { ml_output } ->
-    let output_path =
-      Build_dir.package_generated_file
-        build_dir
-        package_id
-        profile
-        (Typed_op.File.Generated_source.generated_file ml_output)
-    in
-    let public_interface_to_open =
-      Public_interface_to_open.of_package_with_deps package_with_deps
-    in
-    Generated_public_interface_to_open { output_path; public_interface_to_open }
-  | Compile_public_interface_to_open { generated_source_input; cmx_output; _ } ->
-    let impl =
-      Build_dir.package_generated_source_dir build_dir package_id profile
-      / Typed_op.File.Generated_source.path generated_source_input
-    in
-    Action.Command
-      (Profile.ocaml_compiler_command
-         profile
-         ocaml_compiler
-         ~args:
-           [ "-I"
-           ; Absolute_path.to_filename public
-           ; "-c"
-           ; "-o"
-           ; compiled_absolute_filename cmx_output
-           ; "-impl"
-           ; Absolute_path.to_filename impl
-           ])
-  | Link_library { cmx_inputs; cmxa_output; _ } ->
-    Command
-      (Profile.ocaml_compiler_command
-         profile
-         ocaml_compiler
-         ~args:
-           (link_args_unix
-            @ lib_include_args
-            @ List.map cmx_inputs ~f:compiled_absolute_filename
-            @ [ "-a"
-              ; "-o"
-              ; Absolute_path.to_filename @@ (public / Linked.path cmxa_output)
-              ]))
-  | Link_executable { cmx_inputs; exe_output } ->
-    Command
-      (Profile.ocaml_compiler_command
-         profile
-         ocaml_compiler
-         ~args:
-           (link_args_unix
-            @ lib_cmxa_files
-            @ List.map cmx_inputs ~f:compiled_absolute_filename
-            @ [ "-o"; Absolute_path.to_filename @@ (executable / Linked.path exe_output) ]
-           ))
-;;
+              "-I"
+            ; Absolute_path.to_filename t.dirs.public_for_lsp
+            ]
+        | _ -> t.compile_args.non_lsp_only
+      in
+      Command
+        (Profile.ocaml_compiler_command
+           t.profile
+           t.ocaml_compiler
+           ~args:
+             (t.dep_args.include_
+              @ t.dep_args.open_
+              @ lsp_output_args
+              @ stop_after_typing_args
+              @ [ "-c"
+                ; "-bin-annot" (* Needed for LSP *)
+                ; "-o"
+                ; compiled_absolute_filename t cmx_output
+                ; "-impl"
+                ; Absolute_path.to_filename @@ Source.path source_input
+                ]))
+    | Compile_interface { interface_input; cmi_output; stop_after_typing; _ } ->
+      let stop_after_typing_args =
+        if stop_after_typing then t.compile_args.stop_after_typing else []
+      in
+      let lsp_output_args =
+        match Typed_op.File.Compiled.visibility cmi_output with
+        | Public_for_lsp -> t.compile_args.lsp_only
+        | _ -> t.compile_args.non_lsp_only
+      in
+      Command
+        (Profile.ocaml_compiler_command
+           t.profile
+           t.ocaml_compiler
+           ~args:
+             (t.dep_args.include_
+              @ t.dep_args.open_
+              @ stop_after_typing_args
+              @ lsp_output_args
+              @ t.compile_args.unix
+              @ [ "-c"
+                ; "-bin-annot" (* Needed for LSP *)
+                ; "-o"
+                ; compiled_absolute_filename t cmi_output
+                ; "-intf"
+                ; Source.path interface_input |> Absolute_path.to_filename
+                ]))
+    | Pack_library { cmx_inputs; pack; _ } ->
+      let package_pack =
+        Package_with_deps.name t.package_with_deps |> Typed_op.Pack.of_package_name
+      in
+      if not (Typed_op.Pack.equal pack package_pack)
+      then
+        panic
+          [ Pp.textf
+              "Tried to generate pack module for package %S but we're currently building \
+               a different package (%S)."
+              (Package_name.to_string @@ Typed_op.Pack.package_name pack)
+              (Package_name.to_string @@ Typed_op.Pack.package_name package_pack)
+          ];
+      Command
+        (Profile.ocaml_compiler_command
+           t.profile
+           t.ocaml_compiler
+           ~args:
+             (List.map cmx_inputs ~f:(compiled_absolute_filename t)
+              @ [ "-pack"
+                ; "-o"
+                ; compiled_absolute_filename t (Typed_op.Pack.cmx_file pack)
+                ]))
+    | Generate_public_interface_to_open { ml_output } ->
+      let output_path =
+        Build_dir.package_generated_file
+          t.build_dir
+          (Package_with_deps.package_id t.package_with_deps)
+          t.profile
+          (Typed_op.File.Generated_source.generated_file ml_output)
+      in
+      let public_interface_to_open =
+        Public_interface_to_open.of_package_with_deps t.package_with_deps
+      in
+      Generated_public_interface_to_open { output_path; public_interface_to_open }
+    | Compile_public_interface_to_open { generated_source_input; cmx_output; _ } ->
+      let package_id = Package_with_deps.package_id t.package_with_deps in
+      let impl =
+        Build_dir.package_generated_source_dir t.build_dir package_id t.profile
+        / Typed_op.File.Generated_source.path generated_source_input
+      in
+      Action.Command
+        (Profile.ocaml_compiler_command
+           t.profile
+           t.ocaml_compiler
+           ~args:
+             [ "-I"
+             ; Absolute_path.to_filename t.dirs.public
+             ; "-c"
+             ; "-o"
+             ; compiled_absolute_filename t cmx_output
+             ; "-impl"
+             ; Absolute_path.to_filename impl
+             ])
+    | Link_library { cmx_inputs; cmxa_output; _ } ->
+      Command
+        (Profile.ocaml_compiler_command
+           t.profile
+           t.ocaml_compiler
+           ~args:
+             (t.dep_args.include_
+              @ List.map cmx_inputs ~f:(compiled_absolute_filename t)
+              @ [ "-a"
+                ; "-o"
+                ; Absolute_path.to_filename @@ (t.dirs.public / Linked.path cmxa_output)
+                ]))
+    | Link_executable { cmx_inputs; exe_output } ->
+      let unix_args =
+        if t.any_dep_requires_unix
+        then [ Ocaml_compiler.unix_cmxa t.ocaml_compiler |> Absolute_path.to_filename ]
+        else []
+      in
+      Command
+        (Profile.ocaml_compiler_command
+           t.profile
+           t.ocaml_compiler
+           ~args:
+             (unix_args
+              @ t.dep_args.cmxa_files
+              @ List.map cmx_inputs ~f:(compiled_absolute_filename t)
+              @ [ "-o"
+                ; Absolute_path.to_filename @@ (t.dirs.executable / Linked.path exe_output)
+                ]))
+  ;;
+end
 
 (* Determines which files need to be (re)built. A file needs to be rebuilt if
    any of its dependencies need to be rebuilt, or if its mtime is earlier than
@@ -495,6 +570,9 @@ let make_action_graph
       ocaml_compiler
       ~any_dep_rebuilt
   =
+  let action_builder =
+    Action_builder.create package_with_deps profile build_dir ocaml_compiler
+  in
   let package_id = Dependency_graph.Package_with_deps.package_id package_with_deps in
   let files_to_build =
     if any_dep_rebuilt
@@ -535,7 +613,7 @@ let make_action_graph
               let op = Build_plan.op build_plan in
               if Typed_op.Set.mem op ops_that_need_to_run then Some op else None)
           in
-          let action = op_action op package_with_deps profile build_dir ocaml_compiler in
+          let action = Action_builder.op_action action_builder op in
           let entry =
             { Action_graph.Entry.action
             ; package_id
