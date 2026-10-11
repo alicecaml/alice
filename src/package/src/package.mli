@@ -16,6 +16,7 @@ val name : t -> Package_name.t
 val version : t -> Semantic_version.t
 val dependencies : t -> Dependencies.t
 val dependency_names : t -> Package_name.t list
+val unix : t -> bool
 
 (** The file inside the source directory containing the entry point for the
     executable. *)

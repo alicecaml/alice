@@ -21,6 +21,7 @@ module Package_with_deps : sig
   val type_ : ('exe, 'lib) t -> ('exe, 'lib) Package.Typed.type_
   val name : (_, _) t -> Package_name.t
   val id : (_, _) t -> Package_id.t
+  val unix : (_, _) t -> bool
   val immediate_deps_in_dependency_order : (_, _) t -> lib_only_t list
 
   val transitive_dependency_closure_excluding_package

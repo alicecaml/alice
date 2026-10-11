@@ -40,6 +40,7 @@ let name { meta; _ } = Package_meta.name meta
 let version { meta; _ } = Package_meta.version meta
 let dependencies { meta; _ } = Package_meta.dependencies meta
 let dependency_names t = dependencies t |> Dependencies.names
+let unix { meta; _ } = Package_meta.unix meta
 let exe_root_ml = Basename.of_filename "main.ml"
 let lib_root_ml = Basename.of_filename "lib.ml"
 let src = Basename.of_filename "src"

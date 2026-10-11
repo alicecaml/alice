@@ -39,3 +39,7 @@ val depends_native_batch
 (** Returns the "standard_library" path from the output of running the compiler
     with "-config". *)
 val standard_library : t -> Absolute_path.non_root_t
+
+(** The path to the unix.cmxa file in the standard library associated with the
+    compiler. *)
+val unix_cmxa : t -> Absolute_path.non_root_t

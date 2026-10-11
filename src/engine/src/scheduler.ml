@@ -138,6 +138,14 @@ let op_action op package_with_deps profile build_dir ocaml_compiler =
     ; Absolute_path.to_filename public
     ]
   in
+  let compile_args_unix =
+    if Package_with_deps.unix package_with_deps then [ "-I"; "+unix" ] else []
+  in
+  let link_args_unix =
+    if Package_with_deps.unix package_with_deps
+    then [ Ocaml_compiler.unix_cmxa ocaml_compiler |> Absolute_path.to_filename ]
+    else []
+  in
   match (op : Typed_op.t) with
   | Compile_source { source_input; cmx_output; stop_after_typing; _ } ->
     let stop_after_typing_args =
@@ -164,6 +172,7 @@ let op_action op package_with_deps profile build_dir ocaml_compiler =
             @ lib_open_args
             @ stop_after_typing_args
             @ lsp_output_args
+            @ compile_args_unix
             @ [ "-c"
               ; "-bin-annot" (* Needed for LSP *)
               ; "-o"
@@ -189,6 +198,7 @@ let op_action op package_with_deps profile build_dir ocaml_compiler =
             @ lib_open_args
             @ stop_after_typing_args
             @ lsp_output_args
+            @ compile_args_unix
             @ [ "-c"
               ; "-bin-annot" (* Needed for LSP *)
               ; "-o"
@@ -250,7 +260,8 @@ let op_action op package_with_deps profile build_dir ocaml_compiler =
          profile
          ocaml_compiler
          ~args:
-           (lib_include_args
+           (link_args_unix
+            @ lib_include_args
             @ List.map cmx_inputs ~f:compiled_absolute_filename
             @ [ "-a"
               ; "-o"
@@ -262,7 +273,8 @@ let op_action op package_with_deps profile build_dir ocaml_compiler =
          profile
          ocaml_compiler
          ~args:
-           (lib_cmxa_files
+           (link_args_unix
+            @ lib_cmxa_files
             @ List.map cmx_inputs ~f:compiled_absolute_filename
             @ [ "-o"; Absolute_path.to_filename @@ (executable / Linked.path exe_output) ]
            ))

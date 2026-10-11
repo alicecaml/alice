@@ -153,6 +153,7 @@ module Package_with_deps = struct
   let type_ t = package_typed t |> Package.Typed.type_
   let name t = package t |> Package.name
   let id t = package t |> Package.id
+  let unix t = package t |> Package.unix
 
   let immediate_deps_in_dependency_order t =
     let immediate_dep_names =
