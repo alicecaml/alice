@@ -16,4 +16,5 @@ val run
   -> Ocaml_compiler.t
   -> Alice_io.Num_jobs.t
   -> any_dep_rebuilt:bool
+  -> built_artifacts_from_deps:bool
   -> Package_built.t

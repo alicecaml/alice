@@ -109,12 +109,20 @@ module Action_builder = struct
     ; any_dep_requires_unix : bool
     }
 
-  let create package_with_deps profile build_dir ocaml_compiler =
+  let create package_with_deps profile build_dir ocaml_compiler ~built_artifacts_from_deps
+    =
     let package = Package_with_deps.package package_with_deps in
     let transitive_dep_libs =
       Package_with_deps.transitive_dependency_closure_excluding_package package_with_deps
     in
     let package_id = Package.id package in
+    let dep_build_dir dep =
+      match built_artifacts_from_deps with
+      | false -> build_dir
+      | true ->
+        let dep_package = Package.Typed.package dep in
+        Build_dir.of_project_root_path (Package.root dep_package)
+    in
     let package_pack = Typed_op.Pack.of_package_name (Package.name package) in
     let dep_args =
       let cmxa_files =
@@ -123,6 +131,7 @@ module Action_builder = struct
             package_with_deps
         in
         List.map transitive_dep_libs ~f:(fun dep_lib ->
+          let build_dir = dep_build_dir dep_lib in
           let package_id = Package.Typed.package dep_lib |> Package.id in
           let public = Build_dir.package_public_dir build_dir package_id profile in
           public / Linked.path Linked.lib_cmxa |> Absolute_path.to_filename)
@@ -139,6 +148,7 @@ module Action_builder = struct
       in
       let include_ =
         List.concat_map transitive_dep_libs ~f:(fun dep_lib ->
+          let build_dir = dep_build_dir dep_lib in
           let package_id = Package.Typed.package dep_lib |> Package.id in
           [ "-I"
           ; Build_dir.package_public_dir build_dir package_id profile
@@ -569,9 +579,15 @@ let make_action_graph
       build_dir
       ocaml_compiler
       ~any_dep_rebuilt
+      ~built_artifacts_from_deps
   =
   let action_builder =
-    Action_builder.create package_with_deps profile build_dir ocaml_compiler
+    Action_builder.create
+      package_with_deps
+      profile
+      build_dir
+      ocaml_compiler
+      ~built_artifacts_from_deps
   in
   let package_id = Dependency_graph.Package_with_deps.package_id package_with_deps in
   let files_to_build =
@@ -636,6 +652,7 @@ let run
     -> Ocaml_compiler.t
     -> Alice_io.Num_jobs.t
     -> any_dep_rebuilt:bool
+    -> built_artifacts_from_deps:bool
     -> Package_built.t
   =
   fun build_graph
@@ -644,7 +661,8 @@ let run
     build_dir
     ocaml_compiler
     num_jobs
-    ~any_dep_rebuilt ->
+    ~any_dep_rebuilt
+    ~built_artifacts_from_deps ->
   let open Alice_ui in
   let build_plans =
     match Package_with_deps.type_ package_with_deps with
@@ -665,6 +683,7 @@ let run
       build_dir
       ocaml_compiler
       ~any_dep_rebuilt
+      ~built_artifacts_from_deps
   with
   | None -> Package_built.Not_rebuilt
   | Some action_graph ->

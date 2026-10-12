@@ -93,6 +93,17 @@ let parse_profile =
   | false -> Profile.debug
 ;;
 
+let parse_built_artifacts_from_deps =
+  let open Arg_parser in
+  flag
+    [ "built-artifacts-from-deps" ]
+    ~hidden:true
+    ~doc:
+      "Expect dependencies to contain built artifacts and use them rather than builting \
+       each dependency in the current project's build directory. Intended to be used \
+       when building each package in a repository to avoid unnecessary rebuilds."
+;;
+
 let set_log_level_from_verbose_flag =
   let open Arg_parser in
   let+ verbosity =

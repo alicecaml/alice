@@ -19,3 +19,4 @@ val set_globals_from_flags : unit Arg_parser.t
 
 val parse_num_jobs : Alice_io.Num_jobs.t Arg_parser.t
 val parse_debug_blocking_subprocesses : bool Arg_parser.t
+val parse_built_artifacts_from_deps : bool Arg_parser.t

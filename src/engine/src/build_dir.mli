@@ -4,7 +4,8 @@ open Alice_package
 
 type t
 
-val of_path : Absolute_path.non_root_t -> t
+val basename : Basename.t
+val of_project_root_path : Absolute_path.Root_or_non_root.t -> t
 val path : t -> Absolute_path.non_root_t
 val package_ocamldeps_cache_file : t -> Package_id.t -> Absolute_path.non_root_t
 val package_base_dir : t -> Package_id.t -> Profile.t -> Absolute_path.non_root_t

@@ -1,6 +1,5 @@
 open! Alice_stdlib
 open Alice_package
-open Alice_hierarchy
 open Alice_ocaml_compiler
 
 (** Builds are orchestrated in the context of a project. This determines things
@@ -16,6 +15,7 @@ val build
   -> Alice_env.Os_type.t
   -> Ocaml_compiler.t
   -> Alice_io.Num_jobs.t
+  -> built_artifacts_from_deps:bool
   -> unit
 
 val run
@@ -25,6 +25,7 @@ val run
   -> Ocaml_compiler.t
   -> Alice_io.Num_jobs.t
   -> args:string list
+  -> built_artifacts_from_deps:bool
   -> unit
 
 val clean : t -> unit
@@ -37,6 +38,5 @@ val dot_build_artifacts
   -> string
 
 val dot_dependencies : t -> string
-val build_dir_path_relative_to_project_root : Basename.t
 val write_dot_merlin_initial : t -> unit
 val write_dot_gitignore : t -> unit

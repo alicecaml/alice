@@ -4,7 +4,17 @@ open Alice_package
 
 type t = { path : Absolute_path.non_root_t }
 
-let of_path path = { path }
+let basename = Basename.of_filename "build"
+
+let of_project_root_path project_root_path =
+  let path =
+    match project_root_path with
+    | `Root path -> path / basename
+    | `Non_root path -> path / basename
+  in
+  { path }
+;;
+
 let path { path } = path
 
 let package_dir t package_id =
