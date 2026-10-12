@@ -28,9 +28,9 @@ let write_dot_merlin_initial t =
   File_ops.write_text_file (dot_merlin_path t) text
 ;;
 
-let write_dot_merlin t root_package_with_deps profile ~ocamllib_path =
+let write_dot_merlin t root_package_with_deps profile ocaml_compiler =
   let text =
-    Dot_merlin.dot_merlin_text root_package_with_deps t.build_dir profile ~ocamllib_path
+    Dot_merlin.dot_merlin_text root_package_with_deps t.build_dir profile ocaml_compiler
   in
   File_ops.write_text_file (dot_merlin_path t) text
 ;;
@@ -167,12 +167,11 @@ let build_package_typed
       ~built_artifacts_from_deps
   =
   let dependency_graph = Dependency_graph.compute package_typed in
-  let ocamllib_path = Ocaml_compiler.standard_library ocaml_compiler in
   write_dot_merlin
     t
     (Dependency_graph.root_package_with_deps dependency_graph)
     profile
-    ~ocamllib_path;
+    ocaml_compiler;
   build_dependency_graph
     t
     dependency_graph

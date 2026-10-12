@@ -159,7 +159,5 @@ module Deps = Depend.Deps
 
 let depends_native_batch = Depend.Native_deps.run_batch
 let standard_library = Config.standard_library
-
-let unix_cmxa t =
-  standard_library t / Basename.of_filename "unix" / Basename.of_filename "unix.cmxa"
-;;
+let unix_dir t = standard_library t / Basename.of_filename "unix"
+let unix_cmxa t = unix_dir t / Basename.of_filename "unix.cmxa"

@@ -40,6 +40,9 @@ val depends_native_batch
     with "-config". *)
 val standard_library : t -> Absolute_path.non_root_t
 
+(** The unix directory in the compiler's standard library *)
+val unix_dir : t -> Absolute_path.non_root_t
+
 (** The path to the unix.cmxa file in the standard library associated with the
     compiler. *)
 val unix_cmxa : t -> Absolute_path.non_root_t
