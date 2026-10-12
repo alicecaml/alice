@@ -1,0 +1,10 @@
+package {
+  name requires_unix
+  version "0.1.0"
+
+  dependencies {
+  }
+
+  // Allow access to the [Unix] module.
+  unix #true
+}
