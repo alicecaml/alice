@@ -246,6 +246,7 @@ module Action_builder = struct
               @ t.dep_args.open_
               @ lsp_output_args
               @ stop_after_typing_args
+              @ t.compile_args.unix
               @ [ "-c"
                 ; "-bin-annot" (* Needed for LSP *)
                 ; "-o"
