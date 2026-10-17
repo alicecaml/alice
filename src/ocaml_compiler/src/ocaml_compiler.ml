@@ -1,6 +1,7 @@
 open! Alice_stdlib
 open Alice_error
 open Alice_hierarchy
+module Builtin_module = Alice_builtin_module
 
 type t =
   { filename : Filename.t
@@ -159,5 +160,12 @@ module Deps = Depend.Deps
 
 let depends_native_batch = Depend.Native_deps.run_batch
 let standard_library = Config.standard_library
-let unix_dir t = standard_library t / Basename.of_filename "unix"
-let unix_cmxa t = unix_dir t / Basename.of_filename "unix.cmxa"
+
+let builtin_module_dir t builtin_module =
+  standard_library t / Basename.of_filename (Builtin_module.to_string builtin_module)
+;;
+
+let builtin_module_cmxa t builtin_module =
+  builtin_module_dir t builtin_module
+  / Basename.of_filename (sprintf "%s.cmxa" (Builtin_module.to_string builtin_module))
+;;

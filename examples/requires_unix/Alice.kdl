@@ -5,6 +5,7 @@ package {
   dependencies {
   }
 
-  // Allow access to the [Unix] module.
-  unix #true
+  builtins {
+    unix
+  }
 }

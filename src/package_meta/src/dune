@@ -1,4 +1,4 @@
 (library
  (package alice)
  (name alice_package_meta)
- (libraries alice_stdlib alice_error alice_hierarchy))
+ (libraries alice_stdlib alice_error alice_hierarchy alice_builtin_module))

@@ -5,6 +5,7 @@ open Alice_hierarchy
 open Alice_error
 open Alice_io.Read_hierarchy
 module File_ops = Alice_io.File_ops
+module Builtin_module = Alice_builtin_module
 
 type t =
   { root : Absolute_path.Root_or_non_root.t
@@ -40,7 +41,7 @@ let name { meta; _ } = Package_meta.name meta
 let version { meta; _ } = Package_meta.version meta
 let dependencies { meta; _ } = Package_meta.dependencies meta
 let dependency_names t = dependencies t |> Dependencies.names
-let unix { meta; _ } = Package_meta.unix meta
+let builtin_modules { meta; _ } = Package_meta.builtin_modules meta
 let exe_root_ml = Basename.of_filename "main.ml"
 let lib_root_ml = Basename.of_filename "lib.ml"
 let src = Basename.of_filename "src"
@@ -88,7 +89,7 @@ module Typed = struct
   let package { package; _ } = package
   let name t = package t |> name
   let id t = package t |> id
-  let unix t = package t |> unix
+  let builtin_modules t = package t |> builtin_modules
   let type_ { type_; _ } = type_
 
   let contains_exe : type exe lib. (exe, lib) t -> exe Type_bool.t =

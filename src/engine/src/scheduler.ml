@@ -8,6 +8,7 @@ module Log = Alice_log
 module Build_plan = Build_graph.Build_plan
 module Generated_file = Typed_op.Generated_file
 module Package_with_deps = Dependency_graph.Package_with_deps
+module Builtin_module = Alice_builtin_module
 
 module Package_built = struct
   type t =
@@ -77,7 +78,7 @@ module Action_builder = struct
   open Typed_op.File
 
   type compile_args =
-    { unix : string list
+    { builtin_modules : string list
     ; lsp_only : string list
     ; non_lsp_only : string list
     ; stop_after_typing : string list
@@ -106,7 +107,7 @@ module Action_builder = struct
     ; compile_args : compile_args
     ; dep_args : dep_args
     ; dirs : dirs
-    ; any_dep_requires_unix : bool
+    ; dep_closure_builtin_modules : Builtin_module.Set.t
     }
 
   let create package_with_deps profile build_dir ocaml_compiler ~built_artifacts_from_deps
@@ -167,8 +168,11 @@ module Action_builder = struct
       { private_; public; public_for_lsp; executable }
     in
     let compile_args =
-      let unix =
-        if Package_with_deps.unix package_with_deps then [ "-I"; "+unix" ] else []
+      let builtin_modules =
+        Package_with_deps.builtin_modules package_with_deps
+        |> Builtin_module.Set.to_list
+        |> List.concat_map ~f:(fun builtin_module ->
+          [ "-I"; sprintf "+%s" (Builtin_module.to_string builtin_module) ])
       in
       let lsp_only =
         [ (* Open this package's own internal module pack so modules with the same name
@@ -192,11 +196,14 @@ module Action_builder = struct
         ]
       in
       let stop_after_typing = [ "-stop-after"; "typing" ] in
-      { unix; lsp_only; non_lsp_only; stop_after_typing }
+      { builtin_modules; lsp_only; non_lsp_only; stop_after_typing }
     in
-    let any_dep_requires_unix =
-      Package_with_deps.unix package_with_deps
-      || List.exists transitive_dep_libs ~f:Package.Typed.unix
+    let dep_closure_builtin_modules =
+      List.fold_left
+        transitive_dep_libs
+        ~init:(Package_with_deps.builtin_modules package_with_deps)
+        ~f:(fun acc dep ->
+          Builtin_module.Set.union acc (Package.Typed.builtin_modules dep))
     in
     { package_with_deps
     ; profile
@@ -205,7 +212,7 @@ module Action_builder = struct
     ; dep_args
     ; compile_args
     ; dirs
-    ; any_dep_requires_unix
+    ; dep_closure_builtin_modules
     }
   ;;
 
@@ -246,7 +253,7 @@ module Action_builder = struct
               @ t.dep_args.open_
               @ lsp_output_args
               @ stop_after_typing_args
-              @ t.compile_args.unix
+              @ t.compile_args.builtin_modules
               @ [ "-c"
                 ; "-bin-annot" (* Needed for LSP *)
                 ; "-o"
@@ -272,7 +279,7 @@ module Action_builder = struct
               @ t.dep_args.open_
               @ stop_after_typing_args
               @ lsp_output_args
-              @ t.compile_args.unix
+              @ t.compile_args.builtin_modules
               @ [ "-c"
                 ; "-bin-annot" (* Needed for LSP *)
                 ; "-o"
@@ -347,17 +354,18 @@ module Action_builder = struct
                 ; Absolute_path.to_filename @@ (t.dirs.public / Linked.path cmxa_output)
                 ]))
     | Link_executable { cmx_inputs; exe_output } ->
-      let unix_args =
-        if t.any_dep_requires_unix
-        then [ Ocaml_compiler.unix_cmxa t.ocaml_compiler |> Absolute_path.to_filename ]
-        else []
+      let builtin_module_args =
+        Builtin_module.Set.to_list t.dep_closure_builtin_modules
+        |> List.map ~f:(fun builtin_module ->
+          Ocaml_compiler.builtin_module_cmxa t.ocaml_compiler builtin_module
+          |> Absolute_path.to_filename)
       in
       Command
         (Profile.ocaml_compiler_command
            t.profile
            t.ocaml_compiler
            ~args:
-             (unix_args
+             (builtin_module_args
               @ t.dep_args.cmxa_files
               @ List.map cmx_inputs ~f:(compiled_absolute_filename t)
               @ [ "-o"

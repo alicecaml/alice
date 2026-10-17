@@ -51,20 +51,20 @@ let dot_merlin_text package_with_deps build_dir profile ocaml_compiler =
        just use a "B" directive instead. *)
     sprintf "B %s" (Absolute_path.to_filename ocamllib_path)
   in
-  let unix_line =
-    if Package_with_deps.unix package_with_deps
-    then
-      [ sprintf
-          "B %s"
-          (Ocaml_compiler.unix_dir ocaml_compiler |> Absolute_path.to_filename)
-      ]
-    else []
+  let builtin_modules_lines =
+    Package_with_deps.builtin_modules package_with_deps
+    |> Builtin_module.Set.to_list
+    |> List.map ~f:(fun builtin_module ->
+      sprintf
+        "B %s"
+        (Ocaml_compiler.builtin_module_dir ocaml_compiler builtin_module
+         |> Absolute_path.to_filename))
   in
   let lines =
     List.concat
       [ [ sprintf "S %s" (Relative_path.to_filename source_rel_path) ]
       ; [ ocamllib_path_line ]
-      ; unix_line
+      ; builtin_modules_lines
       ; List.map build_rel_paths ~f:(fun build_rel_path ->
           sprintf "B %s" (Relative_path.to_filename build_rel_path))
       ]

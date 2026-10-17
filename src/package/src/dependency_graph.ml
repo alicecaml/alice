@@ -2,6 +2,7 @@ open! Alice_stdlib
 open Alice_package_meta
 open Alice_error
 open Alice_hierarchy
+module Builtin_module = Alice_builtin_module
 
 module Dependency_dag = struct
   include Alice_dag.Make (Package_name)
@@ -153,7 +154,7 @@ module Package_with_deps = struct
   let type_ t = package_typed t |> Package.Typed.type_
   let name t = package t |> Package.name
   let id t = package t |> Package.id
-  let unix t = package t |> Package.unix
+  let builtin_modules t = package t |> Package.builtin_modules
 
   let immediate_deps_in_dependency_order t =
     let immediate_dep_names =

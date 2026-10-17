@@ -63,8 +63,11 @@ let make_project name path kind =
   dependencies {
   }
 
-  // Allow access to the [Unix] module.
-  unix #true
+  // Allow access to these modules from the standard library.
+  builtins {
+    unix
+    str
+  }
 }|}
       (Package_name.to_string name)
       (Semantic_version.to_string version)

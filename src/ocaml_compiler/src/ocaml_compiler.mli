@@ -1,5 +1,6 @@
 open! Alice_stdlib
 open Alice_hierarchy
+module Builtin_module = Alice_builtin_module
 
 type t
 
@@ -40,9 +41,10 @@ val depends_native_batch
     with "-config". *)
 val standard_library : t -> Absolute_path.non_root_t
 
-(** The unix directory in the compiler's standard library *)
-val unix_dir : t -> Absolute_path.non_root_t
+(** The directory containing a builtin module within the compiler's standard
+    library *)
+val builtin_module_dir : t -> Builtin_module.t -> Absolute_path.non_root_t
 
-(** The path to the unix.cmxa file in the standard library associated with the
-    compiler. *)
-val unix_cmxa : t -> Absolute_path.non_root_t
+(** The cmxa file for a builtin module within the compiler's standard
+    library *)
+val builtin_module_cmxa : t -> Builtin_module.t -> Absolute_path.non_root_t

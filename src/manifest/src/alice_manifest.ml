@@ -2,10 +2,23 @@ open! Alice_stdlib
 open Alice_hierarchy
 open Alice_error
 open Alice_package_meta
+module Builtin_module = Alice_builtin_module
 
 let manifest_name = Basename.of_filename "Alice.kdl"
 
+let node_to_string_compact node =
+  Kdl.pp_node_compact Format.str_formatter node;
+  Format.flush_str_formatter ()
+;;
+
 module Parse_kdl_manifest = struct
+  let atom (node : Kdl.node) =
+    match node with
+    | { name; annot = None; args = []; props = []; children = [] } -> Ok name
+    | other ->
+      Error [ Pp.textf "Expected atom, found: %s" (node_to_string_compact other) ]
+  ;;
+
   let simple_node (node : Kdl.node) ~f =
     match node with
     | { annot = Some annot; _ } ->
@@ -135,7 +148,7 @@ module Parse_kdl_manifest = struct
            ])
   ;;
 
-  let dependencies_node (node : Kdl.node) =
+  let list_node (node : Kdl.node) ~parse_element =
     match node with
     | { annot = Some annot; _ } ->
       Error
@@ -148,24 +161,52 @@ module Parse_kdl_manifest = struct
       Format.pp_print_list Kdl.pp_prop Format.str_formatter props;
       let props_s = Format.flush_str_formatter () in
       Error [ Pp.textf "Node %S must not have properties. Found %S." node.name props_s ]
-    | { children; _ } ->
-      let open Result.O in
-      let* dependencies = Result.List.all (List.map children ~f:dependency_node) in
-      Dependencies.of_list dependencies
-      |> Result.map_error ~f:(function `Duplicate_name name ->
-          [ Pp.textf
-              "Node %S lists the following package name multiple times: %S"
-              node.name
-              (Package_name.to_string name)
-          ])
+    | { children; _ } -> Result.List.all (List.map children ~f:parse_element)
+  ;;
+
+  let dependencies_node (node : Kdl.node) =
+    let open Result.O in
+    let* dependencies = list_node node ~parse_element:dependency_node in
+    Dependencies.of_list dependencies
+    |> Result.map_error ~f:(function `Duplicate_name name ->
+        [ Pp.textf
+            "Node %S lists the following package name multiple times: %S"
+            node.name
+            (Package_name.to_string name)
+        ])
+  ;;
+
+  let builtin_node (node : Kdl.node) =
+    let open Result.O in
+    let* name = atom node in
+    Builtin_module.of_string_res name
+  ;;
+
+  let builtins_node (node : Kdl.node) =
+    let open Result.O in
+    let* builtins_list = list_node node ~parse_element:builtin_node in
+    let builtins_set = Builtin_module.Set.of_list builtins_list in
+    if List.length builtins_list <> Builtin_module.Set.cardinal builtins_set
+    then (
+      let duplicate =
+        (* The list must contain duplicates since it's cardinality is different
+           from that of the set so the [Option.get] is safe. *)
+        List.any_duplicate builtins_list ~cmp:Builtin_module.compare |> Option.get
+      in
+      Error
+        [ Pp.textf
+            "List of builtins contains duplicate entry: %s"
+            (Builtin_module.to_string duplicate)
+        ])
+    else Ok builtins_set
   ;;
 
   module Package_field_names = struct
     let name = "name"
     let version = "version"
     let dependencies = "dependencies"
-    let unix = "unix"
-    let all = [ name; version; dependencies; unix ]
+    let builtins = "builtins"
+    let all = [ name; version; dependencies; builtins ]
   end
 
   let package_node_children (children : Kdl.node list) =
@@ -185,7 +226,7 @@ module Parse_kdl_manifest = struct
     let name = find_node F.name in
     let version = find_node F.version in
     let dependencies = find_node F.dependencies in
-    let unix = find_node F.unix in
+    let builtin_modules = find_node F.builtins in
     match name, version with
     | None, _ ->
       Error [ Pp.textf "Node \"package\" is missing required field: %S" F.name ]
@@ -202,14 +243,12 @@ module Parse_kdl_manifest = struct
           Ok Dependencies.empty
         | Some dependencies -> dependencies_node dependencies
       in
-      let* unix =
-        match unix with
-        | None ->
-          (* Unix is false if unspecified. *)
-          Ok false
-        | Some unix_node -> simple_bool_node unix_node
+      let* builtin_modules =
+        match builtin_modules with
+        | None -> Ok Builtin_module.Set.empty
+        | Some builtins -> builtins_node builtins
       in
-      let meta = Package_meta.create ~id ~dependencies ~unix in
+      let meta = Package_meta.create ~id ~dependencies ~builtin_modules in
       Ok meta
   ;;
 
@@ -291,16 +330,23 @@ module Generate_kdl_manifest = struct
     Kdl.node Parse_kdl_manifest.Package_field_names.dependencies children
   ;;
 
-  let unix unix =
-    Kdl.node Parse_kdl_manifest.Package_field_names.unix ~args:[ None, `Bool unix ] []
+  let builtin_module builtin_module =
+    Kdl.node (Builtin_module.to_string builtin_module) []
+  ;;
+
+  let builtin_modules builtin_modules =
+    let children =
+      Builtin_module.Set.to_list builtin_modules |> List.map ~f:builtin_module
+    in
+    Kdl.node Parse_kdl_manifest.Package_field_names.builtins children
   ;;
 
   let package package_meta =
     let name = name (Package_meta.name package_meta) in
     let version = version (Package_meta.version package_meta) in
     let dependencies = dependencies (Package_meta.dependencies package_meta) in
-    let unix = unix (Package_meta.unix package_meta) in
-    Kdl.node "package" [ name; version; dependencies; unix ]
+    let builtin_modules = builtin_modules (Package_meta.builtin_modules package_meta) in
+    Kdl.node "package" [ name; version; dependencies; builtin_modules ]
   ;;
 
   let document package_meta = [ package package_meta ]

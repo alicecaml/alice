@@ -2,6 +2,7 @@ open! Alice_stdlib
 open Type_bool
 open Alice_hierarchy
 open Alice_package_meta
+module Builtin_module = Alice_builtin_module
 
 type t
 
@@ -16,7 +17,7 @@ val name : t -> Package_name.t
 val version : t -> Semantic_version.t
 val dependencies : t -> Dependencies.t
 val dependency_names : t -> Package_name.t list
-val unix : t -> bool
+val builtin_modules : t -> Builtin_module.Set.t
 
 (** The file inside the source directory containing the entry point for the
     executable. *)
@@ -63,7 +64,7 @@ module Typed : sig
   val package : (_, _) t -> package
   val name : (_, _) t -> Package_name.t
   val id : (_, _) t -> Package_id.t
-  val unix : (_, _) t -> bool
+  val builtin_modules : (_, _) t -> Builtin_module.Set.t
   val type_ : ('exe, 'lib) t -> ('exe, 'lib) type_
   val contains_exe : ('exe, _) t -> 'exe Type_bool.t
   val contains_lib : (_, 'lib) t -> 'lib Type_bool.t
