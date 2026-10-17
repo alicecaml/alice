@@ -40,7 +40,7 @@ module Build_dag = struct
     Node.transitive_closure_in_child_first_order node ~include_start:true
     |> List.filter_map ~f:(fun node ->
       match Node.name node with
-      | Compile_source { cmx_output; _ } -> Some cmx_output
+      | Compile_ocaml_source { cmx_output; _ } -> Some cmx_output
       | _ -> None)
   ;;
 
@@ -75,7 +75,7 @@ module Build_dag = struct
       all_nodes t
       |> List.filter_map ~f:(fun node ->
         match Node.name node with
-        | Compile_source { cmx_output; _ }
+        | Compile_ocaml_source { cmx_output; _ }
           when Typed_op.File.Compiled.equal cmx_output Typed_op.File.Compiled.lib_cmx ->
           Some node
         | _ -> None)
@@ -90,7 +90,7 @@ module Build_dag = struct
       all_nodes t
       |> List.filter_map ~f:(fun node ->
         match Node.name node with
-        | Compile_source { cmx_output; _ }
+        | Compile_ocaml_source { cmx_output; _ }
           when Typed_op.File.Compiled.equal cmx_output Typed_op.File.Compiled.exe_cmx ->
           Some node
         | _ -> None)
@@ -106,7 +106,7 @@ module Build_dag = struct
       all_nodes t
       |> List.filter_map ~f:(fun node ->
         match Node.name node with
-        | Compile_source ({ cmx_output; _ } as compile_source)
+        | Compile_ocaml_source ({ cmx_output; _ } as compile_source)
           when Typed_op.File.Compiled.equal cmx_output Typed_op.File.Compiled.lib_cmx ->
           Some compile_source
         | _ -> None)
@@ -121,7 +121,7 @@ module Build_dag = struct
       all_nodes t
       |> List.filter_map ~f:(fun node ->
         match Node.name node with
-        | Compile_interface ({ cmi_output; _ } as compile_interface)
+        | Compile_ocaml_interface ({ cmi_output; _ } as compile_interface)
           when Typed_op.File.Compiled.equal cmi_output Typed_op.File.Compiled.lib_cmi ->
           Some compile_interface
         | _ -> None)
@@ -233,7 +233,7 @@ let compilation_ops src_dir package_id build_dir ocaml_compiler num_jobs =
             (Basename.replace_extension source_base_name ~ext:".cmi"
              |> File.Compiled.cmi_private)
       in
-      Compile_source
+      Compile_ocaml_source
         { source_input
         ; compiled_inputs
         ; cmx_output
@@ -268,20 +268,20 @@ let compilation_ops src_dir package_id build_dir ocaml_compiler num_jobs =
         |> Basename.replace_extension ~ext:".cmi"
         |> File.Compiled.cmi_private
       in
-      Compile_interface
+      Compile_ocaml_interface
         { interface_input; compiled_inputs; cmi_output; stop_after_typing = false })
 ;;
 
 type lsp_ops =
-  { lsp_ops_compile_source : Typed_op.Compile_source.t
-  ; lsp_ops_compile_interface : Typed_op.Compile_interface.t option
+  { lsp_ops_compile_source : Typed_op.Compile_ocaml_source.t
+  ; lsp_ops_compile_interface : Typed_op.Compile_ocaml_interface.t option
   }
 
 let lsp_ops build_dag_compilation_only package =
   let open Typed_op in
   let package_name_s = Package_name.to_string (Package.name package) in
   let compile_source =
-    let { Compile_source.source_input
+    let { Compile_ocaml_source.source_input
         ; compiled_inputs
         ; cmx_output
         ; interface_output_if_no_matching_mli_is_present
@@ -332,7 +332,7 @@ let lsp_ops build_dag_compilation_only package =
          name in the public_for_lsp build directory. *)
       pack_output :: compiled_inputs
     in
-    { Compile_source.source_input
+    { Compile_ocaml_source.source_input
     ; compiled_inputs
     ; cmx_output
     ; interface_output_if_no_matching_mli_is_present
@@ -345,7 +345,7 @@ let lsp_ops build_dag_compilation_only package =
       (* .cmi file is produced by compiling the source *)
       None
     | None ->
-      let { Compile_interface.interface_input
+      let { Compile_ocaml_interface.interface_input
           ; compiled_inputs
           ; cmi_output
           ; stop_after_typing = _
@@ -369,7 +369,7 @@ let lsp_ops build_dag_compilation_only package =
           Public_for_lsp
       in
       Some
-        { Compile_interface.interface_input
+        { Compile_ocaml_interface.interface_input
         ; compiled_inputs
         ; cmi_output
         ; stop_after_typing = true
@@ -395,10 +395,11 @@ let to_dyn { build_dag; package_typed; lsp_ops } =
           (fun { lsp_ops_compile_source; lsp_ops_compile_interface } ->
              Dyn.record
                [ ( "lsp_ops_compile_source"
-                 , Typed_op.Compile_source.to_dyn lsp_ops_compile_source )
+                 , Typed_op.Compile_ocaml_source.to_dyn lsp_ops_compile_source )
                ; ( "lsp_ops_compile_interface"
-                 , Dyn.option Typed_op.Compile_interface.to_dyn lsp_ops_compile_interface
-                 )
+                 , Dyn.option
+                     Typed_op.Compile_ocaml_interface.to_dyn
+                     lsp_ops_compile_interface )
                ])
           lsp_ops )
     ]
@@ -484,13 +485,13 @@ let create
       match lsp_ops with
       | None -> []
       | Some { lsp_ops_compile_source; lsp_ops_compile_interface = None } ->
-        [ Compile_source lsp_ops_compile_source ]
+        [ Compile_ocaml_source lsp_ops_compile_source ]
       | Some
           { lsp_ops_compile_source
           ; lsp_ops_compile_interface = Some lsp_ops_compile_interface
           } ->
-        [ Compile_source lsp_ops_compile_source
-        ; Compile_interface lsp_ops_compile_interface
+        [ Compile_ocaml_source lsp_ops_compile_source
+        ; Compile_ocaml_interface lsp_ops_compile_interface
         ]
     in
     Build_dag.of_ops (compilation_ops @ link_ops @ lsp_ops)
@@ -510,7 +511,7 @@ let plan_lib ({ build_dag; _ } : (_, Type_bool.true_t) t) =
 
 let plan_lsp ({ build_dag; lsp_ops; _ } : (_, Type_bool.true_t) t) =
   let lsp_ops = Option.get lsp_ops in
-  Build_dag.get_node build_dag ~name:(Compile_source lsp_ops.lsp_ops_compile_source)
+  Build_dag.get_node build_dag ~name:(Compile_ocaml_source lsp_ops.lsp_ops_compile_source)
 ;;
 
 let dot { build_dag; _ } =

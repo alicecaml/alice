@@ -140,7 +140,7 @@ module Pack : sig
   val module_name : t -> Module_name.t
 end
 
-module Compile_source : sig
+module Compile_ocaml_source : sig
   type t =
     { source_input : ml File.Source.t
     ; compiled_inputs : Generated_file.Compiled.t list
@@ -152,7 +152,7 @@ module Compile_source : sig
   val to_dyn : t -> Dyn.t
 end
 
-module Compile_interface : sig
+module Compile_ocaml_interface : sig
   type t =
     { interface_input : mli File.Source.t
     ; compiled_inputs : Generated_file.Compiled.t list
@@ -206,8 +206,8 @@ module Link_executable : sig
 end
 
 type t =
-  | Compile_source of Compile_source.t
-  | Compile_interface of Compile_interface.t
+  | Compile_ocaml_source of Compile_ocaml_source.t
+  | Compile_ocaml_interface of Compile_ocaml_interface.t
   | Pack_library of Pack_library.t
   | Generate_public_interface_to_open of Generate_public_interface_to_open.t
   | Compile_public_interface_to_open of Compile_public_interface_to_open.t

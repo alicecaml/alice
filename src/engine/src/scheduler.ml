@@ -228,7 +228,7 @@ module Action_builder = struct
 
   let op_action t op : Action.t =
     match (op : Typed_op.t) with
-    | Compile_source { source_input; cmx_output; stop_after_typing; _ } ->
+    | Compile_ocaml_source { source_input; cmx_output; stop_after_typing; _ } ->
       let stop_after_typing_args =
         if stop_after_typing then t.compile_args.stop_after_typing else []
       in
@@ -261,7 +261,7 @@ module Action_builder = struct
                 ; "-impl"
                 ; Absolute_path.to_filename @@ Source.path source_input
                 ]))
-    | Compile_interface { interface_input; cmi_output; stop_after_typing; _ } ->
+    | Compile_ocaml_interface { interface_input; cmi_output; stop_after_typing; _ } ->
       let stop_after_typing_args =
         if stop_after_typing then t.compile_args.stop_after_typing else []
       in

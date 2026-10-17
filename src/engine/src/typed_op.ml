@@ -458,7 +458,7 @@ module Pack = struct
   ;;
 end
 
-module Compile_source = struct
+module Compile_ocaml_source = struct
   type t =
     { source_input : ml File.Source.t
     ; compiled_inputs : Generated_file.Compiled.t list
@@ -529,7 +529,7 @@ module Compile_source = struct
   ;;
 end
 
-module Compile_interface = struct
+module Compile_ocaml_interface = struct
   type t =
     { interface_input : mli File.Source.t
     ; compiled_inputs : Generated_file.Compiled.t list
@@ -701,8 +701,8 @@ end
 
 module T = struct
   type t =
-    | Compile_source of Compile_source.t
-    | Compile_interface of Compile_interface.t
+    | Compile_ocaml_source of Compile_ocaml_source.t
+    | Compile_ocaml_interface of Compile_ocaml_interface.t
     | Pack_library of Pack_library.t
     | Generate_public_interface_to_open of Generate_public_interface_to_open.t
     | Compile_public_interface_to_open of Compile_public_interface_to_open.t
@@ -711,10 +711,11 @@ module T = struct
 
   let equal a b =
     match a, b with
-    | Compile_source a, Compile_source b -> Compile_source.equal a b
-    | Compile_source _, _ -> false
-    | Compile_interface a, Compile_interface b -> Compile_interface.equal a b
-    | Compile_interface _, _ -> false
+    | Compile_ocaml_source a, Compile_ocaml_source b -> Compile_ocaml_source.equal a b
+    | Compile_ocaml_source _, _ -> false
+    | Compile_ocaml_interface a, Compile_ocaml_interface b ->
+      Compile_ocaml_interface.equal a b
+    | Compile_ocaml_interface _, _ -> false
     | Pack_library a, Pack_library b -> Pack_library.equal a b
     | Pack_library _, _ -> false
     | Generate_public_interface_to_open a, Generate_public_interface_to_open b ->
@@ -731,12 +732,13 @@ module T = struct
 
   let compare a b =
     match a, b with
-    | Compile_source a, Compile_source b -> Compile_source.compare a b
-    | Compile_source _, _ -> -1
-    | _, Compile_source _ -> 1
-    | Compile_interface a, Compile_interface b -> Compile_interface.compare a b
-    | Compile_interface _, _ -> -1
-    | _, Compile_interface _ -> 1
+    | Compile_ocaml_source a, Compile_ocaml_source b -> Compile_ocaml_source.compare a b
+    | Compile_ocaml_source _, _ -> -1
+    | _, Compile_ocaml_source _ -> 1
+    | Compile_ocaml_interface a, Compile_ocaml_interface b ->
+      Compile_ocaml_interface.compare a b
+    | Compile_ocaml_interface _, _ -> -1
+    | _, Compile_ocaml_interface _ -> 1
     | Pack_library a, Pack_library b -> Pack_library.compare a b
     | Pack_library _, _ -> -1
     | _, Pack_library _ -> 1
@@ -755,10 +757,12 @@ module T = struct
   ;;
 
   let to_dyn = function
-    | Compile_source compile_source ->
-      Dyn.variant "Compile_source" [ Compile_source.to_dyn compile_source ]
-    | Compile_interface compile_interface ->
-      Dyn.variant "Compile_interface" [ Compile_interface.to_dyn compile_interface ]
+    | Compile_ocaml_source compile_source ->
+      Dyn.variant "Compile_ocaml_source" [ Compile_ocaml_source.to_dyn compile_source ]
+    | Compile_ocaml_interface compile_interface ->
+      Dyn.variant
+        "Compile_ocaml_interface"
+        [ Compile_ocaml_interface.to_dyn compile_interface ]
     | Pack_library pack_library ->
       Dyn.variant "Pack_library" [ Pack_library.to_dyn pack_library ]
     | Generate_public_interface_to_open generate_public_interface_to_open ->
@@ -781,8 +785,9 @@ module Map = Map.Make (T)
 module Set = Set.Make (T)
 
 let source_input = function
-  | Compile_source { source_input; _ } -> Some (File.Source.path source_input)
-  | Compile_interface { interface_input; _ } -> Some (File.Source.path interface_input)
+  | Compile_ocaml_source { source_input; _ } -> Some (File.Source.path source_input)
+  | Compile_ocaml_interface { interface_input; _ } ->
+    Some (File.Source.path interface_input)
   | Pack_library _
   | Generate_public_interface_to_open _
   | Compile_public_interface_to_open _
@@ -793,7 +798,8 @@ let source_input = function
 let generated_inputs t =
   let compiled_generated = File.Compiled.generated_file in
   match t with
-  | Compile_source { compiled_inputs; _ } | Compile_interface { compiled_inputs; _ } ->
+  | Compile_ocaml_source { compiled_inputs; _ }
+  | Compile_ocaml_interface { compiled_inputs; _ } ->
     List.map compiled_inputs ~f:(fun compiled -> Generated_file.Compiled compiled)
   | Pack_library { cmx_inputs; _ } -> List.map cmx_inputs ~f:compiled_generated
   | Generate_public_interface_to_open _ -> []
@@ -807,7 +813,7 @@ let generated_inputs t =
 ;;
 
 let outputs = function
-  | Compile_source
+  | Compile_ocaml_source
       { cmx_output; interface_output_if_no_matching_mli_is_present; stop_after_typing; _ }
     ->
     (if stop_after_typing then [] else [ File.Compiled.generated_file cmx_output ])
@@ -816,7 +822,7 @@ let outputs = function
          interface_output_if_no_matching_mli_is_present
          ~f:File.Compiled.generated_file
        |> Option.to_list)
-  | Compile_interface { cmi_output; _ } ->
+  | Compile_ocaml_interface { cmi_output; _ } ->
     [ File.Compiled.generated_file cmi_output
     ; File.Compiled.cmti_of_cmi cmi_output |> File.Compiled.generated_file
     ]
