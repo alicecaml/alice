@@ -176,8 +176,8 @@ module Action_builder = struct
       in
       let lsp_only =
         [ (* Open this package's own internal module pack so modules with the same name
-         as the package are still visible when generating a different (and largely
-         unrelated!) module also named after the package. *)
+             as the package are still visible when generating a different (and largely
+             unrelated!) module also named after the package. *)
           "-open"
         ; Module_name.internal_modules (Package.name package)
           |> Module_name.to_string_uppercase_first_letter
@@ -259,7 +259,7 @@ module Action_builder = struct
                 ; "-o"
                 ; compiled_absolute_filename t cmx_output
                 ; "-impl"
-                ; Absolute_path.to_filename @@ Source.path source_input
+                ; Absolute_path.to_filename @@ Ocaml_source_or_interface.path source_input
                 ]))
     | Compile_ocaml_interface { interface_input; cmi_output; stop_after_typing; _ } ->
       let stop_after_typing_args =
@@ -285,8 +285,21 @@ module Action_builder = struct
                 ; "-o"
                 ; compiled_absolute_filename t cmi_output
                 ; "-intf"
-                ; Source.path interface_input |> Absolute_path.to_filename
+                ; Ocaml_source_or_interface.path interface_input
+                  |> Absolute_path.to_filename
                 ]))
+    | Compile_c_source { source_input; object_output } ->
+      (* Arguments to tell the OCaml compiler to tell the C compiler (which
+         it invokes) to put the compiled object file at the expected path: *)
+      let output_args =
+        [ "-ccopt"; "-o"; "-ccopt"; compiled_absolute_filename t object_output ]
+      in
+      Command
+        (Profile.ocaml_compiler_command
+           t.profile
+           t.ocaml_compiler
+           ~args:
+             ([ Absolute_path.to_filename @@ C_source.path source_input ] @ output_args))
     | Pack_library { cmx_inputs; pack; _ } ->
       let package_pack =
         Package_with_deps.name t.package_with_deps |> Typed_op.Pack.of_package_name
@@ -316,7 +329,7 @@ module Action_builder = struct
           t.build_dir
           (Package_with_deps.package_id t.package_with_deps)
           t.profile
-          (Typed_op.File.Generated_source.generated_file ml_output)
+          (Typed_op.File.Generated_ocaml_source.generated_file ml_output)
       in
       let public_interface_to_open =
         Public_interface_to_open.of_package_with_deps t.package_with_deps
@@ -326,7 +339,7 @@ module Action_builder = struct
       let package_id = Package_with_deps.package_id t.package_with_deps in
       let impl =
         Build_dir.package_generated_source_dir t.build_dir package_id t.profile
-        / Typed_op.File.Generated_source.path generated_source_input
+        / Typed_op.File.Generated_ocaml_source.basename generated_source_input
       in
       Action.Command
         (Profile.ocaml_compiler_command
@@ -341,19 +354,20 @@ module Action_builder = struct
              ; "-impl"
              ; Absolute_path.to_filename impl
              ])
-    | Link_library { cmx_inputs; cmxa_output; _ } ->
+    | Link_library { cmx_inputs; cmxa_output; compiled_c_inputs; _ } ->
       Command
         (Profile.ocaml_compiler_command
            t.profile
            t.ocaml_compiler
            ~args:
              (t.dep_args.include_
+              @ List.map compiled_c_inputs ~f:(compiled_absolute_filename t)
               @ List.map cmx_inputs ~f:(compiled_absolute_filename t)
               @ [ "-a"
                 ; "-o"
                 ; Absolute_path.to_filename @@ (t.dirs.public / Linked.path cmxa_output)
                 ]))
-    | Link_executable { cmx_inputs; exe_output } ->
+    | Link_executable { cmx_inputs; exe_output; compiled_c_inputs } ->
       let builtin_module_args =
         Builtin_module.Set.to_list t.dep_closure_builtin_modules
         |> List.map ~f:(fun builtin_module ->
@@ -367,6 +381,7 @@ module Action_builder = struct
            ~args:
              (builtin_module_args
               @ t.dep_args.cmxa_files
+              @ List.map compiled_c_inputs ~f:(compiled_absolute_filename t)
               @ List.map cmx_inputs ~f:(compiled_absolute_filename t)
               @ [ "-o"
                 ; Absolute_path.to_filename @@ (t.dirs.executable / Linked.path exe_output)

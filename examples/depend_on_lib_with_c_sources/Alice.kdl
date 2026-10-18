@@ -1,0 +1,8 @@
+package {
+  name depend_on_lib_with_c_sources
+  version "0.1.0"
+
+  dependencies {
+    lib_with_c_sources path="../lib_with_c_sources"
+  }
+}

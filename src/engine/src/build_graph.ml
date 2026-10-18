@@ -160,7 +160,7 @@ module Build_plan = struct
   ;;
 end
 
-let compilation_ops src_dir package_id build_dir ocaml_compiler num_jobs =
+let compute_ocaml_compilation_ops src_dir package_id build_dir ocaml_compiler num_jobs =
   let ocamldep_cache = Ocamldep_cache.load build_dir package_id in
   let src_file_names =
     Dir_non_root.contents src_dir
@@ -189,7 +189,7 @@ let compilation_ops src_dir package_id build_dir ocaml_compiler num_jobs =
   |> List.map ~f:(fun (source_path, (deps : Ocaml_compiler.Deps.t)) ->
     let open Typed_op in
     let open Alice_error in
-    match File.Source.of_path_by_extension source_path with
+    match File.Ocaml_source_or_interface.of_path_by_extension source_path with
     | Error (`Unknown_extension _) ->
       panic
         [ Pp.textf
@@ -272,12 +272,32 @@ let compilation_ops src_dir package_id build_dir ocaml_compiler num_jobs =
         { interface_input; compiled_inputs; cmi_output; stop_after_typing = false })
 ;;
 
+let compute_c_compilation_ops src_dir =
+  let src_paths =
+    Dir_non_root.contents src_dir
+    |> List.filter_map ~f:(fun (file : File_non_root.t) ->
+      if
+        File_non_root.is_regular_or_link file
+        && Absolute_path.has_extension file.path ~ext:".c"
+      then Some file.path
+      else None)
+  in
+  List.map src_paths ~f:(fun path ->
+    let open Typed_op in
+    let source_input = File.C_source.of_path path in
+    let object_output =
+      File.Compiled.o_private_c
+        (Absolute_path.basename path |> Basename.replace_extension ~ext:".o")
+    in
+    { Compile_c_source.source_input; object_output })
+;;
+
 type lsp_ops =
   { lsp_ops_compile_source : Typed_op.Compile_ocaml_source.t
   ; lsp_ops_compile_interface : Typed_op.Compile_ocaml_interface.t option
   }
 
-let lsp_ops build_dag_compilation_only package =
+let lsp_ops build_dag_ocaml_compilation_only package =
   let open Typed_op in
   let package_name_s = Package_name.to_string (Package.name package) in
   let compile_source =
@@ -288,7 +308,7 @@ let lsp_ops build_dag_compilation_only package =
         ; stop_after_typing = _
         }
       =
-      Build_dag.library_cmx_compile_source_or_panic build_dag_compilation_only
+      Build_dag.library_cmx_compile_source_or_panic build_dag_ocaml_compilation_only
     in
     let cmx_output =
       Typed_op.File.Compiled.rename
@@ -351,7 +371,7 @@ let lsp_ops build_dag_compilation_only package =
           ; stop_after_typing = _
           }
         =
-        Build_dag.library_cmi_compile_interface_or_panic build_dag_compilation_only
+        Build_dag.library_cmi_compile_interface_or_panic build_dag_ocaml_compilation_only
       in
       let compiled_inputs =
         let pack_output =
@@ -418,13 +438,22 @@ let create
   let open Typed_op in
   let package = Package.Typed.package package_typed in
   let src_dir = Package.src_dir_exn package in
-  let compilation_ops =
-    compilation_ops src_dir (Package.id package) build_dir ocaml_compiler num_jobs
+  let ocaml_compilation_ops =
+    compute_ocaml_compilation_ops
+      src_dir
+      (Package.id package)
+      build_dir
+      ocaml_compiler
+      num_jobs
   in
-  let build_dag_compilation_only = Build_dag.of_ops compilation_ops in
+  let c_compilation_ops = compute_c_compilation_ops src_dir in
+  let build_dag_ocaml_compilation_only = Build_dag.of_ops ocaml_compilation_ops in
+  let compiled_c_object_files =
+    List.map c_compilation_ops ~f:(fun (op : Compile_c_source.t) -> op.object_output)
+  in
   let link_library () =
     let cmx_files =
-      Build_dag.cmx_files_in_build_order_for_library build_dag_compilation_only
+      Build_dag.cmx_files_in_build_order_for_library build_dag_ocaml_compilation_only
     in
     let pack = Typed_op.Pack.of_package_name (Package.name package) in
     let pack_op = Pack_library { cmx_inputs = cmx_files; pack } in
@@ -432,7 +461,7 @@ let create
       Module_name.public_interface_to_open (Package.name package)
       |> Module_name.basename_without_extension
       |> Basename.add_extension ~ext:".ml"
-      |> File.Generated_source.ml
+      |> File.Generated_ocaml_source.of_basename
     in
     let generate_public_interface_to_open_op =
       Generate_public_interface_to_open { ml_output = public_interface_to_open_ml }
@@ -448,7 +477,9 @@ let create
     let link_library_op =
       Link_library
         (Link_library.of_inputs
-           [ Typed_op.Pack.cmx_file pack; compile_public_interface_to_open.cmx_output ])
+           ~cmx_inputs:
+             [ Typed_op.Pack.cmx_file pack; compile_public_interface_to_open.cmx_output ]
+           ~compiled_c_inputs:compiled_c_object_files)
     in
     [ pack_op
     ; generate_public_interface_to_open_op
@@ -465,9 +496,14 @@ let create
   in
   let link_executable () =
     let cmx_files =
-      Build_dag.cmx_files_in_build_order_for_executable build_dag_compilation_only
+      Build_dag.cmx_files_in_build_order_for_executable build_dag_ocaml_compilation_only
     in
-    [ Link_executable { exe_output = exe_file; cmx_inputs = cmx_files } ]
+    [ Link_executable
+        { exe_output = exe_file
+        ; cmx_inputs = cmx_files
+        ; compiled_c_inputs = compiled_c_object_files
+        }
+    ]
   in
   let link_ops =
     match Package.Typed.type_ package_typed with
@@ -478,7 +514,7 @@ let create
   let lsp_ops =
     match Package.Typed.type_ package_typed with
     | Exe_only -> None
-    | Lib_only | Exe_and_lib -> Some (lsp_ops build_dag_compilation_only package)
+    | Lib_only | Exe_and_lib -> Some (lsp_ops build_dag_ocaml_compilation_only package)
   in
   let build_dag =
     let lsp_ops =
@@ -494,7 +530,11 @@ let create
         ; Compile_ocaml_interface lsp_ops_compile_interface
         ]
     in
-    Build_dag.of_ops (compilation_ops @ link_ops @ lsp_ops)
+    let all_compilation_ops =
+      List.map c_compilation_ops ~f:(fun op -> Compile_c_source op)
+      @ ocaml_compilation_ops
+    in
+    Build_dag.of_ops (all_compilation_ops @ link_ops @ lsp_ops)
   in
   { build_dag; package_typed; lsp_ops }
 ;;

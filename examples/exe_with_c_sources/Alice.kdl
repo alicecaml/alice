@@ -1,0 +1,4 @@
+package {
+  name exe_with_c_source
+  version "0.1.0"
+}

@@ -7,8 +7,9 @@ module Visibility : sig
       files. Each of these visibility levels corresponds to a directory in a
       package's build directory. *)
   type t =
-    | Public
     | Private
+    | Private_c
+    | Public
     | Public_for_lsp
 end
 
@@ -35,7 +36,7 @@ module Generated_file : sig
   end
 
   type t =
-    | Generated_source of Basename.t
+    | Generated_ocaml_source of Basename.t
     | Compiled of Compiled.t
     | Linked_library of Linked_library.t
     | Linked_executable of Basename.t
@@ -63,12 +64,14 @@ module File_type : sig
   type exe
   type a
   type cmxa
+  type c
 end
 
 open File_type
 
 module File : sig
-  module Source : sig
+  module Ocaml_source_or_interface : sig
+    (** ['a] is either [ml] or [mli] *)
     type 'a t
 
     val path : _ t -> Absolute_path.non_root_t
@@ -78,12 +81,19 @@ module File : sig
       -> ([ `Ml of ml t | `Mli of mli t ], [ `Unknown_extension of string ]) result
   end
 
-  module Generated_source : sig
-    type 'a t
+  module C_source : sig
+    type t
 
-    val ml : Basename.t -> ml t
-    val generated_file : _ t -> Generated_file.t
-    val path : _ t -> Basename.t
+    val of_path : Absolute_path.non_root_t -> t
+    val path : t -> Absolute_path.non_root_t
+  end
+
+  module Generated_ocaml_source : sig
+    type t
+
+    val of_basename : Basename.t -> t
+    val basename : t -> Basename.t
+    val generated_file : t -> Generated_file.t
   end
 
   module Compiled : sig
@@ -94,6 +104,7 @@ module File : sig
     val cmx_private : Basename.t -> cmx t
     val cmi_private : Basename.t -> cmi t
     val o_private : Basename.t -> o t
+    val o_private_c : Basename.t -> o t
     val cmt_public_for_lsp : Basename.t -> cmt t
     val cmti_public_for_lsp : Basename.t -> cmti t
     val cmi_public_for_lsp : Basename.t -> cmi t
@@ -142,7 +153,7 @@ end
 
 module Compile_ocaml_source : sig
   type t =
-    { source_input : ml File.Source.t
+    { source_input : ml File.Ocaml_source_or_interface.t
     ; compiled_inputs : Generated_file.Compiled.t list
     ; cmx_output : cmx File.Compiled.t
     ; interface_output_if_no_matching_mli_is_present : cmi File.Compiled.t option
@@ -154,10 +165,19 @@ end
 
 module Compile_ocaml_interface : sig
   type t =
-    { interface_input : mli File.Source.t
+    { interface_input : mli File.Ocaml_source_or_interface.t
     ; compiled_inputs : Generated_file.Compiled.t list
     ; cmi_output : cmi File.Compiled.t
     ; stop_after_typing : bool
+    }
+
+  val to_dyn : t -> Dyn.t
+end
+
+module Compile_c_source : sig
+  type t =
+    { source_input : File.C_source.t
+    ; object_output : o File.Compiled.t
     }
 
   val to_dyn : t -> Dyn.t
@@ -171,19 +191,19 @@ module Pack_library : sig
 end
 
 module Generate_public_interface_to_open : sig
-  type t = { ml_output : ml File.Generated_source.t }
+  type t = { ml_output : File.Generated_ocaml_source.t }
 end
 
 module Compile_public_interface_to_open : sig
   type t =
-    { generated_source_input : ml File.Generated_source.t
+    { generated_source_input : File.Generated_ocaml_source.t
     ; internal_modules_pack : Pack.t
     ; cmx_output : cmx File.Compiled.t
     ; cmi_output : cmi File.Compiled.t
     }
 
   val create
-    :  generated_source_input:ml File.Generated_source.t
+    :  generated_source_input:File.Generated_ocaml_source.t
     -> internal_modules_pack:Pack.t
     -> t
 end
@@ -193,21 +213,27 @@ module Link_library : sig
     { cmx_inputs : cmx File.Compiled.t list
     ; cmxa_output : cmxa File.Linked.t
     ; a_output : a File.Linked.t
+    ; compiled_c_inputs : o File.Compiled.t list
     }
 
-  val of_inputs : cmx File.Compiled.t list -> t
+  val of_inputs
+    :  cmx_inputs:cmx File.Compiled.t list
+    -> compiled_c_inputs:o File.Compiled.t list
+    -> t
 end
 
 module Link_executable : sig
   type t =
     { cmx_inputs : cmx File.Compiled.t list
     ; exe_output : exe File.Linked.t
+    ; compiled_c_inputs : o File.Compiled.t list
     }
 end
 
 type t =
   | Compile_ocaml_source of Compile_ocaml_source.t
   | Compile_ocaml_interface of Compile_ocaml_interface.t
+  | Compile_c_source of Compile_c_source.t
   | Pack_library of Pack_library.t
   | Generate_public_interface_to_open of Generate_public_interface_to_open.t
   | Compile_public_interface_to_open of Compile_public_interface_to_open.t

@@ -39,6 +39,14 @@ let package_private_dir t package_id profile =
   package_base_dir t package_id profile / Basename.of_filename "private"
 ;;
 
+(* Directory for containing the object files compiled from C code in the src
+   directory. This is separate from the "private" directory because otherwise a
+   C source file with the same name as an OCaml source file (besides the
+   extension) would collide in their compiled object file. *)
+let package_private_c_dir t package_id profile =
+  package_base_dir t package_id profile / Basename.of_filename "private_c"
+;;
+
 let package_public_dir t package_id profile =
   package_base_dir t package_id profile / Basename.of_filename "public"
 ;;
@@ -56,6 +64,7 @@ let package_dirs t package_id profile =
   ; package_public_dir t package_id profile
   ; package_public_for_lsp_dir t package_id profile
   ; package_private_dir t package_id profile
+  ; package_private_c_dir t package_id profile
   ; package_executable_dir t package_id profile
   ]
 ;;
@@ -65,6 +74,7 @@ let package_generated_file_compiled t package_id profile compiled =
   let base =
     match Compiled.visibility compiled with
     | Private -> package_private_dir t package_id profile
+    | Private_c -> package_private_c_dir t package_id profile
     | Public -> package_public_dir t package_id profile
     | Public_for_lsp -> package_public_for_lsp_dir t package_id profile
   in
@@ -74,7 +84,8 @@ let package_generated_file_compiled t package_id profile compiled =
 let package_generated_file t package_id profile generated_file =
   let open Typed_op.Generated_file in
   match (generated_file : t) with
-  | Generated_source path -> package_generated_source_dir t package_id profile / path
+  | Generated_ocaml_source path ->
+    package_generated_source_dir t package_id profile / path
   | Compiled compiled -> package_generated_file_compiled t package_id profile compiled
   | Linked_library linked_library ->
     package_public_dir t package_id profile / Linked_library.path linked_library
