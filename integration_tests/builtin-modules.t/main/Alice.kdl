@@ -1,0 +1,9 @@
+package {
+  name main
+  version "0.1.0"
+
+  dependencies {
+    requires_str path="../requires_str"
+    requires_unix path="../requires_unix"
+  }
+}

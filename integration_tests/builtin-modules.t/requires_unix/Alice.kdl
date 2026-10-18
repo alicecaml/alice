@@ -1,0 +1,8 @@
+package {
+  name requires_unix
+  version "0.1.0"
+
+  builtins {
+    unix
+  }
+}
