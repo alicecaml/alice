@@ -51,7 +51,19 @@ let parse_manifest_path_and_validate =
          | `Root p -> root_error p)
     in
     (match File_ops.exists absolute_path with
-     | true -> absolute_path
+     | true ->
+       if
+         Basename.equal
+           (Absolute_path.basename absolute_path)
+           Alice_manifest.manifest_name
+       then absolute_path
+       else
+         user_exn
+           [ Pp.textf
+               "Expected path passed to --manifest-path to have basename %S, but got %S."
+               (Basename.to_filename Alice_manifest.manifest_name)
+               manifest_path_str
+           ]
      | false ->
        user_exn
          [ Pp.text "Can't find file passed to --manifest-path.\n"
