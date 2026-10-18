@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Add hidden "--built-artifacts-from-deps" flag to "build" command for
+  re-using built artifacts from dependency package direrctories rather than
+  rebuilding them in the current project. This prevents the need to rebuild
+  dependencies when building multiple different packages, which speeds up
+  builds when building an entire package repository. This feature is used by
+  the [package porting effort](https://github.com/alicecaml/alice-ports). The
+  flag is hidden because it's not appropriate to use this feature in regular
+  development workflows.
+- Add a `builtins` field to manifests for listing the modules from the standard
+  library to make available to the project. By default new projects will
+  specify `unix` and `str` here.
+- Basic support for packages including C code. All .c files in the src
+  directory will be compiled and linked into the  library or executable defined
+  in the project.
+
 ## 0.5.0
 
 - Parallel builds
