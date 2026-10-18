@@ -63,15 +63,6 @@ module Parse_kdl_manifest = struct
           [ Pp.textf "Node %S must have a string argument. Found: %S" node.name arg_s ])
   ;;
 
-  let simple_bool_node node =
-    simple_node node ~f:(function
-      | `Bool bool_value -> Ok bool_value
-      | other ->
-        Kdl.pp_value Format.str_formatter other;
-        let arg_s = Format.flush_str_formatter () in
-        Error [ Pp.textf "Node %S must have a bool argument. Found: %S" node.name arg_s ])
-  ;;
-
   module Dependency_field_names = struct
     let path = "path"
     let all = [ path ]
