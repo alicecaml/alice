@@ -211,9 +211,9 @@ end
 module Link_library : sig
   type t =
     { cmx_inputs : cmx File.Compiled.t list
+    ; compiled_c_inputs : o File.Compiled.t list
     ; cmxa_output : cmxa File.Linked.t
     ; a_output : a File.Linked.t
-    ; compiled_c_inputs : o File.Compiled.t list
     }
 
   val of_inputs
@@ -225,8 +225,8 @@ end
 module Link_executable : sig
   type t =
     { cmx_inputs : cmx File.Compiled.t list
-    ; exe_output : exe File.Linked.t
     ; compiled_c_inputs : o File.Compiled.t list
+    ; exe_output : exe File.Linked.t
     }
 end
 
