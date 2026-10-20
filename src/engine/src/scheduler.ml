@@ -2,7 +2,7 @@ open! Alice_stdlib
 open Alice_hierarchy
 open Alice_package
 open Alice_error
-open Alice_ocaml_compiler
+open Alice_ocaml_toolchain
 module File_ops = Alice_io.File_ops
 module Log = Alice_log
 module Build_plan = Build_graph.Build_plan
@@ -103,14 +103,19 @@ module Action_builder = struct
     { package_with_deps : ('exe, 'lib) Package_with_deps.t
     ; profile : Profile.t
     ; build_dir : Build_dir.t
-    ; ocaml_compiler : Ocaml_compiler.t
+    ; ocaml_toolchain : Ocaml_toolchain.t
     ; compile_args : compile_args
     ; dep_args : dep_args
     ; dirs : dirs
     ; dep_closure_builtin_modules : Builtin_module.Set.t
     }
 
-  let create package_with_deps profile build_dir ocaml_compiler ~built_artifacts_from_deps
+  let create
+        package_with_deps
+        profile
+        build_dir
+        ocaml_toolchain
+        ~built_artifacts_from_deps
     =
     let package = Package_with_deps.package package_with_deps in
     let transitive_dep_libs =
@@ -208,7 +213,7 @@ module Action_builder = struct
     { package_with_deps
     ; profile
     ; build_dir
-    ; ocaml_compiler
+    ; ocaml_toolchain
     ; dep_args
     ; compile_args
     ; dirs
@@ -245,9 +250,9 @@ module Action_builder = struct
         | _ -> t.compile_args.non_lsp_only
       in
       Command
-        (Profile.ocaml_compiler_command
+        (Profile.ocamlopt_command
            t.profile
-           t.ocaml_compiler
+           t.ocaml_toolchain
            ~args:
              (t.dep_args.include_
               @ t.dep_args.open_
@@ -271,9 +276,9 @@ module Action_builder = struct
         | _ -> t.compile_args.non_lsp_only
       in
       Command
-        (Profile.ocaml_compiler_command
+        (Profile.ocamlopt_command
            t.profile
-           t.ocaml_compiler
+           t.ocaml_toolchain
            ~args:
              (t.dep_args.include_
               @ t.dep_args.open_
@@ -295,9 +300,9 @@ module Action_builder = struct
         [ "-ccopt"; "-o"; "-ccopt"; compiled_absolute_filename t object_output ]
       in
       Command
-        (Profile.ocaml_compiler_command
+        (Profile.ocamlopt_command
            t.profile
-           t.ocaml_compiler
+           t.ocaml_toolchain
            ~args:
              ([ Absolute_path.to_filename @@ C_source.path source_input ] @ output_args))
     | Pack_library { cmx_inputs; pack; _ } ->
@@ -314,9 +319,9 @@ module Action_builder = struct
               (Package_name.to_string @@ Typed_op.Pack.package_name package_pack)
           ];
       Command
-        (Profile.ocaml_compiler_command
+        (Profile.ocamlopt_command
            t.profile
-           t.ocaml_compiler
+           t.ocaml_toolchain
            ~args:
              (List.map cmx_inputs ~f:(compiled_absolute_filename t)
               @ [ "-pack"
@@ -342,9 +347,9 @@ module Action_builder = struct
         / Typed_op.File.Generated_ocaml_source.basename generated_source_input
       in
       Action.Command
-        (Profile.ocaml_compiler_command
+        (Profile.ocamlopt_command
            t.profile
-           t.ocaml_compiler
+           t.ocaml_toolchain
            ~args:
              [ "-I"
              ; Absolute_path.to_filename t.dirs.public
@@ -356,9 +361,9 @@ module Action_builder = struct
              ])
     | Link_library { cmx_inputs; cmxa_output; compiled_c_inputs; _ } ->
       Command
-        (Profile.ocaml_compiler_command
+        (Profile.ocamlopt_command
            t.profile
-           t.ocaml_compiler
+           t.ocaml_toolchain
            ~args:
              (t.dep_args.include_
               @ List.map compiled_c_inputs ~f:(compiled_absolute_filename t)
@@ -371,13 +376,13 @@ module Action_builder = struct
       let builtin_module_args =
         Builtin_module.Set.to_list t.dep_closure_builtin_modules
         |> List.map ~f:(fun builtin_module ->
-          Ocaml_compiler.builtin_module_cmxa t.ocaml_compiler builtin_module
+          Ocaml_toolchain.builtin_module_cmxa t.ocaml_toolchain builtin_module
           |> Absolute_path.to_filename)
       in
       Command
-        (Profile.ocaml_compiler_command
+        (Profile.ocamlopt_command
            t.profile
-           t.ocaml_compiler
+           t.ocaml_toolchain
            ~args:
              (builtin_module_args
               @ t.dep_args.cmxa_files
@@ -601,7 +606,7 @@ let make_action_graph
       package_with_deps
       profile
       build_dir
-      ocaml_compiler
+      ocaml_toolchain
       ~any_dep_rebuilt
       ~built_artifacts_from_deps
   =
@@ -610,7 +615,7 @@ let make_action_graph
       package_with_deps
       profile
       build_dir
-      ocaml_compiler
+      ocaml_toolchain
       ~built_artifacts_from_deps
   in
   let package_id = Dependency_graph.Package_with_deps.package_id package_with_deps in
@@ -673,7 +678,7 @@ let run
     -> (exe, lib) Package_with_deps.t
     -> Profile.t
     -> Build_dir.t
-    -> Ocaml_compiler.t
+    -> Ocaml_toolchain.t
     -> Alice_io.Num_jobs.t
     -> any_dep_rebuilt:bool
     -> built_artifacts_from_deps:bool
@@ -683,7 +688,7 @@ let run
     package_with_deps
     profile
     build_dir
-    ocaml_compiler
+    ocaml_toolchain
     num_jobs
     ~any_dep_rebuilt
     ~built_artifacts_from_deps ->
@@ -705,7 +710,7 @@ let run
       package_with_deps
       profile
       build_dir
-      ocaml_compiler
+      ocaml_toolchain
       ~any_dep_rebuilt
       ~built_artifacts_from_deps
   with

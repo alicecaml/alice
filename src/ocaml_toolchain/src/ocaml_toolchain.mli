@@ -4,15 +4,15 @@ module Builtin_module = Alice_builtin_module
 
 type t
 
-(** [create filename env] creates a [t] representing a compiler whose
-    executable is at [filename]. When the compiler is executed it will run in
+(** [create ~ocamlopt env] creates a [t] representing a compiler whose
+    executable is at [ocamlopt]. When the compiler is executed it will run in
     the specified environment [env]. This allows changes to the PATH variable
     to captured in [t]. *)
-val create : Filename.t -> Env.t -> t
+val create : ocamlopt:Filename.t -> Env.t -> t
 
-val filename : t -> Filename.t
+val ocamlopt : t -> Filename.t
 val env : t -> Env.t
-val command : t -> args:string list -> Command.t
+val ocamlopt_command : t -> args:string list -> Command.t
 
 module Deps : sig
   type t =

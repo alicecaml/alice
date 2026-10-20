@@ -9,8 +9,8 @@ let dot_artifacts =
   and+ num_jobs = Common.parse_num_jobs in
   let env = Alice_env.current_env () in
   let os_type = Alice_env.Os_type.current () in
-  let ocamlopt = Alice_which.ocamlopt os_type env in
-  print_endline @@ Project.dot_build_artifacts project os_type ocamlopt num_jobs
+  let ocaml_toolchain = Alice_which.ocaml_toolchain os_type env in
+  print_endline @@ Project.dot_build_artifacts project os_type ocaml_toolchain num_jobs
 ;;
 
 let dot_packages =

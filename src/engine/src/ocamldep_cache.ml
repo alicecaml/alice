@@ -3,9 +3,9 @@ open Alice_hierarchy
 open Alice_package
 module File_ops = Alice_io.File_ops
 module Log = Alice_log
-open Alice_ocaml_compiler
+open Alice_ocaml_toolchain
 
-type dep_table = Ocaml_compiler.Deps.t Absolute_path.Non_root_map.t
+type dep_table = Ocaml_toolchain.Deps.t Absolute_path.Non_root_map.t
 
 type t =
   { dep_table : dep_table
@@ -46,7 +46,7 @@ let store t (dep_table : dep_table) =
     Marshal.to_channel channel dep_table [])
 ;;
 
-let get_deps_batch t ocaml_compiler num_jobs ~local_src_dir_path ~src_file_names =
+let get_deps_batch t ocaml_toolchain num_jobs ~local_src_dir_path ~src_file_names =
   let path = Build_dir.package_ocamldeps_cache_file t.build_dir t.package_id in
   let src_file_names_to_compute_deps_for, known_deps =
     List.partition_map src_file_names ~f:(fun src_file_name ->
@@ -83,15 +83,15 @@ let get_deps_batch t ocaml_compiler num_jobs ~local_src_dir_path ~src_file_names
                  (Absolute_path.concat_basename local_src_dir_path src_file_name))
           ]);
     let deps =
-      Ocaml_compiler.depends_native_batch
-        ocaml_compiler
+      Ocaml_toolchain.depends_native_batch
+        ocaml_toolchain
         num_jobs
         ~local_src_dir_path
         ~src_file_names:src_file_names_to_compute_deps_for
     in
     if Alice_log.is_enabled `Debug
     then
-      List.iter deps ~f:(fun { Ocaml_compiler.Deps.output; inputs } ->
+      List.iter deps ~f:(fun { Ocaml_toolchain.Deps.output; inputs } ->
         Alice_log.debug
           [ Pp.textf
               "Deps of %s: %s"

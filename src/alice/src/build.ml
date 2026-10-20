@@ -11,8 +11,14 @@ let build =
   and+ built_artifacts_from_deps = Common.parse_built_artifacts_from_deps in
   let env = Alice_env.current_env () in
   let os_type = Alice_env.Os_type.current () in
-  let ocamlopt = Alice_which.ocamlopt os_type env in
-  Project.build project profile os_type ocamlopt num_jobs ~built_artifacts_from_deps
+  let ocaml_toolchain = Alice_which.ocaml_toolchain os_type env in
+  Project.build
+    project
+    profile
+    os_type
+    ocaml_toolchain
+    num_jobs
+    ~built_artifacts_from_deps
 ;;
 
 let subcommand =

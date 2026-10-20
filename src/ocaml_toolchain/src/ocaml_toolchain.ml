@@ -4,20 +4,20 @@ open Alice_hierarchy
 module Builtin_module = Alice_builtin_module
 
 type t =
-  { filename : Filename.t
+  { ocamlopt : Filename.t
   ; env : Env.t
   }
 
-let create filename env = { filename; env }
-let filename { filename; _ } = filename
+let create ~ocamlopt env = { ocamlopt; env }
+let ocamlopt { ocamlopt; _ } = ocamlopt
 let env { env; _ } = env
-let command { filename; env } ~args = Command.create filename ~args env
+let ocamlopt_command { ocamlopt; env } ~args = Command.create ocamlopt ~args env
 
 module Config = struct
-  let command ocaml_compiler = command ocaml_compiler ~args:[ "-config" ]
+  let command ocaml_toolchain = ocamlopt_command ocaml_toolchain ~args:[ "-config" ]
 
-  let run_lines ocaml_compiler =
-    let command = command ocaml_compiler in
+  let run_lines ocaml_toolchain =
+    let command = command ocaml_toolchain in
     match Alice_io.Process.Blocking.run_command_capturing_stdout_lines command with
     | Ok (report, output) ->
       Alice_io.Process.Report.error_unless_exit_0 report;
@@ -31,8 +31,8 @@ module Config = struct
         ]
   ;;
 
-  let standard_library ocaml_compiler =
-    let lines = run_lines ocaml_compiler in
+  let standard_library ocaml_toolchain =
+    let lines = run_lines ocaml_toolchain in
     let path_opt =
       List.find_map lines ~f:(fun line ->
         match String.lsplit2 line ~on:' ' with
@@ -48,13 +48,15 @@ module Config = struct
       user_exn
         [ Pp.textf
             "No \"stardard_library\" field in output of `%s -config`."
-            ocaml_compiler.filename
+            ocaml_toolchain.ocamlopt
         ]
   ;;
 end
 
 module Depend = struct
-  let command ocaml_compiler args = command ocaml_compiler ~args:("-depend" :: args)
+  let command ocaml_toolchain args =
+    ocamlopt_command ocaml_toolchain ~args:("-depend" :: args)
+  ;;
 
   module Deps = struct
     type t =
@@ -121,9 +123,9 @@ module Depend = struct
   end
 
   module Native_deps = struct
-    let command ocaml_compiler path =
+    let command ocaml_toolchain path =
       command
-        ocaml_compiler
+        ocaml_toolchain
         [ "-one-line"
         ; "-native"
         ; "-I"
@@ -142,11 +144,11 @@ module Depend = struct
           ]
     ;;
 
-    let run_batch ocaml_compiler num_jobs ~local_src_dir_path ~src_file_names =
+    let run_batch ocaml_toolchain num_jobs ~local_src_dir_path ~src_file_names =
       let commands =
         List.map src_file_names ~f:(fun src_file_name ->
           Absolute_path.concat_basename local_src_dir_path src_file_name
-          |> command ocaml_compiler)
+          |> command ocaml_toolchain)
       in
       Alice_io.Process.run_batch_map_stdout_lines
         commands

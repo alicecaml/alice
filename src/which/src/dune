@@ -8,4 +8,4 @@
   alice_log
   alice_installation
   alice_env
-  alice_ocaml_compiler))
+  alice_ocaml_toolchain))

@@ -9,5 +9,5 @@
   alice_dag
   alice_package
   alice_which
-  alice_ocaml_compiler
+  alice_ocaml_toolchain
   alice_graphviz))

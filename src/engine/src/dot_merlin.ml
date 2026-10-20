@@ -1,6 +1,6 @@
 open! Alice_stdlib
 open Alice_hierarchy
-open Alice_ocaml_compiler
+open Alice_ocaml_toolchain
 open Alice_package.Dependency_graph
 
 let basename = Basename.of_filename ".merlin"
@@ -19,7 +19,7 @@ let dot_merlin_text_initial () =
   sprintf "%s\nS %s" header_comment (Relative_path.to_filename source_rel_path)
 ;;
 
-let dot_merlin_text package_with_deps build_dir profile ocaml_compiler =
+let dot_merlin_text package_with_deps build_dir profile ocaml_toolchain =
   let build_abs_paths_for_deps =
     Package_with_deps.immediate_deps_in_dependency_order package_with_deps
     |> List.concat_map ~f:(fun dep ->
@@ -45,7 +45,7 @@ let dot_merlin_text package_with_deps build_dir profile ocaml_compiler =
   in
   let source_rel_path = Relative_path.of_basename Alice_package.Package.src in
   let ocamllib_path_line =
-    let ocamllib_path = Ocaml_compiler.standard_library ocaml_compiler in
+    let ocamllib_path = Ocaml_toolchain.standard_library ocaml_toolchain in
     (* It's probably more correct to specify the OCaml library path with
        "FLG -ocamllib-path" however this doesn't seem to work on Windows, so
        just use a "B" directive instead. *)
@@ -57,7 +57,7 @@ let dot_merlin_text package_with_deps build_dir profile ocaml_compiler =
     |> List.map ~f:(fun builtin_module ->
       sprintf
         "B %s"
-        (Ocaml_compiler.builtin_module_dir ocaml_compiler builtin_module
+        (Ocaml_toolchain.builtin_module_dir ocaml_toolchain builtin_module
          |> Absolute_path.to_filename))
   in
   let lines =

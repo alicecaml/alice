@@ -1,6 +1,6 @@
 open! Alice_stdlib
 open Alice_package
-open Alice_ocaml_compiler
+open Alice_ocaml_toolchain
 
 module Package_built : sig
   type t
@@ -13,7 +13,7 @@ val run
   -> ('exe, 'lib) Dependency_graph.Package_with_deps.t
   -> Profile.t
   -> Build_dir.t
-  -> Ocaml_compiler.t
+  -> Ocaml_toolchain.t
   -> Alice_io.Num_jobs.t
   -> any_dep_rebuilt:bool
   -> built_artifacts_from_deps:bool

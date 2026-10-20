@@ -1,6 +1,6 @@
 open! Alice_stdlib
 open Alice_package
-open Alice_ocaml_compiler
+open Alice_ocaml_toolchain
 
 (** Builds are orchestrated in the context of a project. This determines things
     like where build artifacts will go, and which package is the root of the
@@ -13,7 +13,7 @@ val build
   :  t
   -> Profile.t
   -> Alice_env.Os_type.t
-  -> Ocaml_compiler.t
+  -> Ocaml_toolchain.t
   -> Alice_io.Num_jobs.t
   -> built_artifacts_from_deps:bool
   -> unit
@@ -22,7 +22,7 @@ val run
   :  t
   -> Profile.t
   -> Alice_env.Os_type.t
-  -> Ocaml_compiler.t
+  -> Ocaml_toolchain.t
   -> Alice_io.Num_jobs.t
   -> args:string list
   -> built_artifacts_from_deps:bool
@@ -33,7 +33,7 @@ val clean : t -> unit
 val dot_build_artifacts
   :  t
   -> Alice_env.Os_type.t
-  -> Ocaml_compiler.t
+  -> Ocaml_toolchain.t
   -> Alice_io.Num_jobs.t
   -> string
 

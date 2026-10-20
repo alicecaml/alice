@@ -72,8 +72,8 @@ let ocamlopt_name os_type =
   Alice_env.Os_type.filename_add_exe_extension_on_windows os_type "ocamlopt.opt"
 ;;
 
-let ocamlopt os_type env =
+let ocaml_toolchain os_type env =
   let env = add_installation_to_path_variable os_type env in
-  let filename = try_which os_type env (ocamlopt_name os_type) in
-  Alice_ocaml_compiler.Ocaml_compiler.create filename env
+  let ocamlopt = try_which os_type env (ocamlopt_name os_type) in
+  Alice_ocaml_toolchain.Ocaml_toolchain.create ~ocamlopt env
 ;;
