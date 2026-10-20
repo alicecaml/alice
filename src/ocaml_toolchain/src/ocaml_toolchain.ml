@@ -5,13 +5,16 @@ module Builtin_module = Alice_builtin_module
 
 type t =
   { ocamlopt : Filename.t
+  ; ocaml : Filename.t
   ; env : Env.t
   }
 
-let create ~ocamlopt env = { ocamlopt; env }
+let create ~ocamlopt ~ocaml env = { ocamlopt; env; ocaml }
 let ocamlopt { ocamlopt; _ } = ocamlopt
+let ocaml { ocaml; _ } = ocaml
 let env { env; _ } = env
-let ocamlopt_command { ocamlopt; env } ~args = Command.create ocamlopt ~args env
+let ocamlopt_command { ocamlopt; env; _ } ~args = Command.create ocamlopt ~args env
+let ocaml_command { ocaml; env; _ } ~args = Command.create ocaml ~args env
 
 module Config = struct
   let command ocaml_toolchain = ocamlopt_command ocaml_toolchain ~args:[ "-config" ]
