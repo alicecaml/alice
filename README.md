@@ -196,3 +196,117 @@ export DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled
 export DUNE_CONFIG__PKG_BUILD_PROGRESS=enabled
 export DUNE_CONFIG__LOCK_DEV_TOOL=disabled
 ```
+
+### Windows Development Notes
+
+Quick guide for getting the necessary tools to develop Alice on a fresh Windows
+install. Note that when installing command-line tools with WinGet the commands
+may only be available in new terminals and not the current terminal.
+
+Install git:
+```
+> winget install -e --id Git.Git
+```
+
+Install the latest release of Alice from WinGet. We'll use it to install the
+OCaml compiler, ocamllsp, and ocamlformat.
+```
+> winget install -e --id OCaml.Alice
+```
+
+And install the OCaml tools with Alice:
+```
+> alice tools install
+```
+
+Add the tools to your `$env:PATH` by adding the following line to the file
+named in the `$PROFILE` environment variable (creating that file if necessary):
+```powershell
+# OCaml toolchain installed by Alice.
+$env:PATH += ";$HOME\AppData\Local\alice\current\bin;"
+```
+
+In new terminals you'll have access to the various OCaml commands (e.g.
+`ocamlopt.opt.exe`) however they will fail to run with an `$LASTEXITCODE` of
+`-1073741515` due to missing shared libraries (dll's) which we'll install soon.
+
+Install [msys2](https://www.msys2.org) and then from within msys2's terminal
+install a C compiler. It's recommended to use mingw64 gcc:
+```
+$ pacman -S mingw-w64-x86_64-gcc
+```
+
+Update your `$env:PATH` again to make the new commands and libraries available.
+We'll also add a second directory containing some unix-style executables as
+various build scripts will assume the existence of standard unix commands (such
+as `rm`). Extracting some of Alice's dependencies (in in particular the menhir
+libraries) has been found to fail using the `tar` command built into windows so
+we need the shell to prefer the `tar` command from msys2 by placing it earlier
+in `$env:PATH` than the default paths. Here we'll add two directories to the
+beginning of `$env:PATH` so commands from msys2 are run preferentially to those
+of the same name from Windows. Remember that you did this in case it breaks
+something in your system and you need to revert!
+
+Append this to the file named in `$PROFILE`:
+```powershell
+# Put msys2 bin directories at the start of PATH so msys2 executables are run
+# preferentially over Windows executables of the same name.
+$env:PATH = "C:\msys64\mingw64\bin;C:\msys64\usr\bin;$env:PATH"
+```
+
+Notably the shared library `C:\msys64\mingw64\bin\libzstd.dll` is necessary for
+the OCaml tools to run. Once you're in a terminal with new `$env:PATH` confirm
+that the OCaml compiler works:
+```
+> ocamlopt.opt.exe -version
+5.3.1+relocatable
+```
+
+Alice currently uses Dune as its build system and package manager. On Windows
+Dune's package management features were not working last I checked so I host a
+Dune windows executable with some workarounds
+[here](https://s3.g.s4.mega.io/ycsnsngpe2elgjdd2uzbdpyj6s54q5itlvy6g/alice/dune/dune-3.20.1-x86_64-windows.tar.gz).
+Make a directory to contain executables at `$HOME\bin` and put `dune.exe`
+there.
+
+```
+> mkdir $HOME\bin
+> curl -O $env:TMP\dune.tar.gz https://s3.g.s4.mega.io/ycsnsngpe2elgjdd2uzbdpyj6s54q5itlvy6g/alice/dune/dune-3.20.1-x86_64-windows.tar.gz
+> tar xf $env:TMP/dune.tar.gz -C $env:TMP
+> cp $env:TMP\dune-3.20.1-x86_64-windows\bin\dune.exe $HOME\bin\
+```
+
+And add `$HOME\bin` to your `PATH` by appending this to the file named in
+`$PROFILE`:
+```powershell
+# Folder for arbitrary command-line executables.
+$env:PATH += ";$HOME\bin;"
+```
+
+Confirm it works in a new terminal:
+```
+>  dune --version
+n/a
+```
+(This dune doesn't know its version because it wasn't released in the proper
+way but it will still work for us.)
+
+In total all the `$env:PATH` additions we needed are:
+```powershell
+# OCaml toolchain installed by Alice.
+$env:PATH += ";$HOME\AppData\Local\alice\current\bin;"
+
+# Put msys2 bin directories at the start of PATH so msys2 executables are run
+# preferentially over Windows executables of the same name.
+$env:PATH = "C:\msys64\mingw64\bin;C:\msys64\usr\bin;$env:PATH"
+
+# Folder for arbitrary command-line executables.
+$env:PATH += ";$HOME\bin;"
+```
+
+Test that the project builds:
+```
+> dune build
+> .\_build\default\src\alice\src\alice.exe --version
+Alice 0.5-dev
+```
