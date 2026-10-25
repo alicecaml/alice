@@ -48,3 +48,7 @@ val builtin_module_dir : t -> Builtin_module.t -> Absolute_path.non_root_t
 (** The cmxa file for a builtin module within the compiler's standard
     library *)
 val builtin_module_cmxa : t -> Builtin_module.t -> Absolute_path.non_root_t
+
+(** The cmxa file for a builtin module within the compiler's standard
+    library *)
+val builtin_module_cma : t -> Builtin_module.t -> Absolute_path.non_root_t

@@ -1,0 +1,10 @@
+(library
+ (package alice)
+ (name alice_config_script)
+ (libraries
+  alice_stdlib
+  alice_error
+  alice_hierarchy
+  alice_io
+  alice_builtin_module
+  alice_ocaml_toolchain))

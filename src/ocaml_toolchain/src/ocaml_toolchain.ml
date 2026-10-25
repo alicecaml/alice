@@ -174,3 +174,8 @@ let builtin_module_cmxa t builtin_module =
   builtin_module_dir t builtin_module
   / Basename.of_filename (sprintf "%s.cmxa" (Builtin_module.to_string builtin_module))
 ;;
+
+let builtin_module_cma t builtin_module =
+  builtin_module_dir t builtin_module
+  / Basename.of_filename (sprintf "%s.cma" (Builtin_module.to_string builtin_module))
+;;
