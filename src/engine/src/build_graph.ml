@@ -160,8 +160,15 @@ module Build_plan = struct
   ;;
 end
 
-let compute_ocaml_compilation_ops src_dir package_id build_dir ocaml_toolchain num_jobs =
-  let ocamldep_cache = Ocamldep_cache.load build_dir package_id in
+let compute_ocaml_compilation_ops
+      src_dir
+      package_id
+      build_dir
+      ocaml_toolchain
+      compiler_backend
+      num_jobs
+  =
+  let ocamldep_cache = Ocamldep_cache.load build_dir compiler_backend package_id in
   let src_file_names =
     Dir_non_root.contents src_dir
     |> List.filter_map ~f:(fun (file : File_non_root.t) ->
@@ -179,13 +186,14 @@ let compute_ocaml_compilation_ops src_dir package_id build_dir ocaml_toolchain n
     Ocamldep_cache.get_deps_batch
       ocamldep_cache
       ocaml_toolchain
+      compiler_backend
       num_jobs
       ~src_file_names
       ~local_src_dir_path:(Dir_non_root.path src_dir)
   in
   let src_file_names = Basename.Set.of_list src_file_names in
   let deps = Absolute_path.Non_root_map.of_list_exn deps_key_value_pairs in
-  Ocamldep_cache.store ocamldep_cache deps;
+  Ocamldep_cache.store ocamldep_cache compiler_backend deps;
   Absolute_path.Non_root_map.to_list deps
   |> List.map ~f:(fun (source_path, (deps : Ocaml_toolchain.Deps.t)) ->
     let open Typed_op in
@@ -458,10 +466,11 @@ let create
     -> Build_dir.t
     -> Alice_env.Os_type.t
     -> Ocaml_toolchain.t
+    -> Compiler_backend.t
     -> Alice_io.Num_jobs.t
     -> (exe, lib) t
   =
-  fun package_typed build_dir os_type ocaml_toolchain num_jobs ->
+  fun package_typed build_dir os_type ocaml_toolchain compiler_backend num_jobs ->
   let open Typed_op in
   let package = Package.Typed.package package_typed in
   let src_dir = Package.src_dir_exn package in
@@ -471,6 +480,7 @@ let create
       (Package.id package)
       build_dir
       ocaml_toolchain
+      compiler_backend
       num_jobs
   in
   let c_compilation_ops = compute_c_compilation_ops src_dir in

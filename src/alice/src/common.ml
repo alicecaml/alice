@@ -2,6 +2,7 @@ open! Alice_stdlib
 open Alice_hierarchy
 open Alice_error
 open Alice_engine
+open Alice_ocaml_toolchain
 module File_ops = Alice_io.File_ops
 open Climate
 
@@ -103,6 +104,22 @@ let parse_profile =
   match release with
   | true -> Profile.release
   | false -> Profile.debug
+;;
+
+let parse_compiler_backend =
+  let open Arg_parser in
+  let conv =
+    enum
+      ~default_value_name:"BACKEND"
+      ~eq:Compiler_backend.equal
+      (List.map [ Compiler_backend.Native; Compiler_backend.Bytecode ] ~f:(fun backend ->
+         Compiler_backend.name backend, backend))
+  in
+  named_with_default
+    [ "b"; "backend" ]
+    ~default:Compiler_backend.Native
+    conv
+    ~doc:"Which compiler backend to use (\"native\" or \"bytecode\")"
 ;;
 
 let parse_built_artifacts_from_deps =

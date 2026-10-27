@@ -23,7 +23,7 @@ let package_dir t package_id =
   / Basename.of_filename (Package_id.name_dash_version_string package_id)
 ;;
 
-let package_ocamldeps_cache_file t package_id =
+let package_ocamldeps_cache_file t compiler_backend package_id =
   package_dir t package_id / Basename.of_filename "ocamldeps_cache.marshal"
 ;;
 

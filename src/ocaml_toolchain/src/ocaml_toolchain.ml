@@ -124,14 +124,17 @@ module Depend = struct
       in
       { output; inputs }
     ;;
-  end
 
-  module Native_deps = struct
-    let command ocaml_toolchain path =
+    let command ocaml_toolchain compiler_backend path =
+      let backend_arg =
+        match (compiler_backend : Compiler_backend.t) with
+        | Native -> "-native"
+        | Bytecode -> "-bytecode"
+      in
       command
         ocaml_toolchain
-        [ "-one-line"
-        ; "-native"
+        [ backend_arg
+        ; "-one-line"
         ; "-I"
         ; Absolute_path.parent path |> Absolute_path.Root_or_non_root.to_filename
         ; Absolute_path.to_filename path
@@ -139,7 +142,7 @@ module Depend = struct
     ;;
 
     let parse_stdout_lines ~local_src_dir_path = function
-      | [ line ] | [ line; "" ] -> Deps.of_line ~local_src_dir_path line
+      | [ line ] | [ line; "" ] -> of_line ~local_src_dir_path line
       | [] -> panic [ Pp.text "Unexpected empty output!" ]
       | lines ->
         panic
@@ -148,11 +151,17 @@ module Depend = struct
           ]
     ;;
 
-    let run_batch ocaml_toolchain num_jobs ~local_src_dir_path ~src_file_names =
+    let run_batch
+          ocaml_toolchain
+          compiler_backend
+          num_jobs
+          ~local_src_dir_path
+          ~src_file_names
+      =
       let commands =
         List.map src_file_names ~f:(fun src_file_name ->
           Absolute_path.concat_basename local_src_dir_path src_file_name
-          |> command ocaml_toolchain)
+          |> command ocaml_toolchain compiler_backend)
       in
       Alice_io.Process.run_batch_map_stdout_lines
         commands
@@ -164,7 +173,7 @@ end
 
 module Deps = Depend.Deps
 
-let depends_native_batch = Depend.Native_deps.run_batch
+let depends_batch = Depend.Deps.run_batch
 let standard_library = Config.standard_library
 
 let builtin_module_dir t builtin_module =

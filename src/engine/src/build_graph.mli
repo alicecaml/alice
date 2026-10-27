@@ -28,6 +28,7 @@ val create
   -> Build_dir.t
   -> Alice_env.Os_type.t
   -> Ocaml_toolchain.t
+  -> Compiler_backend.t
   -> Alice_io.Num_jobs.t
   -> ('exe, 'lib) t
 

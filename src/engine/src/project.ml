@@ -59,6 +59,7 @@ let build_single_package
     -> Profile.t
     -> Alice_env.Os_type.t
     -> Ocaml_toolchain.t
+    -> Compiler_backend.t
     -> Alice_io.Num_jobs.t
     -> any_dep_rebuilt:bool
     -> built_artifacts_from_deps:bool
@@ -69,12 +70,19 @@ let build_single_package
     profile
     os_type
     ocaml_toolchain
+    compiler_backend
     num_jobs
     ~any_dep_rebuilt
     ~built_artifacts_from_deps ->
   let package_typed = Package_with_deps.package_typed package_with_deps in
   let build_graph =
-    Build_graph.create package_typed t.build_dir os_type ocaml_toolchain num_jobs
+    Build_graph.create
+      package_typed
+      t.build_dir
+      os_type
+      ocaml_toolchain
+      compiler_backend
+      num_jobs
   in
   Scheduler.run
     build_graph
@@ -93,6 +101,7 @@ let build_dependency_graph
       profile
       os_type
       ocaml_toolchain
+      compiler_backend
       num_jobs
       ~built_artifacts_from_deps
   =
@@ -103,6 +112,7 @@ let build_dependency_graph
       profile
       os_type
       ocaml_toolchain
+      compiler_backend
       num_jobs
       ~any_dep_rebuilt
       ~built_artifacts_from_deps
@@ -197,7 +207,15 @@ let build_package t package profile ocaml_toolchain num_jobs ~built_artifacts_fr
     package
 ;;
 
-let build t profile os_type ocaml_toolchain num_jobs ~built_artifacts_from_deps =
+let build
+      t
+      profile
+      os_type
+      ocaml_toolchain
+      compiler_backend
+      num_jobs
+      ~built_artifacts_from_deps
+  =
   let open Alice_ui in
   build_package
     t
@@ -205,6 +223,7 @@ let build t profile os_type ocaml_toolchain num_jobs ~built_artifacts_from_deps 
     profile
     os_type
     ocaml_toolchain
+    compiler_backend
     num_jobs
     ~built_artifacts_from_deps;
   println
@@ -216,7 +235,16 @@ let build t profile os_type ocaml_toolchain num_jobs ~built_artifacts_from_deps 
           (Package_id.name_v_version_string (Package.id t.package))))
 ;;
 
-let run t profile os_type ocaml_toolchain num_jobs ~args ~built_artifacts_from_deps =
+let run
+      t
+      profile
+      os_type
+      ocaml_toolchain
+      compiler_backend
+      num_jobs
+      ~args
+      ~built_artifacts_from_deps
+  =
   let open Alice_ui in
   let package_typed =
     match Package.typed t.package with
@@ -230,6 +258,7 @@ let run t profile os_type ocaml_toolchain num_jobs ~args ~built_artifacts_from_d
     profile
     os_type
     ocaml_toolchain
+    compiler_backend
     num_jobs
     ~built_artifacts_from_deps;
   let exe_name =
@@ -277,11 +306,24 @@ let clean t =
   File_ops.rm_rf to_remove
 ;;
 
-let dot_package_build_artifacts t package os_type ocaml_toolchain num_jobs =
+let dot_package_build_artifacts
+      t
+      package
+      os_type
+      ocaml_toolchain
+      compiler_backend
+      num_jobs
+  =
   Package.with_typed
     { f =
         (fun pt ->
-          Build_graph.create pt t.build_dir os_type ocaml_toolchain num_jobs
+          Build_graph.create
+            pt
+            t.build_dir
+            os_type
+            ocaml_toolchain
+            compiler_backend
+            num_jobs
           |> Build_graph.dot)
     }
     package

@@ -14,6 +14,7 @@ val build
   -> Profile.t
   -> Alice_env.Os_type.t
   -> Ocaml_toolchain.t
+  -> Compiler_backend.t
   -> Alice_io.Num_jobs.t
   -> built_artifacts_from_deps:bool
   -> unit
@@ -23,6 +24,7 @@ val run
   -> Profile.t
   -> Alice_env.Os_type.t
   -> Ocaml_toolchain.t
+  -> Compiler_backend.t
   -> Alice_io.Num_jobs.t
   -> args:string list
   -> built_artifacts_from_deps:bool
@@ -34,6 +36,7 @@ val dot_build_artifacts
   :  t
   -> Alice_env.Os_type.t
   -> Ocaml_toolchain.t
+  -> Compiler_backend.t
   -> Alice_io.Num_jobs.t
   -> string
 

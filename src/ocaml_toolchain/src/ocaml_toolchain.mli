@@ -30,8 +30,9 @@ end
     compiled output ([Deps.output]), as well as the files which must be generated
     before compiling the given file ([Deps.inputs]). Returned paths are relative
     to the directory containing source files. *)
-val depends_native_batch
+val depends_batch
   :  t
+  -> Compiler_backend.t
   -> Alice_io.Num_jobs.t
   -> local_src_dir_path:Absolute_path.non_root_t
   -> src_file_names:Basename.t list
