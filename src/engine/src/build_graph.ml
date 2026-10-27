@@ -40,7 +40,7 @@ module Build_dag = struct
     Node.transitive_closure_in_child_first_order node ~include_start:true
     |> List.filter_map ~f:(fun node ->
       match Node.name node with
-      | Compile_ocaml_source { cmx_output; _ } -> Some cmx_output
+      | Compile_ocaml_source { compiled_object_output; _ } -> Some compiled_object_output
       | _ -> None)
   ;;
 
@@ -75,9 +75,9 @@ module Build_dag = struct
       all_nodes t
       |> List.filter_map ~f:(fun node ->
         match Node.name node with
-        | Compile_ocaml_source { cmx_output; _ }
+        | Compile_ocaml_source { compiled_object_output; _ }
           when Typed_op.Generated_file.Compiled.equal
-                 cmx_output
+                 compiled_object_output
                  Typed_op.Generated_file.Compiled.lib_cmx -> Some node
         | _ -> None)
     with
@@ -91,9 +91,9 @@ module Build_dag = struct
       all_nodes t
       |> List.filter_map ~f:(fun node ->
         match Node.name node with
-        | Compile_ocaml_source { cmx_output; _ }
+        | Compile_ocaml_source { compiled_object_output; _ }
           when Typed_op.Generated_file.Compiled.equal
-                 cmx_output
+                 compiled_object_output
                  Typed_op.Generated_file.Compiled.exe_cmx -> Some node
         | _ -> None)
     with
@@ -108,9 +108,9 @@ module Build_dag = struct
       all_nodes t
       |> List.filter_map ~f:(fun node ->
         match Node.name node with
-        | Compile_ocaml_source ({ cmx_output; _ } as compile_source)
+        | Compile_ocaml_source ({ compiled_object_output; _ } as compile_source)
           when Typed_op.Generated_file.Compiled.equal
-                 cmx_output
+                 compiled_object_output
                  Typed_op.Generated_file.Compiled.lib_cmx -> Some compile_source
         | _ -> None)
     with
@@ -124,9 +124,9 @@ module Build_dag = struct
       all_nodes t
       |> List.filter_map ~f:(fun node ->
         match Node.name node with
-        | Compile_ocaml_interface ({ cmi_output; _ } as compile_interface)
+        | Compile_ocaml_interface ({ compiled_interface_output; _ } as compile_interface)
           when Typed_op.Generated_file.Compiled.equal
-                 cmi_output
+                 compiled_interface_output
                  Typed_op.Generated_file.Compiled.lib_cmi -> Some compile_interface
         | _ -> None)
     with
@@ -257,7 +257,7 @@ let compute_ocaml_compilation_ops
               ])
       in
       let source_base_name = Absolute_path.basename source_path in
-      let cmx_output =
+      let compiled_object_output =
         Basename.replace_extension source_base_name ~ext:".cmx"
         |> File.Compiled.cmx_private
         |> File.Compiled.generated_file_compiled
@@ -274,7 +274,7 @@ let compute_ocaml_compilation_ops
       Compile_ocaml_source
         { source_input
         ; compiled_inputs
-        ; cmx_output
+        ; compiled_object_output
         ; interface_output_if_no_matching_mli_is_present
         ; stop_after_typing = false
         }
@@ -301,14 +301,18 @@ let compute_ocaml_compilation_ops
                   (Basename.to_filename dep)
               ])
       in
-      let cmi_output =
+      let compiled_interface_output =
         Absolute_path.basename source_path
         |> Basename.replace_extension ~ext:".cmi"
         |> File.Compiled.cmi_private
         |> File.Compiled.generated_file_compiled
       in
       Compile_ocaml_interface
-        { interface_input; compiled_inputs; cmi_output; stop_after_typing = false })
+        { interface_input
+        ; compiled_inputs
+        ; compiled_interface_output
+        ; stop_after_typing = false
+        })
 ;;
 
 let compute_c_compilation_ops src_dir =
@@ -343,25 +347,27 @@ let lsp_ops build_dag_ocaml_compilation_only package =
   let compile_source =
     let { Compile_ocaml_source.source_input
         ; compiled_inputs
-        ; cmx_output
+        ; compiled_object_output
         ; interface_output_if_no_matching_mli_is_present
         ; stop_after_typing = _
         }
       =
       Build_dag.library_cmx_compile_source_or_panic build_dag_ocaml_compilation_only
     in
-    let cmx_output =
+    let compiled_object_output =
       Typed_op.Generated_file.Compiled.rename
-        cmx_output
+        compiled_object_output
         ~name_without_extension:package_name_s
         Public_for_lsp
     in
     let interface_output_if_no_matching_mli_is_present =
-      Option.map interface_output_if_no_matching_mli_is_present ~f:(fun cmi_output ->
-        Typed_op.File.Compiled.rename
-          cmi_output
-          ~name_without_extension:package_name_s
-          Public_for_lsp)
+      Option.map
+        interface_output_if_no_matching_mli_is_present
+        ~f:(fun compiled_interface_output ->
+          Typed_op.File.Compiled.rename
+            compiled_interface_output
+            ~name_without_extension:package_name_s
+            Public_for_lsp)
     in
     let compiled_inputs =
       List.map compiled_inputs ~f:(fun input ->
@@ -394,7 +400,7 @@ let lsp_ops build_dag_ocaml_compilation_only package =
     in
     { Compile_ocaml_source.source_input
     ; compiled_inputs
-    ; cmx_output
+    ; compiled_object_output
     ; interface_output_if_no_matching_mli_is_present
     ; stop_after_typing = true
     }
@@ -407,7 +413,7 @@ let lsp_ops build_dag_ocaml_compilation_only package =
     | None ->
       let { Compile_ocaml_interface.interface_input
           ; compiled_inputs
-          ; cmi_output
+          ; compiled_interface_output
           ; stop_after_typing = _
           }
         =
@@ -422,16 +428,16 @@ let lsp_ops build_dag_ocaml_compilation_only package =
            node. *)
         pack_output :: compiled_inputs
       in
-      let cmi_output =
+      let compiled_interface_output =
         Typed_op.Generated_file.Compiled.rename
-          cmi_output
+          compiled_interface_output
           ~name_without_extension:package_name_s
           Public_for_lsp
       in
       Some
         { Compile_ocaml_interface.interface_input
         ; compiled_inputs
-        ; cmi_output
+        ; compiled_interface_output
         ; stop_after_typing = true
         }
   in
@@ -486,7 +492,7 @@ let create
       Build_dag.cmx_files_in_build_order_for_library build_dag_ocaml_compilation_only
     in
     let pack = Typed_op.Pack.of_package_name (Package.name package) in
-    let pack_op = Pack_library { cmx_inputs = cmx_files; pack } in
+    let pack_op = Pack_library { compiled_object_inputs = cmx_files; pack } in
     let public_interface_to_open_ml =
       Module_name.public_interface_to_open (Package.name package)
       |> Module_name.basename_without_extension
@@ -507,8 +513,10 @@ let create
     let link_library_op =
       Link_library
         (Link_library.of_inputs
-           ~cmx_inputs:
-             [ Typed_op.Pack.cmx_file pack; compile_public_interface_to_open.cmx_output ]
+           ~compiled_object_inputs:
+             [ Typed_op.Pack.cmx_file pack
+             ; compile_public_interface_to_open.compiled_object_output
+             ]
            ~compiled_c_inputs:compiled_c_object_files)
     in
     [ pack_op
@@ -530,7 +538,7 @@ let create
     in
     [ Link_executable
         { exe_output = exe_file
-        ; cmx_inputs = cmx_files
+        ; compiled_object_inputs = cmx_files
         ; compiled_c_inputs = compiled_c_object_files
         }
     ]

@@ -225,12 +225,13 @@ module Action_builder = struct
 
   let op_action t op : Action.t =
     match (op : Typed_op.t) with
-    | Compile_ocaml_source { source_input; cmx_output; stop_after_typing; _ } ->
+    | Compile_ocaml_source { source_input; compiled_object_output; stop_after_typing; _ }
+      ->
       let stop_after_typing_args =
         if stop_after_typing then t.compile_args.stop_after_typing else []
       in
       let lsp_output_args =
-        match Typed_op.Generated_file.Compiled.visibility cmx_output with
+        match Typed_op.Generated_file.Compiled.visibility compiled_object_output with
         | Public_for_lsp ->
           t.compile_args.lsp_only
           @ [ (* Include the public_for_lsp directory in the search path so packages
@@ -254,16 +255,17 @@ module Action_builder = struct
               @ [ "-c"
                 ; "-bin-annot" (* Needed for LSP *)
                 ; "-o"
-                ; compiled_absolute_filename t cmx_output
+                ; compiled_absolute_filename t compiled_object_output
                 ; "-impl"
                 ; Absolute_path.to_filename @@ Ocaml_source_or_interface.path source_input
                 ]))
-    | Compile_ocaml_interface { interface_input; cmi_output; stop_after_typing; _ } ->
+    | Compile_ocaml_interface
+        { interface_input; compiled_interface_output; stop_after_typing; _ } ->
       let stop_after_typing_args =
         if stop_after_typing then t.compile_args.stop_after_typing else []
       in
       let lsp_output_args =
-        match Typed_op.Generated_file.Compiled.visibility cmi_output with
+        match Typed_op.Generated_file.Compiled.visibility compiled_interface_output with
         | Public_for_lsp -> t.compile_args.lsp_only
         | _ -> t.compile_args.non_lsp_only
       in
@@ -280,7 +282,7 @@ module Action_builder = struct
               @ [ "-c"
                 ; "-bin-annot" (* Needed for LSP *)
                 ; "-o"
-                ; compiled_absolute_filename t cmi_output
+                ; compiled_absolute_filename t compiled_interface_output
                 ; "-intf"
                 ; Ocaml_source_or_interface.path interface_input
                   |> Absolute_path.to_filename
@@ -297,7 +299,7 @@ module Action_builder = struct
            t.build_config.ocaml_toolchain
            ~args:
              ([ Absolute_path.to_filename @@ C_source.path source_input ] @ output_args))
-    | Pack_library { cmx_inputs; pack; _ } ->
+    | Pack_library { compiled_object_inputs; pack; _ } ->
       let package_pack =
         Package_with_deps.name t.package_with_deps |> Typed_op.Pack.of_package_name
       in
@@ -315,7 +317,7 @@ module Action_builder = struct
            t.build_config.profile
            t.build_config.ocaml_toolchain
            ~args:
-             (List.map cmx_inputs ~f:(compiled_absolute_filename t)
+             (List.map compiled_object_inputs ~f:(compiled_absolute_filename t)
               @ [ "-pack"
                 ; "-o"
                 ; compiled_absolute_filename t (Typed_op.Pack.cmx_file pack)
@@ -330,7 +332,8 @@ module Action_builder = struct
         Public_interface_to_open.of_package_with_deps t.package_with_deps
       in
       Generated_public_interface_to_open { output_path; public_interface_to_open }
-    | Compile_public_interface_to_open { generated_source_input; cmx_output; _ } ->
+    | Compile_public_interface_to_open
+        { generated_source_input; compiled_object_output; _ } ->
       let impl =
         Package_base_dir.generated_source_dir t.package_base_dir
         / Typed_op.File.Generated_ocaml_source.basename generated_source_input
@@ -344,11 +347,11 @@ module Action_builder = struct
              ; Absolute_path.to_filename t.dirs.public
              ; "-c"
              ; "-o"
-             ; compiled_absolute_filename t cmx_output
+             ; compiled_absolute_filename t compiled_object_output
              ; "-impl"
              ; Absolute_path.to_filename impl
              ])
-    | Link_library { cmx_inputs; cmxa_output; compiled_c_inputs; _ } ->
+    | Link_library { compiled_object_inputs; cmxa_output; compiled_c_inputs; _ } ->
       Command
         (Profile.ocamlopt_command
            t.build_config.profile
@@ -356,12 +359,12 @@ module Action_builder = struct
            ~args:
              (t.dep_args.include_
               @ List.map compiled_c_inputs ~f:(compiled_absolute_filename t)
-              @ List.map cmx_inputs ~f:(compiled_absolute_filename t)
+              @ List.map compiled_object_inputs ~f:(compiled_absolute_filename t)
               @ [ "-a"
                 ; "-o"
                 ; Absolute_path.to_filename @@ (t.dirs.public / Linked.path cmxa_output)
                 ]))
-    | Link_executable { cmx_inputs; exe_output; compiled_c_inputs } ->
+    | Link_executable { compiled_object_inputs; exe_output; compiled_c_inputs } ->
       let builtin_module_args =
         Builtin_module.Set.to_list t.dep_closure_builtin_modules
         |> List.map ~f:(fun builtin_module ->
@@ -378,7 +381,7 @@ module Action_builder = struct
              (builtin_module_args
               @ t.dep_args.cmxa_files
               @ List.map compiled_c_inputs ~f:(compiled_absolute_filename t)
-              @ List.map cmx_inputs ~f:(compiled_absolute_filename t)
+              @ List.map compiled_object_inputs ~f:(compiled_absolute_filename t)
               @ [ "-o"
                 ; Absolute_path.to_filename @@ (t.dirs.executable / Linked.path exe_output)
                 ]))

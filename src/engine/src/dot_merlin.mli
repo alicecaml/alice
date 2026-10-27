@@ -1,6 +1,5 @@
 open! Alice_stdlib
 open Alice_hierarchy
-open Alice_ocaml_toolchain
 open Alice_package.Dependency_graph
 
 val basename : Basename.t

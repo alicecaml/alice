@@ -1,7 +1,6 @@
 open! Alice_stdlib
 open Alice_package
 open Alice_hierarchy
-open Alice_ocaml_toolchain
 open Type_bool
 
 module Build_plan : sig

@@ -171,7 +171,7 @@ module Compile_ocaml_source : sig
   type t =
     { source_input : ml File.Ocaml_source_or_interface.t
     ; compiled_inputs : Generated_file.Compiled.t list
-    ; cmx_output : Generated_file.Compiled.t
+    ; compiled_object_output : Generated_file.Compiled.t
     ; interface_output_if_no_matching_mli_is_present : cmi File.Compiled.t option
     ; stop_after_typing : bool
     }
@@ -183,7 +183,7 @@ module Compile_ocaml_interface : sig
   type t =
     { interface_input : mli File.Ocaml_source_or_interface.t
     ; compiled_inputs : Generated_file.Compiled.t list
-    ; cmi_output : Generated_file.Compiled.t
+    ; compiled_interface_output : Generated_file.Compiled.t
     ; stop_after_typing : bool
     }
 
@@ -201,7 +201,7 @@ end
 
 module Pack_library : sig
   type t =
-    { cmx_inputs : Generated_file.Compiled.t list
+    { compiled_object_inputs : Generated_file.Compiled.t list
     ; pack : Pack.t
     }
 end
@@ -214,8 +214,8 @@ module Compile_public_interface_to_open : sig
   type t =
     { generated_source_input : File.Generated_ocaml_source.t
     ; internal_modules_pack : Pack.t
-    ; cmx_output : Generated_file.Compiled.t
-    ; cmi_output : Generated_file.Compiled.t
+    ; compiled_object_output : Generated_file.Compiled.t
+    ; compiled_interface_output : Generated_file.Compiled.t
     }
 
   val create
@@ -226,21 +226,21 @@ end
 
 module Link_library : sig
   type t =
-    { cmx_inputs : Generated_file.Compiled.t list
+    { compiled_object_inputs : Generated_file.Compiled.t list
     ; compiled_c_inputs : Generated_file.Compiled.t list
     ; cmxa_output : cmxa File.Linked.t
     ; a_output : a File.Linked.t
     }
 
   val of_inputs
-    :  cmx_inputs:Generated_file.Compiled.t list
+    :  compiled_object_inputs:Generated_file.Compiled.t list
     -> compiled_c_inputs:Generated_file.Compiled.t list
     -> t
 end
 
 module Link_executable : sig
   type t =
-    { cmx_inputs : Generated_file.Compiled.t list
+    { compiled_object_inputs : Generated_file.Compiled.t list
     ; compiled_c_inputs : Generated_file.Compiled.t list
     ; exe_output : exe_native File.Linked.t
     }

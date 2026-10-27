@@ -531,7 +531,7 @@ module Compile_ocaml_source = struct
   type t =
     { source_input : ml File.Ocaml_source_or_interface.t
     ; compiled_inputs : Generated_file.Compiled.t list
-    ; cmx_output : Generated_file.Compiled.t
+    ; compiled_object_output : Generated_file.Compiled.t
     ; interface_output_if_no_matching_mli_is_present : cmi File.Compiled.t option
     ; stop_after_typing : bool
     }
@@ -540,14 +540,14 @@ module Compile_ocaml_source = struct
         t
         { source_input
         ; compiled_inputs
-        ; cmx_output
+        ; compiled_object_output
         ; interface_output_if_no_matching_mli_is_present
         ; stop_after_typing
         }
     =
     File.Ocaml_source_or_interface.equal t.source_input source_input
     && List.equal t.compiled_inputs compiled_inputs ~eq:Generated_file.Compiled.equal
-    && Generated_file.Compiled.equal t.cmx_output cmx_output
+    && Generated_file.Compiled.equal t.compiled_object_output compiled_object_output
     && Option.equal
          ~eq:File.Compiled.equal
          t.interface_output_if_no_matching_mli_is_present
@@ -559,7 +559,7 @@ module Compile_ocaml_source = struct
         t
         { source_input
         ; compiled_inputs
-        ; cmx_output
+        ; compiled_object_output
         ; interface_output_if_no_matching_mli_is_present
         ; stop_after_typing
         }
@@ -569,7 +569,9 @@ module Compile_ocaml_source = struct
     let= () =
       List.compare ~cmp:Generated_file.Compiled.compare t.compiled_inputs compiled_inputs
     in
-    let= () = Generated_file.Compiled.compare t.cmx_output cmx_output in
+    let= () =
+      Generated_file.Compiled.compare t.compiled_object_output compiled_object_output
+    in
     let= () =
       Option.compare
         ~cmp:File.Compiled.compare
@@ -582,7 +584,7 @@ module Compile_ocaml_source = struct
   let to_dyn
         { source_input
         ; compiled_inputs
-        ; cmx_output
+        ; compiled_object_output
         ; interface_output_if_no_matching_mli_is_present
         ; stop_after_typing
         }
@@ -590,7 +592,7 @@ module Compile_ocaml_source = struct
     Dyn.record
       [ "source_input", File.Ocaml_source_or_interface.to_dyn source_input
       ; "compiled_inputs", Dyn.list Generated_file.Compiled.to_dyn compiled_inputs
-      ; "cmx_output", Generated_file.Compiled.to_dyn cmx_output
+      ; "compiled_object_output", Generated_file.Compiled.to_dyn compiled_object_output
       ; ( "interface_output_if_no_matching_mli_is_present"
         , Dyn.option File.Compiled.to_dyn interface_output_if_no_matching_mli_is_present )
       ; "stop_after_typing", Dyn.bool stop_after_typing
@@ -602,32 +604,45 @@ module Compile_ocaml_interface = struct
   type t =
     { interface_input : mli File.Ocaml_source_or_interface.t
     ; compiled_inputs : Generated_file.Compiled.t list
-    ; cmi_output : Generated_file.Compiled.t
+    ; compiled_interface_output : Generated_file.Compiled.t
     ; stop_after_typing : bool
     }
 
-  let equal t { interface_input; compiled_inputs; cmi_output; stop_after_typing } =
+  let equal
+        t
+        { interface_input; compiled_inputs; compiled_interface_output; stop_after_typing }
+    =
     File.Ocaml_source_or_interface.equal t.interface_input interface_input
     && List.equal t.compiled_inputs compiled_inputs ~eq:Generated_file.Compiled.equal
-    && Generated_file.Compiled.equal t.cmi_output cmi_output
+    && Generated_file.Compiled.equal t.compiled_interface_output compiled_interface_output
     && Bool.equal t.stop_after_typing stop_after_typing
   ;;
 
-  let compare t { interface_input; compiled_inputs; cmi_output; stop_after_typing } =
+  let compare
+        t
+        { interface_input; compiled_inputs; compiled_interface_output; stop_after_typing }
+    =
     let open Compare in
     let= () = File.Ocaml_source_or_interface.compare t.interface_input interface_input in
     let= () =
       List.compare ~cmp:Generated_file.Compiled.compare t.compiled_inputs compiled_inputs
     in
-    let= () = Generated_file.Compiled.compare t.cmi_output cmi_output in
+    let= () =
+      Generated_file.Compiled.compare
+        t.compiled_interface_output
+        compiled_interface_output
+    in
     Bool.compare t.stop_after_typing stop_after_typing
   ;;
 
-  let to_dyn { interface_input; compiled_inputs; cmi_output; stop_after_typing } =
+  let to_dyn
+        { interface_input; compiled_inputs; compiled_interface_output; stop_after_typing }
+    =
     Dyn.record
       [ "interface_input", File.Ocaml_source_or_interface.to_dyn interface_input
       ; "compiled_inputs", Dyn.list Generated_file.Compiled.to_dyn compiled_inputs
-      ; "cmi_output", Generated_file.Compiled.to_dyn cmi_output
+      ; ( "compiled_interface_output"
+        , Generated_file.Compiled.to_dyn compiled_interface_output )
       ; "stop_after_typing", Dyn.bool stop_after_typing
       ]
   ;;
@@ -660,24 +675,33 @@ end
 
 module Pack_library = struct
   type t =
-    { cmx_inputs : Generated_file.Compiled.t list
+    { compiled_object_inputs : Generated_file.Compiled.t list
     ; pack : Pack.t
     }
 
-  let equal t { cmx_inputs; pack } =
-    List.equal ~eq:Generated_file.Compiled.equal t.cmx_inputs cmx_inputs
+  let equal t { compiled_object_inputs; pack } =
+    List.equal
+      ~eq:Generated_file.Compiled.equal
+      t.compiled_object_inputs
+      compiled_object_inputs
     && Pack.equal t.pack pack
   ;;
 
-  let compare t { cmx_inputs; pack } =
+  let compare t { compiled_object_inputs; pack } =
     let open Compare in
-    let= () = List.compare ~cmp:Generated_file.Compiled.compare t.cmx_inputs cmx_inputs in
+    let= () =
+      List.compare
+        ~cmp:Generated_file.Compiled.compare
+        t.compiled_object_inputs
+        compiled_object_inputs
+    in
     Pack.compare t.pack pack
   ;;
 
-  let to_dyn { cmx_inputs; pack } =
+  let to_dyn { compiled_object_inputs; pack } =
     Dyn.record
-      [ "cmx_inputs", Dyn.list Generated_file.Compiled.to_dyn cmx_inputs
+      [ ( "compiled_object_inputs"
+        , Dyn.list Generated_file.Compiled.to_dyn compiled_object_inputs )
       ; "pack", Pack.to_dyn pack
       ]
   ;;
@@ -698,8 +722,8 @@ module Compile_public_interface_to_open = struct
   type t =
     { generated_source_input : File.Generated_ocaml_source.t
     ; internal_modules_pack : Pack.t
-    ; cmx_output : Generated_file.Compiled.t
-    ; cmi_output : Generated_file.Compiled.t
+    ; compiled_object_output : Generated_file.Compiled.t
+    ; compiled_interface_output : Generated_file.Compiled.t
     }
 
   let create
@@ -710,63 +734,94 @@ module Compile_public_interface_to_open = struct
     let basename = generated_source_input in
     { generated_source_input
     ; internal_modules_pack
-    ; cmx_output =
+    ; compiled_object_output =
         Basename.replace_extension basename ~ext:".cmx"
         |> cmx_public
         |> File.Compiled.generated_file_compiled
-    ; cmi_output =
+    ; compiled_interface_output =
         Basename.replace_extension basename ~ext:".cmi"
         |> cmi_public
         |> File.Compiled.generated_file_compiled
     }
   ;;
 
-  let equal t { generated_source_input; internal_modules_pack; cmx_output; cmi_output } =
+  let equal
+        t
+        { generated_source_input
+        ; internal_modules_pack
+        ; compiled_object_output
+        ; compiled_interface_output
+        }
+    =
     File.Generated_ocaml_source.equal t.generated_source_input generated_source_input
     && Pack.equal t.internal_modules_pack internal_modules_pack
-    && Generated_file.Compiled.equal t.cmx_output cmx_output
-    && Generated_file.Compiled.equal t.cmi_output cmi_output
+    && Generated_file.Compiled.equal t.compiled_object_output compiled_object_output
+    && Generated_file.Compiled.equal t.compiled_interface_output compiled_interface_output
   ;;
 
-  let compare t { generated_source_input; internal_modules_pack; cmx_output; cmi_output } =
+  let compare
+        t
+        { generated_source_input
+        ; internal_modules_pack
+        ; compiled_object_output
+        ; compiled_interface_output
+        }
+    =
     let open Compare in
     let= () =
       File.Generated_ocaml_source.compare t.generated_source_input generated_source_input
     in
     let= () = Pack.compare t.internal_modules_pack internal_modules_pack in
-    let= () = Generated_file.Compiled.compare t.cmx_output cmx_output in
-    Generated_file.Compiled.compare t.cmi_output cmi_output
+    let= () =
+      Generated_file.Compiled.compare t.compiled_object_output compiled_object_output
+    in
+    Generated_file.Compiled.compare t.compiled_interface_output compiled_interface_output
   ;;
 
-  let to_dyn { generated_source_input; internal_modules_pack; cmx_output; cmi_output } =
+  let to_dyn
+        { generated_source_input
+        ; internal_modules_pack
+        ; compiled_object_output
+        ; compiled_interface_output
+        }
+    =
     Dyn.record
       [ ( "generated_source_input"
         , File.Generated_ocaml_source.to_dyn generated_source_input )
       ; "internal_modules_pack", Pack.to_dyn internal_modules_pack
-      ; "cmx_output", Generated_file.Compiled.to_dyn cmx_output
-      ; "cmi_output", Generated_file.Compiled.to_dyn cmi_output
+      ; "compiled_object_output", Generated_file.Compiled.to_dyn compiled_object_output
+      ; ( "compiled_interface_output"
+        , Generated_file.Compiled.to_dyn compiled_interface_output )
       ]
   ;;
 end
 
 module Link_library = struct
   type t =
-    { cmx_inputs : Generated_file.Compiled.t list
+    { compiled_object_inputs : Generated_file.Compiled.t list
     ; compiled_c_inputs : Generated_file.Compiled.t list
     ; cmxa_output : cmxa File.Linked.t
     ; a_output : a File.Linked.t
     }
 
-  let equal t { cmx_inputs; compiled_c_inputs; cmxa_output; a_output } =
-    List.equal t.cmx_inputs cmx_inputs ~eq:Generated_file.Compiled.equal
+  let equal t { compiled_object_inputs; compiled_c_inputs; cmxa_output; a_output } =
+    List.equal
+      t.compiled_object_inputs
+      compiled_object_inputs
+      ~eq:Generated_file.Compiled.equal
     && List.equal t.compiled_c_inputs compiled_c_inputs ~eq:Generated_file.Compiled.equal
     && File.Linked.equal t.cmxa_output cmxa_output
     && File.Linked.equal t.a_output a_output
   ;;
 
-  let compare t { cmx_inputs; compiled_c_inputs; cmxa_output; a_output } =
+  let compare t { compiled_object_inputs; compiled_c_inputs; cmxa_output; a_output } =
     let open Compare in
-    let= () = List.compare ~cmp:Generated_file.Compiled.compare t.cmx_inputs cmx_inputs in
+    let= () =
+      List.compare
+        ~cmp:Generated_file.Compiled.compare
+        t.compiled_object_inputs
+        compiled_object_inputs
+    in
     let= () =
       List.compare
         ~cmp:Generated_file.Compiled.compare
@@ -777,36 +832,49 @@ module Link_library = struct
     File.Linked.compare t.a_output a_output
   ;;
 
-  let to_dyn { cmx_inputs; compiled_c_inputs; cmxa_output; a_output } =
+  let to_dyn { compiled_object_inputs; compiled_c_inputs; cmxa_output; a_output } =
     Dyn.record
-      [ "cmx_inputs", Dyn.list Generated_file.Compiled.to_dyn cmx_inputs
+      [ ( "compiled_object_inputs"
+        , Dyn.list Generated_file.Compiled.to_dyn compiled_object_inputs )
       ; "compiled_c_inputs", Dyn.list Generated_file.Compiled.to_dyn compiled_c_inputs
       ; "cmxa_output", File.Linked.to_dyn cmxa_output
       ; "a_output", File.Linked.to_dyn a_output
       ]
   ;;
 
-  let of_inputs ~cmx_inputs ~compiled_c_inputs =
-    { cmx_inputs; compiled_c_inputs; cmxa_output = Lib_cmxa; a_output = Lib_a }
+  let of_inputs ~compiled_object_inputs ~compiled_c_inputs =
+    { compiled_object_inputs
+    ; compiled_c_inputs
+    ; cmxa_output = Lib_cmxa
+    ; a_output = Lib_a
+    }
   ;;
 end
 
 module Link_executable = struct
   type t =
-    { cmx_inputs : Generated_file.Compiled.t list
+    { compiled_object_inputs : Generated_file.Compiled.t list
     ; compiled_c_inputs : Generated_file.Compiled.t list
     ; exe_output : exe_native File.Linked.t
     }
 
-  let equal t { cmx_inputs; compiled_c_inputs; exe_output } =
-    List.equal t.cmx_inputs cmx_inputs ~eq:Generated_file.Compiled.equal
+  let equal t { compiled_object_inputs; compiled_c_inputs; exe_output } =
+    List.equal
+      t.compiled_object_inputs
+      compiled_object_inputs
+      ~eq:Generated_file.Compiled.equal
     && List.equal t.compiled_c_inputs compiled_c_inputs ~eq:Generated_file.Compiled.equal
     && File.Linked.equal t.exe_output exe_output
   ;;
 
-  let compare t { cmx_inputs; compiled_c_inputs; exe_output } =
+  let compare t { compiled_object_inputs; compiled_c_inputs; exe_output } =
     let open Compare in
-    let= () = List.compare ~cmp:Generated_file.Compiled.compare t.cmx_inputs cmx_inputs in
+    let= () =
+      List.compare
+        ~cmp:Generated_file.Compiled.compare
+        t.compiled_object_inputs
+        compiled_object_inputs
+    in
     let= () =
       List.compare
         ~cmp:Generated_file.Compiled.compare
@@ -816,9 +884,10 @@ module Link_executable = struct
     File.Linked.compare t.exe_output exe_output
   ;;
 
-  let to_dyn { cmx_inputs; compiled_c_inputs; exe_output } =
+  let to_dyn { compiled_object_inputs; compiled_c_inputs; exe_output } =
     Dyn.record
-      [ "cmx_inputs", Dyn.list Generated_file.Compiled.to_dyn cmx_inputs
+      [ ( "compiled_object_inputs"
+        , Dyn.list Generated_file.Compiled.to_dyn compiled_object_inputs )
       ; "compiled_c_inputs", Dyn.list Generated_file.Compiled.to_dyn compiled_c_inputs
       ; "exe_output", File.Linked.to_dyn exe_output
       ]
@@ -937,45 +1006,48 @@ let generated_inputs t =
   | Compile_ocaml_interface { compiled_inputs; _ } ->
     List.map compiled_inputs ~f:(fun compiled -> Generated_file.Compiled compiled)
   | Compile_c_source _ -> []
-  | Pack_library { cmx_inputs; _ } ->
-    List.map cmx_inputs ~f:(fun file -> Generated_file.Compiled file)
+  | Pack_library { compiled_object_inputs; _ } ->
+    List.map compiled_object_inputs ~f:(fun file -> Generated_file.Compiled file)
   | Generate_public_interface_to_open _ -> []
   | Compile_public_interface_to_open { generated_source_input; internal_modules_pack; _ }
     ->
     [ File.Generated_ocaml_source.generated_file generated_source_input
     ; Generated_file.Compiled (Pack.cmx_file internal_modules_pack)
     ]
-  | Link_library { cmx_inputs; compiled_c_inputs; _ } ->
+  | Link_library { compiled_object_inputs; compiled_c_inputs; _ } ->
     List.map compiled_c_inputs ~f:(fun file -> Generated_file.Compiled file)
-    @ List.map cmx_inputs ~f:(fun file -> Generated_file.Compiled file)
-  | Link_executable { cmx_inputs; compiled_c_inputs; _ } ->
+    @ List.map compiled_object_inputs ~f:(fun file -> Generated_file.Compiled file)
+  | Link_executable { compiled_object_inputs; compiled_c_inputs; _ } ->
     List.map compiled_c_inputs ~f:(fun file -> Generated_file.Compiled file)
-    @ List.map cmx_inputs ~f:(fun file -> Generated_file.Compiled file)
+    @ List.map compiled_object_inputs ~f:(fun file -> Generated_file.Compiled file)
 ;;
 
 let outputs = function
   | Compile_ocaml_source
-      { cmx_output; interface_output_if_no_matching_mli_is_present; stop_after_typing; _ }
-    ->
-    (if stop_after_typing then [] else [ Generated_file.Compiled cmx_output ])
+      { compiled_object_output
+      ; interface_output_if_no_matching_mli_is_present
+      ; stop_after_typing
+      ; _
+      } ->
+    (if stop_after_typing then [] else [ Generated_file.Compiled compiled_object_output ])
     @ [ Generated_file.Compiled
-          (Generated_file.Compiled.replace_extension_with_cmt cmx_output)
+          (Generated_file.Compiled.replace_extension_with_cmt compiled_object_output)
       ]
     @ (Option.map
          interface_output_if_no_matching_mli_is_present
          ~f:File.Compiled.generated_file
        |> Option.to_list)
-  | Compile_ocaml_interface { cmi_output; _ } ->
-    [ Generated_file.Compiled cmi_output
+  | Compile_ocaml_interface { compiled_interface_output; _ } ->
+    [ Generated_file.Compiled compiled_interface_output
     ; Generated_file.Compiled
-        (Generated_file.Compiled.replace_extension_with_cmti cmi_output)
+        (Generated_file.Compiled.replace_extension_with_cmti compiled_interface_output)
     ]
   | Compile_c_source { object_output; _ } -> [ Generated_file.Compiled object_output ]
   | Pack_library { pack; _ } -> [ Generated_file.Compiled (Pack.cmx_file pack) ]
   | Generate_public_interface_to_open { ml_output } ->
     [ File.Generated_ocaml_source.generated_file ml_output ]
-  | Compile_public_interface_to_open { cmx_output; _ } ->
-    [ Generated_file.Compiled cmx_output ]
+  | Compile_public_interface_to_open { compiled_object_output; _ } ->
+    [ Generated_file.Compiled compiled_object_output ]
   | Link_library { cmxa_output; a_output; _ } ->
     [ File.Linked.generated_file cmxa_output; File.Linked.generated_file a_output ]
   | Link_executable { exe_output; _ } -> [ File.Linked.generated_file exe_output ]

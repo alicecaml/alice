@@ -1,6 +1,5 @@
 open! Alice_stdlib
 open Alice_package
-open Alice_ocaml_toolchain
 
 module Package_built : sig
   type t
