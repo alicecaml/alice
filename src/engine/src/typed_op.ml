@@ -382,6 +382,22 @@ module File = struct
       of_path_checked path Cmi ".cmi" ~visibility:Public_for_lsp
     ;;
 
+    let cmx_of_cmi (cmi : cmi t) =
+      of_path_checked
+        (Basename.replace_extension cmi.path ~ext:".cmo")
+        Cmx
+        ".cmo"
+        ~visibility:cmi.visibility
+    ;;
+
+    let ml_of_cmi (cmi : cmi t) =
+      of_path_checked
+        (Basename.replace_extension cmi.path ~ext:".ml")
+        Ml
+        ".ml"
+        ~visibility:cmi.visibility
+    ;;
+
     let of_path_by_extension_private path =
       match Basename.extension path with
       | ".cmx" -> Ok (`Cmx (cmx_private path))

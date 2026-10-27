@@ -5,11 +5,12 @@ module Builtin_module = Alice_builtin_module
 
 type t =
   { ocamlopt : Filename.t
+  ; ocamlc : Filename.t
   ; ocaml : Filename.t
   ; env : Env.t
   }
 
-let create ~ocamlopt ~ocaml env = { ocamlopt; env; ocaml }
+let create ~ocamlopt ~ocamlc ~ocaml env = { ocamlopt; ocamlc; ocaml; env }
 let ocamlopt { ocamlopt; _ } = ocamlopt
 let ocaml { ocaml; _ } = ocaml
 let env { env; _ } = env

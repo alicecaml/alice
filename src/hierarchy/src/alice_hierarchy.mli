@@ -8,6 +8,10 @@ module Basename : sig
 
   val to_dyn : t -> Dyn.t
   val equal : t -> t -> bool
+  val compare : t -> t -> int
+
+  module Set : Set.S with type elt = t
+  module Map : Map.S with type key = t
 
   (** Panics if the given filename is not a valid basename. *)
   val of_filename : Filename.t -> t

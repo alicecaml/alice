@@ -183,6 +183,7 @@ let compute_ocaml_compilation_ops src_dir package_id build_dir ocaml_toolchain n
       ~src_file_names
       ~local_src_dir_path:(Dir_non_root.path src_dir)
   in
+  let src_file_names = Basename.Set.of_list src_file_names in
   let deps = Absolute_path.Non_root_map.of_list_exn deps_key_value_pairs in
   Ocamldep_cache.store ocamldep_cache deps;
   Absolute_path.Non_root_map.to_list deps
@@ -198,10 +199,36 @@ let compute_ocaml_compilation_ops src_dir package_id build_dir ocaml_toolchain n
         ]
     | Ok (`Ml source_input) ->
       let compiled_inputs =
-        List.map deps.inputs ~f:(fun dep ->
+        List.concat_map deps.inputs ~f:(fun dep ->
           match File.Compiled.of_path_by_extension_private dep with
-          | Ok (`Cmx cmx) -> File.Compiled.generated_file_compiled cmx
-          | Ok (`Cmi cmi) -> File.Compiled.generated_file_compiled cmi
+          | Ok (`Cmx cmx) -> [ File.Compiled.generated_file_compiled cmx ]
+          | Ok (`Cmi cmi) ->
+            let ml_of_cmi = File.Compiled.ml_of_cmi cmi |> File.Compiled.path in
+            let ml_current_source =
+              File.Ocaml_source_or_interface.path source_input |> Absolute_path.basename
+            in
+            let cmx_of_cmi =
+              if
+                Basename.Set.mem ml_of_cmi src_file_names
+                && not (Basename.equal ml_of_cmi ml_current_source)
+              then
+                (* Ocamldep doesn't report dependencies between bytecode object
+                   files the same way it reports dependencies between native object files.
+                   Dependencies between native object files are expressed as a .cmx file depending on
+                   another .cmx file, however dependencies between bytecode object files are
+                   expressed as a .cmo file depending on a .cmi file. When traversing the build graph
+                   to determine the object files to pass to the linker, the transitive closure of the
+                   object file from main.ml or lib.ml is computed by following edges representing
+                   dependencies between object files. To allow this when linking bytecode executables
+                   and libraries, add the object file corresponding to the interface file to the
+                   dependencies here. This will add an unnecessary dependency between these files
+                   during compilation, but it's not expected to regurlarly be building bytecode
+                   projects. If this turns out to be false we can better optimise this case in the
+                   future. *)
+                [ File.Compiled.cmx_of_cmi cmi |> File.Compiled.generated_file_compiled ]
+              else []
+            in
+            File.Compiled.generated_file_compiled cmi :: cmx_of_cmi
           | Ok _ ->
             panic
               [ Pp.textf

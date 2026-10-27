@@ -4,9 +4,9 @@ module Builtin_module = Alice_builtin_module
 
 type t
 
-(** [create ~ocamlopt ~ocaml env] creates a [t] representing an OCaml
+(** [create ~ocamlopt ~ocamlc ~ocaml env] creates a [t] representing an OCaml
     toolchain with tools at their respective paths with a given environment. *)
-val create : ocamlopt:Filename.t -> ocaml:Filename.t -> Env.t -> t
+val create : ocamlopt:Filename.t -> ocamlc:Filename.t -> ocaml:Filename.t -> Env.t -> t
 
 val ocamlopt : t -> Filename.t
 val ocaml : t -> Filename.t

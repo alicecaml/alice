@@ -109,6 +109,11 @@ module File : sig
     val cmti_public_for_lsp : Basename.t -> cmti t
     val cmi_public_for_lsp : Basename.t -> cmi t
 
+    (** The .cmx compiled file associated with the given .cmi interface file *)
+    val cmx_of_cmi : cmi t -> cmx t
+
+    val ml_of_cmi : cmi t -> ml t
+
     val of_path_by_extension_private
       :  Basename.t
       -> ( [ `Cmx of cmx t | `Cmi of cmi t | `O of o t ]

@@ -2,10 +2,17 @@ open! Alice_stdlib
 open Alice_error
 
 module Basename = struct
-  type t = Filename.t
+  module T = struct
+    type t = Filename.t
 
-  let to_dyn = Filename.to_dyn
-  let equal = Filename.equal
+    let to_dyn = Filename.to_dyn
+    let equal = Filename.equal
+    let compare = Filename.compare
+  end
+
+  include T
+  module Map = Map.Make (T)
+  module Set = Set.Make (T)
 
   let check_filename filename =
     if Filename.is_implicit filename
