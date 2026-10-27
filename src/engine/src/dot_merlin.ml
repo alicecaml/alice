@@ -2,6 +2,7 @@ open! Alice_stdlib
 open Alice_hierarchy
 open Alice_ocaml_toolchain
 open Alice_package.Dependency_graph
+module Package_base_dir = Build_dir.Package_base_dir
 
 let basename = Basename.of_filename ".merlin"
 
@@ -20,29 +21,21 @@ let dot_merlin_text_initial () =
 ;;
 
 let dot_merlin_text package_with_deps build_dir (build_config : Build_config.t) =
+  let get_package_base_dir dep =
+    let dep_id = Package_with_deps.id dep in
+    Build_dir.package_base_dir_of_build_config build_dir dep_id build_config
+  in
   let build_abs_paths_for_deps =
     Package_with_deps.immediate_deps_in_dependency_order package_with_deps
     |> List.concat_map ~f:(fun dep ->
-      let dep_id = Package_with_deps.id dep in
-      [ Build_dir.package_public_dir
-          build_dir
-          dep_id
-          build_config.compiler_backend
-          build_config.profile
-      ; Build_dir.package_public_for_lsp_dir
-          build_dir
-          dep_id
-          build_config.compiler_backend
-          build_config.profile
+      let package_base_dir = get_package_base_dir dep in
+      [ Package_base_dir.public_dir package_base_dir
+      ; Package_base_dir.public_for_lsp_dir package_base_dir
       ])
   in
+  let package_base_dir = get_package_base_dir package_with_deps in
   let build_abs_paths =
-    Build_dir.package_private_dir
-      build_dir
-      (Package_with_deps.id package_with_deps)
-      build_config.compiler_backend
-      build_config.profile
-    :: build_abs_paths_for_deps
+    Package_base_dir.private_dir package_base_dir :: build_abs_paths_for_deps
   in
   let to_relative_paths ~prefix =
     List.map build_abs_paths ~f:(Absolute_path.chop_prefix ~prefix)

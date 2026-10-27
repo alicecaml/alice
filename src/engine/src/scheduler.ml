@@ -9,6 +9,7 @@ module Build_plan = Build_graph.Build_plan
 module Generated_file = Typed_op.Generated_file
 module Package_with_deps = Dependency_graph.Package_with_deps
 module Builtin_module = Alice_builtin_module
+module Package_base_dir = Build_dir.Package_base_dir
 
 module Package_built = struct
   type t =
@@ -98,10 +99,12 @@ module Action_builder = struct
     }
 
   (** All the information necessary to compute a build command from a
-      [Typed_op.t] *)
+      [Typed_op.t]. Commands are generated in the context of building artifacts
+      of a single package and it's assumed that all the package's dependencies
+      have already been built when building the current package. *)
   type ('exe, 'lib) t =
     { package_with_deps : ('exe, 'lib) Package_with_deps.t
-    ; build_dir : Build_dir.t
+    ; package_base_dir : Package_base_dir.t
     ; build_config : Build_config.t
     ; compile_args : compile_args
     ; dep_args : dep_args
@@ -111,7 +114,7 @@ module Action_builder = struct
 
   let create
         package_with_deps
-        build_dir
+        package_base_dir
         (build_config : Build_config.t)
         ~built_artifacts_from_deps
     =
@@ -119,13 +122,18 @@ module Action_builder = struct
     let transitive_dep_libs =
       Package_with_deps.transitive_dependency_closure_excluding_package package_with_deps
     in
-    let package_id = Package.id package in
-    let dep_build_dir dep =
-      match built_artifacts_from_deps with
-      | false -> build_dir
-      | true ->
-        let dep_package = Package.Typed.package dep in
-        Build_dir.of_project_root_path (Package.root dep_package)
+    let dep_package_base_dir dep =
+      let build_dir =
+        match built_artifacts_from_deps with
+        | false -> Package_base_dir.build_dir package_base_dir
+        | true ->
+          let dep_package = Package.Typed.package dep in
+          Build_dir.of_project_root_path (Package.root dep_package)
+      in
+      Build_dir.package_base_dir_of_build_config
+        build_dir
+        (Package.Typed.id dep)
+        build_config
     in
     let package_pack = Typed_op.Pack.of_package_name (Package.name package) in
     let dep_args =
@@ -135,15 +143,7 @@ module Action_builder = struct
             package_with_deps
         in
         List.map transitive_dep_libs ~f:(fun dep_lib ->
-          let build_dir = dep_build_dir dep_lib in
-          let package_id = Package.Typed.package dep_lib |> Package.id in
-          let public =
-            Build_dir.package_public_dir
-              build_dir
-              package_id
-              build_config.compiler_backend
-              build_config.profile
-          in
+          let public = dep_package_base_dir dep_lib |> Package_base_dir.public_dir in
           public / Linked.path Linked.lib_cmxa |> Absolute_path.to_filename)
       in
       let immediate_dep_libs =
@@ -158,48 +158,16 @@ module Action_builder = struct
       in
       let include_ =
         List.concat_map transitive_dep_libs ~f:(fun dep_lib ->
-          let build_dir = dep_build_dir dep_lib in
-          let package_id = Package.Typed.package dep_lib |> Package.id in
-          [ "-I"
-          ; Build_dir.package_public_dir
-              build_dir
-              package_id
-              build_config.compiler_backend
-              build_config.profile
-            |> Absolute_path.to_filename
-          ])
+          let public = dep_package_base_dir dep_lib |> Package_base_dir.public_dir in
+          [ "-I"; Absolute_path.to_filename public ])
       in
       { cmxa_files; open_; include_ }
     in
     let dirs : dirs =
-      let private_ =
-        Build_dir.package_private_dir
-          build_dir
-          package_id
-          build_config.compiler_backend
-          build_config.profile
-      in
-      let public =
-        Build_dir.package_public_dir
-          build_dir
-          package_id
-          build_config.compiler_backend
-          build_config.profile
-      in
-      let public_for_lsp =
-        Build_dir.package_public_for_lsp_dir
-          build_dir
-          package_id
-          build_config.compiler_backend
-          build_config.profile
-      in
-      let executable =
-        Build_dir.package_executable_dir
-          build_dir
-          package_id
-          build_config.compiler_backend
-          build_config.profile
-      in
+      let private_ = Package_base_dir.private_dir package_base_dir in
+      let public = Package_base_dir.public_dir package_base_dir in
+      let public_for_lsp = Package_base_dir.public_for_lsp_dir package_base_dir in
+      let executable = Package_base_dir.executable_dir package_base_dir in
       { private_; public; public_for_lsp; executable }
     in
     let compile_args =
@@ -241,7 +209,7 @@ module Action_builder = struct
           Builtin_module.Set.union acc (Package.Typed.builtin_modules dep))
     in
     { package_with_deps
-    ; build_dir
+    ; package_base_dir
     ; build_config
     ; dep_args
     ; compile_args
@@ -252,12 +220,7 @@ module Action_builder = struct
 
   let compiled_absolute_filename t compiled =
     let compiled = Typed_op.File.Compiled.generated_file_compiled compiled in
-    Build_dir.package_generated_file_compiled
-      t.build_dir
-      (Package_with_deps.package_id t.package_with_deps)
-      t.build_config.compiler_backend
-      t.build_config.profile
-      compiled
+    Package_base_dir.generated_file_compiled t.package_base_dir compiled
     |> Absolute_path.to_filename
   ;;
 
@@ -360,11 +323,8 @@ module Action_builder = struct
                 ]))
     | Generate_public_interface_to_open { ml_output } ->
       let output_path =
-        Build_dir.package_generated_file
-          t.build_dir
-          (Package_with_deps.package_id t.package_with_deps)
-          t.build_config.compiler_backend
-          t.build_config.profile
+        Package_base_dir.generated_file
+          t.package_base_dir
           (Typed_op.File.Generated_ocaml_source.generated_file ml_output)
       in
       let public_interface_to_open =
@@ -372,13 +332,8 @@ module Action_builder = struct
       in
       Generated_public_interface_to_open { output_path; public_interface_to_open }
     | Compile_public_interface_to_open { generated_source_input; cmx_output; _ } ->
-      let package_id = Package_with_deps.package_id t.package_with_deps in
       let impl =
-        Build_dir.package_generated_source_dir
-          t.build_dir
-          package_id
-          t.build_config.compiler_backend
-          t.build_config.profile
+        Package_base_dir.generated_source_dir t.package_base_dir
         / Typed_op.File.Generated_ocaml_source.basename generated_source_input
       in
       Action.Command
@@ -437,7 +392,7 @@ end
 let incremental_files_to_build
       build_plan
       package_id
-      build_dir
+      package_base_dir
       (build_config : Build_config.t)
   =
   let rec loop build_plan =
@@ -456,14 +411,7 @@ let incremental_files_to_build
          is earlier than the latest mtime among source files which the
          output depends on. *)
       Generated_file.Set.filter (Build_plan.outputs build_plan) ~f:(fun output ->
-        let output_abs =
-          Build_dir.package_generated_file
-            build_dir
-            package_id
-            build_config.compiler_backend
-            build_config.profile
-            output
-        in
+        let output_abs = Package_base_dir.generated_file package_base_dir output in
         match File_ops.exists output_abs with
         | false ->
           (* File doesn't exist. Build it! *)
@@ -721,7 +669,7 @@ let run
   : type exe lib.
     (exe, lib) Build_graph.t
     -> (exe, lib) Package_with_deps.t
-    -> Build_dir.t
+    -> Package_base_dir.t
     -> Build_config.t
     -> any_dep_rebuilt:bool
     -> built_artifacts_from_deps:bool
@@ -729,7 +677,7 @@ let run
   =
   fun build_graph
     package_with_deps
-    build_dir
+    package_base_dir
     build_config
     ~any_dep_rebuilt
     ~built_artifacts_from_deps ->
@@ -749,7 +697,7 @@ let run
       build_graph
       build_plans
       package_with_deps
-      build_dir
+      package_base_dir
       build_config
       ~any_dep_rebuilt
       ~built_artifacts_from_deps
@@ -761,12 +709,7 @@ let run
          `Compiling
          (Package_id.name_v_version_string (Package_with_deps.id package_with_deps)));
     let package_id = Dependency_graph.Package_with_deps.package_id package_with_deps in
-    Build_dir.package_dirs
-      build_dir
-      package_id
-      build_config.compiler_backend
-      build_config.profile
-    |> List.iter ~f:File_ops.mkdir_p;
+    Package_base_dir.dirs package_base_dir |> List.iter ~f:File_ops.mkdir_p;
     Action_graph.run_parallel action_graph build_config.num_jobs;
     Rebuilt
 ;;

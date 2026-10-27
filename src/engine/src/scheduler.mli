@@ -11,7 +11,7 @@ end
 val run
   :  ('exe, 'lib) Build_graph.t
   -> ('exe, 'lib) Dependency_graph.Package_with_deps.t
-  -> Build_dir.t
+  -> Build_dir.Package_base_dir.t
   -> Build_config.t
   -> any_dep_rebuilt:bool
   -> built_artifacts_from_deps:bool

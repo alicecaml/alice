@@ -4,6 +4,7 @@ open Alice_hierarchy
 open Alice_error
 module File_ops = Alice_io.File_ops
 module Package_with_deps = Dependency_graph.Package_with_deps
+module Package_base_dir = Build_dir.Package_base_dir
 open Alice_ocaml_toolchain
 
 type t =
@@ -15,6 +16,13 @@ let of_package package =
   let root = Package.root package in
   let build_dir = Build_dir.of_project_root_path root in
   { build_dir; package }
+;;
+
+let package_base_dir_of_build_config t build_config =
+  Build_dir.package_base_dir_of_build_config
+    t.build_dir
+    (Package.id t.package)
+    build_config
 ;;
 
 let dot_merlin_path { package; _ } =
@@ -62,10 +70,16 @@ let build_single_package
   fun t package_with_deps build_config ~any_dep_rebuilt ~built_artifacts_from_deps ->
   let package_typed = Package_with_deps.package_typed package_with_deps in
   let build_graph = Build_graph.create package_typed t.build_dir build_config in
+  let package_base_dir =
+    Build_dir.package_base_dir_of_build_config
+      t.build_dir
+      (Package_with_deps.id package_with_deps)
+      build_config
+  in
   Scheduler.run
     build_graph
     package_with_deps
-    t.build_dir
+    package_base_dir
     build_config
     ~any_dep_rebuilt
     ~built_artifacts_from_deps
@@ -176,11 +190,7 @@ let run t (build_config : Build_config.t) ~args ~built_artifacts_from_deps =
     |> Alice_env.Os_type.basename_add_exe_extension_on_windows build_config.os_type
   in
   let exe_path =
-    Build_dir.package_executable_dir
-      t.build_dir
-      (Package.id t.package)
-      build_config.compiler_backend
-      build_config.profile
+    (package_base_dir_of_build_config t build_config |> Package_base_dir.executable_dir)
     / exe_name
   in
   let exe_filename = Absolute_path.to_filename exe_path in

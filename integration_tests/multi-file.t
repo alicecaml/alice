@@ -72,7 +72,7 @@ Print the dependency graph of the project:
 Test that the project can be built an run:
   $ alice run --normalize-paths
    Compiling foo v0.1.0
-     Running build/packages/foo-0.1.0/debug/executable/foo
+     Running build/packages/foo-0.1.0/native/debug/executable/foo
   
   Hello, World!
 
@@ -129,7 +129,7 @@ the dependency graph from this file to the output should be rebuilt:
    [INFO] [foo v0.1.0] Building targets: lib.cmxa, lib.a
    [INFO] [foo v0.1.0] Building targets: main.cmi, main.cmt, main.cmx
    [INFO] [foo v0.1.0] Building targets: public_interface_to_open_of_foo.cmx
-   [INFO] [foo v0.1.0] Loading ocamldeps cache from: build/packages/foo-0.1.0/ocamldeps_cache.marshal
+   [INFO] [foo v0.1.0] Loading ocamldeps cache from: build/packages/foo-0.1.0/native/ocamldeps_cache.marshal
 
 Change a shallow dependency and rebuild. Only the final build steps should run:
   $ cat > src/main.ml <<EOF
@@ -142,7 +142,7 @@ Change a shallow dependency and rebuild. Only the final build steps should run:
    [INFO] [foo v0.1.0] Analyzing dependencies of file: src/main.ml
    [INFO] [foo v0.1.0] Building targets: foo
    [INFO] [foo v0.1.0] Building targets: main.cmi, main.cmt, main.cmx
-   [INFO] [foo v0.1.0] Loading ocamldeps cache from: build/packages/foo-0.1.0/ocamldeps_cache.marshal
+   [INFO] [foo v0.1.0] Loading ocamldeps cache from: build/packages/foo-0.1.0/native/ocamldeps_cache.marshal
 
 Change an interface and rebuild:
   $ cat > src/foo.mli <<EOF
@@ -163,4 +163,4 @@ Change an interface and rebuild:
    [INFO] [foo v0.1.0] Building targets: lib.cmxa, lib.a
    [INFO] [foo v0.1.0] Building targets: main.cmi, main.cmt, main.cmx
    [INFO] [foo v0.1.0] Building targets: public_interface_to_open_of_foo.cmx
-   [INFO] [foo v0.1.0] Loading ocamldeps cache from: build/packages/foo-0.1.0/ocamldeps_cache.marshal
+   [INFO] [foo v0.1.0] Loading ocamldeps cache from: build/packages/foo-0.1.0/native/ocamldeps_cache.marshal

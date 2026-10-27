@@ -6,7 +6,7 @@ standard library outside stdlib (such as Unix and Str).
    Compiling requires_str v0.1.0
    Compiling requires_unix v0.1.0
    Compiling main v0.1.0
-     Running build/packages/main-0.1.0/debug/executable/main
+     Running build/packages/main-0.1.0/native/debug/executable/main
   
 
   $ ls | sort

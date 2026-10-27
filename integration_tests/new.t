@@ -6,7 +6,7 @@ Exercise initializing a new executable project.
 
   $ alice run --normalize-paths
    Compiling hello v0.1.0
-     Running build/packages/hello-0.1.0/debug/executable/hello
+     Running build/packages/hello-0.1.0/native/debug/executable/hello
   
   Hello, World!
 

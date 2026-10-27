@@ -10,7 +10,7 @@ Build a package with dependencies.
    Compiling a v0.1.0
    Compiling d v0.1.0
    Compiling app v0.1.0
-     Running app/build/packages/app-0.1.0/debug/executable/app
+     Running app/build/packages/app-0.1.0/native/debug/executable/app
   
   Hello, World!
   Hello, World!
