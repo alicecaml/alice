@@ -515,7 +515,7 @@ let create
       Basename.of_filename (Package.name package |> Package_name.to_string)
       |> Alice_env.Os_type.basename_add_exe_extension_on_windows build_config.os_type
     in
-    File.Linked.exe exe_name
+    File.Linked.exe_native exe_name
   in
   let link_executable () =
     let cmx_files =

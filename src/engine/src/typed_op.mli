@@ -30,7 +30,16 @@ module Generated_file : sig
   module Linked_library : sig
     type t =
       | Cmxa
+      | Cma
       | A
+
+    val path : t -> Basename.t
+  end
+
+  module Linked_executable : sig
+    type t =
+      | Native of Basename.t
+      | Bytecode of Basename.t
 
     val path : t -> Basename.t
   end
@@ -39,7 +48,7 @@ module Generated_file : sig
     | Generated_ocaml_source of Basename.t
     | Compiled of Compiled.t
     | Linked_library of Linked_library.t
-    | Linked_executable of Basename.t
+    | Linked_executable of Linked_executable.t
 
   val to_dyn : t -> Dyn.t
   val equal : t -> t -> bool
@@ -57,13 +66,16 @@ module File_type : sig
   type ml
   type mli
   type cmx
+  type cmo
   type cmi
   type cmt
   type cmti
   type o
-  type exe
+  type exe_native
+  type exe_bytecode
   type a
   type cmxa
+  type cma
   type c
 end
 
@@ -139,8 +151,10 @@ module File : sig
 
     val to_dyn : _ t -> Dyn.t
     val lib_cmxa : cmxa t
+    val lib_cma : cma t
     val lib_a : a t
-    val exe : Basename.t -> exe t
+    val exe_native : Basename.t -> exe_native t
+    val exe_bytecode : Basename.t -> exe_bytecode t
     val generated_file : _ t -> Generated_file.t
     val path : _ t -> Basename.t
   end
@@ -231,7 +245,7 @@ module Link_executable : sig
   type t =
     { cmx_inputs : cmx File.Compiled.t list
     ; compiled_c_inputs : o File.Compiled.t list
-    ; exe_output : exe File.Linked.t
+    ; exe_output : exe_native File.Linked.t
     }
 end
 

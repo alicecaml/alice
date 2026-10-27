@@ -76,7 +76,8 @@ module Package_base_dir = struct
     | Generated_ocaml_source path -> generated_source_dir t / path
     | Compiled compiled -> generated_file_compiled t compiled
     | Linked_library linked_library -> public_dir t / Linked_library.path linked_library
-    | Linked_executable path -> executable_dir t / path
+    | Linked_executable linked_executable ->
+      executable_dir t / Linked_executable.path linked_executable
   ;;
 end
 

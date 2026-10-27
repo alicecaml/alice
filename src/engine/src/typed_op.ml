@@ -97,10 +97,12 @@ module Generated_file = struct
   module Linked_library = struct
     type t =
       | Cmxa
+      | Cma
       | A
 
     let to_dyn = function
       | Cmxa -> Dyn.variant "Cmxa" []
+      | Cma -> Dyn.variant "Cma" []
       | A -> Dyn.variant "A" []
     ;;
 
@@ -108,6 +110,8 @@ module Generated_file = struct
       match a, b with
       | Cmxa, Cmxa -> true
       | Cmxa, _ -> false
+      | Cma, Cma -> true
+      | Cma, _ -> false
       | A, A -> true
       | A, _ -> false
     ;;
@@ -117,12 +121,44 @@ module Generated_file = struct
       | Cmxa, Cmxa -> 0
       | Cmxa, _ -> -1
       | _, Cmxa -> 1
+      | Cma, Cma -> 0
+      | Cma, _ -> -1
+      | _, Cma -> 1
       | A, A -> 0
     ;;
 
     let path = function
       | Cmxa -> Basename.of_filename "lib.cmxa"
+      | Cma -> Basename.of_filename "lib.cma"
       | A -> Basename.of_filename "lib.a"
+    ;;
+  end
+
+  module Linked_executable = struct
+    type t =
+      | Native of Basename.t
+      | Bytecode of Basename.t
+
+    let to_dyn = function
+      | Native name | Bytecode name -> Dyn.variant "Bytecode" [ Basename.to_dyn name ]
+    ;;
+
+    let equal a b =
+      match a, b with
+      | Native a, Native b | Bytecode a, Bytecode b -> Basename.equal a b
+      | _, _ -> false
+    ;;
+
+    let compare a b =
+      match a, b with
+      | Native a, Native b -> Basename.compare a b
+      | Native _, _ -> -1
+      | _, Native _ -> 1
+      | Bytecode a, Bytecode b -> Basename.compare a b
+    ;;
+
+    let path = function
+      | Native path | Bytecode path -> path
     ;;
   end
 
@@ -131,7 +167,7 @@ module Generated_file = struct
       | Generated_ocaml_source of Basename.t
       | Compiled of Compiled.t
       | Linked_library of Linked_library.t
-      | Linked_executable of Basename.t
+      | Linked_executable of Linked_executable.t
 
     let to_dyn = function
       | Generated_ocaml_source path ->
@@ -139,7 +175,8 @@ module Generated_file = struct
       | Compiled compiled -> Dyn.variant "Compiled" [ Compiled.to_dyn compiled ]
       | Linked_library linked_library ->
         Dyn.variant "Linked_library" [ Linked_library.to_dyn linked_library ]
-      | Linked_executable path -> Dyn.variant "Linked_executable" [ Basename.to_dyn path ]
+      | Linked_executable linked_executable ->
+        Dyn.variant "Linked_executable" [ Linked_executable.to_dyn linked_executable ]
     ;;
 
     let equal a b =
@@ -150,7 +187,7 @@ module Generated_file = struct
       | Compiled _, _ -> false
       | Linked_library a, Linked_library b -> Linked_library.equal a b
       | Linked_library _, _ -> false
-      | Linked_executable a, Linked_executable b -> Basename.equal a b
+      | Linked_executable a, Linked_executable b -> Linked_executable.equal a b
       | Linked_executable _, _ -> false
     ;;
 
@@ -165,7 +202,7 @@ module Generated_file = struct
       | Linked_library a, Linked_library b -> Linked_library.compare a b
       | Linked_library _, _ -> -1
       | _, Linked_library _ -> 1
-      | Linked_executable a, Linked_executable b -> Basename.compare a b
+      | Linked_executable a, Linked_executable b -> Linked_executable.compare a b
     ;;
 
     let lib_cmx = Compiled Compiled.lib_cmx
@@ -180,7 +217,7 @@ module Generated_file = struct
     | Generated_ocaml_source path -> path
     | Compiled compiled -> Compiled.path compiled
     | Linked_library linked_library -> Linked_library.path linked_library
-    | Linked_executable path -> path
+    | Linked_executable linked_executable -> Linked_executable.path linked_executable
   ;;
 
   let cmt_for_lsp package_name = Compiled (Compiled.cmt_for_lsp package_name)
@@ -190,13 +227,16 @@ module File_type = struct
   type ml = Ml [@@warning "-37"]
   type mli = Mli [@@warning "-37"]
   type cmx = Cmx [@@warning "-37"]
+  type cmo = Cmx [@@warning "-37"]
   type cmi = Cmi [@@warning "-37"]
   type cmt = Cmt [@@warning "-37"]
   type cmti = Cmti [@@warning "-37"]
   type o = O [@@warning "-37"]
-  type exe = Exe [@@warning "-37"]
+  type exe_native = Exe_native [@@warning "-37"]
+  type exe_bytecode = Exe_bytecode [@@warning "-37"]
   type a = A [@@warning "-37"]
   type cmxa = Cmxa [@@warning "-37"]
+  type cma = Cma [@@warning "-37"]
   type c = Cmxa [@@warning "-37"]
 
   type _ t =
@@ -442,39 +482,53 @@ module File = struct
   module Linked = struct
     type _ t =
       | Lib_cmxa : cmxa t
+      | Lib_cma : cma t
       | Lib_a : a t
-      | Exe : Basename.t -> exe t
+      | Exe_native : Basename.t -> exe_native t
+      | Exe_bytecode : Basename.t -> exe_bytecode t
 
     let lib_cmxa = Lib_cmxa
+    let lib_cma = Lib_cma
     let lib_a = Lib_a
-    let exe name = Exe name
+    let exe_native name = Exe_native name
+    let exe_bytecode name = Exe_bytecode name
 
     let to_dyn : type a. a t -> Dyn.t = function
       | Lib_cmxa -> Dyn.variant "Lib_cmxa" []
+      | Lib_cma -> Dyn.variant "Lib_cma" []
       | Lib_a -> Dyn.variant "Lib_a" []
-      | Exe path -> Dyn.variant "Exe" [ Basename.to_dyn path ]
+      | Exe_native path -> Dyn.variant "Exe_native" [ Basename.to_dyn path ]
+      | Exe_bytecode path -> Dyn.variant "Exe_bytecode" [ Basename.to_dyn path ]
     ;;
 
     let equal : type a. a t -> a t -> bool =
       fun a b ->
       match a, b with
       | Lib_cmxa, Lib_cmxa -> true
+      | Lib_cma, Lib_cma -> true
       | Lib_a, Lib_a -> true
-      | Exe a, Exe b -> Basename.equal a b
+      | Exe_native a, Exe_native b -> Basename.equal a b
+      | Exe_bytecode a, Exe_bytecode b -> Basename.equal a b
     ;;
 
     let compare : type a. a t -> a t -> int =
       fun a b ->
       match a, b with
       | Lib_cmxa, Lib_cmxa -> 0
+      | Lib_cma, Lib_cma -> 0
       | Lib_a, Lib_a -> 0
-      | Exe a, Exe b -> Basename.compare a b
+      | Exe_native a, Exe_native b -> Basename.compare a b
+      | Exe_bytecode a, Exe_bytecode b -> Basename.compare a b
     ;;
 
     let generated_file : type a. a t -> Generated_file.t = function
       | Lib_cmxa -> Generated_file.Linked_library Cmxa
+      | Lib_cma -> Generated_file.Linked_library Cma
       | Lib_a -> Generated_file.Linked_library A
-      | Exe name -> Generated_file.Linked_executable name
+      | Exe_native name ->
+        Generated_file.Linked_executable (Generated_file.Linked_executable.Native name)
+      | Exe_bytecode name ->
+        Generated_file.Linked_executable (Generated_file.Linked_executable.Bytecode name)
     ;;
 
     let path t = generated_file t |> Generated_file.path
@@ -758,7 +812,7 @@ module Link_executable = struct
   type t =
     { cmx_inputs : cmx File.Compiled.t list
     ; compiled_c_inputs : o File.Compiled.t list
-    ; exe_output : exe File.Linked.t
+    ; exe_output : exe_native File.Linked.t
     }
 
   let equal t { cmx_inputs; compiled_c_inputs; exe_output } =
