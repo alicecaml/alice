@@ -45,6 +45,7 @@ module Package_base_dir : sig
     -> Absolute_path.non_root_t
 
   val generated_file : t -> Typed_op.Generated_file.t -> Absolute_path.non_root_t
+  val gen_file : t -> Typed_op.Gen_file.t -> Absolute_path.non_root_t
 end
 
 val package_base_dir

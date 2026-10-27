@@ -1,5 +1,7 @@
 open! Alice_stdlib
 open Alice_hierarchy
+open Alice_ocaml_toolchain
+open Alice_package
 
 module Visibility : sig
   (** How a compiled file will be visible to other files during compilation.
@@ -11,6 +13,22 @@ module Visibility : sig
     | Private_c
     | Public
     | Public_for_lsp
+end
+
+module Src_file : sig
+  (** A file in the src directory *)
+  type t
+
+  val of_path
+    :  Absolute_path.non_root_t
+    -> ([ `Ml of t | `Mli of t | `C of t ], [ `Unknown_extension of string ]) result
+
+  val of_path_ml : Absolute_path.non_root_t -> t
+  val of_path_mli : Absolute_path.non_root_t -> t
+  val of_path_c : Absolute_path.non_root_t -> t
+  val to_path_ml : t -> Absolute_path.non_root_t
+  val to_path_mli : t -> Absolute_path.non_root_t
+  val to_path_c : t -> Absolute_path.non_root_t
 end
 
 module Generated_file : sig
@@ -60,6 +78,31 @@ module Generated_file : sig
   val path : t -> Basename.t
   val lib_cmx : t
   val lib_cmi : t
+end
+
+module Gen_file : sig
+  (** A file in a package base directory inside the build directory *)
+  type t
+
+  val to_dyn : t -> Dyn.t
+  val equal : t -> t -> bool
+  val path : t -> Basename.t
+  val visibility : t -> Visibility.t
+  val compiled_ocaml_object_file : Basename.t -> t
+  val to_generated_file_compiled : t -> Generated_file.Compiled.t
+  val lib_ocaml_object_file : Compiler_backend.t -> t
+  val exe_ocaml_object_file : Compiler_backend.t -> t
+
+  (** An OCaml object file to specify as an output to the compiler when
+      generating a library's top-level .cmt file which merlin/ocamllsp will
+      consume. The specified object file will actually be generated because the
+      compiler will be run with `-stop-after typing` to save time, but we still
+      pass the name of the object file that would be generated so files that do
+      get generated (namely a .cmt and .cmi file) are named appropriately. *)
+  val compiled_ocaml_object_to_generate_library_lsp_files
+    :  Package_name.t
+    -> Compiler_backend.t
+    -> t
 end
 
 module File_type : sig
@@ -169,9 +212,9 @@ end
 
 module Compile_ocaml_source : sig
   type t =
-    { source_input : ml File.Ocaml_source_or_interface.t
+    { source_input : Src_file.t
     ; compiled_inputs : Generated_file.Compiled.t list
-    ; compiled_object_output : Generated_file.Compiled.t
+    ; compiled_object_output : Gen_file.t
     ; interface_output_if_no_matching_mli_is_present : cmi File.Compiled.t option
     ; stop_after_typing : bool
     }
@@ -181,7 +224,7 @@ end
 
 module Compile_ocaml_interface : sig
   type t =
-    { interface_input : mli File.Ocaml_source_or_interface.t
+    { interface_input : Src_file.t
     ; compiled_inputs : Generated_file.Compiled.t list
     ; compiled_interface_output : Generated_file.Compiled.t
     ; stop_after_typing : bool
@@ -192,7 +235,7 @@ end
 
 module Compile_c_source : sig
   type t =
-    { source_input : File.C_source.t
+    { source_input : Src_file.t
     ; object_output : Generated_file.Compiled.t
     }
 

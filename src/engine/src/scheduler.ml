@@ -223,7 +223,12 @@ module Action_builder = struct
     |> Absolute_path.to_filename
   ;;
 
+  let gen_file_absolute_filename t gen_file =
+    Package_base_dir.gen_file t.package_base_dir gen_file |> Absolute_path.to_filename
+  ;;
+
   let op_action t op : Action.t =
+    let open Typed_op in
     match (op : Typed_op.t) with
     | Compile_ocaml_source { source_input; compiled_object_output; stop_after_typing; _ }
       ->
@@ -231,7 +236,7 @@ module Action_builder = struct
         if stop_after_typing then t.compile_args.stop_after_typing else []
       in
       let lsp_output_args =
-        match Typed_op.Generated_file.Compiled.visibility compiled_object_output with
+        match Gen_file.visibility compiled_object_output with
         | Public_for_lsp ->
           t.compile_args.lsp_only
           @ [ (* Include the public_for_lsp directory in the search path so packages
@@ -255,9 +260,9 @@ module Action_builder = struct
               @ [ "-c"
                 ; "-bin-annot" (* Needed for LSP *)
                 ; "-o"
-                ; compiled_absolute_filename t compiled_object_output
+                ; gen_file_absolute_filename t compiled_object_output
                 ; "-impl"
-                ; Absolute_path.to_filename @@ Ocaml_source_or_interface.path source_input
+                ; Absolute_path.to_filename @@ Src_file.to_path_ml source_input
                 ]))
     | Compile_ocaml_interface
         { interface_input; compiled_interface_output; stop_after_typing; _ } ->
@@ -284,8 +289,7 @@ module Action_builder = struct
                 ; "-o"
                 ; compiled_absolute_filename t compiled_interface_output
                 ; "-intf"
-                ; Ocaml_source_or_interface.path interface_input
-                  |> Absolute_path.to_filename
+                ; Absolute_path.to_filename @@ Src_file.to_path_mli interface_input
                 ]))
     | Compile_c_source { source_input; object_output } ->
       (* Arguments to tell the OCaml compiler to tell the C compiler (which
@@ -298,7 +302,8 @@ module Action_builder = struct
            t.build_config.profile
            t.build_config.ocaml_toolchain
            ~args:
-             ([ Absolute_path.to_filename @@ C_source.path source_input ] @ output_args))
+             ([ Absolute_path.to_filename @@ Src_file.to_path_c source_input ]
+              @ output_args))
     | Pack_library { compiled_object_inputs; pack; _ } ->
       let package_pack =
         Package_with_deps.name t.package_with_deps |> Typed_op.Pack.of_package_name

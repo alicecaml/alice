@@ -19,6 +19,7 @@ module Basename : sig
   val to_filename : t -> Filename.t
   val extension : t -> string
   val has_extension : t -> ext:string -> bool
+  val assert_extension : t -> ext:string -> unit
   val replace_extension : t -> ext:string -> t
   val add_extension : t -> ext:string -> t
   val remove_extension : t -> t
@@ -94,6 +95,7 @@ module Absolute_path : sig
   val replace_extension : non_root_t -> ext:string -> non_root_t
   val add_extension : non_root_t -> ext:string -> non_root_t
   val remove_extension : non_root_t -> non_root_t
+  val assert_extension : non_root_t -> ext:string -> unit
   val parent : non_root_t -> Root_or_non_root.t
   val basename : non_root_t -> Basename.t
   val is_root : 'is_root t -> 'is_root Type_bool.t

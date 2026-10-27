@@ -35,7 +35,7 @@ module Build_dag = struct
 
   (* Returns the cmx files in build order produced by [node] and all the nodes
      which [node] transitively depends on. *)
-  let cmx_files_in_build_order node =
+  let ocaml_object_files_in_build_order node =
     let open Typed_op in
     Node.transitive_closure_in_child_first_order node ~include_start:true
     |> List.filter_map ~f:(fun node ->
@@ -70,15 +70,16 @@ module Build_dag = struct
     | _multiple -> Alice_error.panic [ Pp.text "Multiple ops would link executable!" ]
   ;;
 
-  let compile_library_cmx_node_or_panic t =
+  let compile_library_ocaml_object_node_or_panic t compiler_backend =
+    let open Typed_op in
     match
       all_nodes t
       |> List.filter_map ~f:(fun node ->
         match Node.name node with
         | Compile_ocaml_source { compiled_object_output; _ }
-          when Typed_op.Generated_file.Compiled.equal
+          when Gen_file.equal
                  compiled_object_output
-                 Typed_op.Generated_file.Compiled.lib_cmx -> Some node
+                 (Gen_file.lib_ocaml_object_file compiler_backend) -> Some node
         | _ -> None)
     with
     | [] -> Alice_error.panic [ Pp.text "No ops would compile library cmx!" ]
@@ -86,15 +87,16 @@ module Build_dag = struct
     | _multiple -> Alice_error.panic [ Pp.text "Multiple ops would compile library cmx!" ]
   ;;
 
-  let compile_executable_cmx_node_or_panic t =
+  let compile_executable_ocaml_object_node_or_panic t compiler_backend =
+    let open Typed_op in
     match
       all_nodes t
       |> List.filter_map ~f:(fun node ->
         match Node.name node with
         | Compile_ocaml_source { compiled_object_output; _ }
-          when Typed_op.Generated_file.Compiled.equal
+          when Gen_file.equal
                  compiled_object_output
-                 Typed_op.Generated_file.Compiled.exe_cmx -> Some node
+                 (Gen_file.exe_ocaml_object_file compiler_backend) -> Some node
         | _ -> None)
     with
     | [] -> Alice_error.panic [ Pp.text "No ops would compile executable cmx!" ]
@@ -103,15 +105,16 @@ module Build_dag = struct
       Alice_error.panic [ Pp.text "Multiple ops would compile executable cmx!" ]
   ;;
 
-  let library_cmx_compile_source_or_panic t =
+  let library_ocaml_object_compile_source_or_panic t compiler_backend =
+    let open Typed_op in
     match
       all_nodes t
       |> List.filter_map ~f:(fun node ->
         match Node.name node with
         | Compile_ocaml_source ({ compiled_object_output; _ } as compile_source)
-          when Typed_op.Generated_file.Compiled.equal
+          when Gen_file.equal
                  compiled_object_output
-                 Typed_op.Generated_file.Compiled.lib_cmx -> Some compile_source
+                 (Gen_file.lib_ocaml_object_file compiler_backend) -> Some compile_source
         | _ -> None)
     with
     | [] -> Alice_error.panic [ Pp.text "No ops would compile library cmx!" ]
@@ -136,13 +139,15 @@ module Build_dag = struct
   ;;
 
   (* The cmx files needed to build the library cmx target in build order. *)
-  let cmx_files_in_build_order_for_library t =
-    cmx_files_in_build_order (compile_library_cmx_node_or_panic t)
+  let ocaml_object_files_in_build_order_for_library t compiler_backend =
+    ocaml_object_files_in_build_order
+      (compile_library_ocaml_object_node_or_panic t compiler_backend)
   ;;
 
   (* The cmx files needed to build the executable cmx target in build order. *)
-  let cmx_files_in_build_order_for_executable t =
-    cmx_files_in_build_order (compile_executable_cmx_node_or_panic t)
+  let ocaml_object_files_in_build_order_for_executable t compiler_backend =
+    ocaml_object_files_in_build_order
+      (compile_executable_ocaml_object_node_or_panic t compiler_backend)
   ;;
 end
 
@@ -200,13 +205,7 @@ let compute_ocaml_compilation_ops
   |> List.map ~f:(fun (source_path, (deps : Ocaml_toolchain.Deps.t)) ->
     let open Typed_op in
     let open Alice_error in
-    match File.Ocaml_source_or_interface.of_path_by_extension source_path with
-    | Error (`Unknown_extension _) ->
-      panic
-        [ Pp.textf
-            "Tried to treat %S as source path but it has an unrecognized extension."
-            (Alice_ui.absolute_path_to_string source_path)
-        ]
+    match Src_file.of_path source_path with
     | Ok (`Ml source_input) ->
       let compiled_inputs =
         List.concat_map deps.inputs ~f:(fun dep ->
@@ -215,7 +214,7 @@ let compute_ocaml_compilation_ops
           | Ok (`Cmi cmi) ->
             let ml_of_cmi = File.Compiled.ml_of_cmi cmi |> File.Compiled.path in
             let ml_current_source =
-              File.Ocaml_source_or_interface.path source_input |> Absolute_path.basename
+              Src_file.to_path_ml source_input |> Absolute_path.basename
             in
             let cmx_of_cmi =
               if
@@ -258,9 +257,10 @@ let compute_ocaml_compilation_ops
       in
       let source_base_name = Absolute_path.basename source_path in
       let compiled_object_output =
-        Basename.replace_extension source_base_name ~ext:".cmx"
-        |> File.Compiled.cmx_private
-        |> File.Compiled.generated_file_compiled
+        Basename.replace_extension
+          source_base_name
+          ~ext:(Compiler_backend.ocaml_object_file_ext build_config.compiler_backend)
+        |> Gen_file.compiled_ocaml_object_file
       in
       let matching_mli_file = Absolute_path.replace_extension source_path ~ext:".mli" in
       let interface_output_if_no_matching_mli_is_present =
@@ -312,7 +312,19 @@ let compute_ocaml_compilation_ops
         ; compiled_inputs
         ; compiled_interface_output
         ; stop_after_typing = false
-        })
+        }
+    | Ok (`C source_input) ->
+      panic
+        [ Pp.textf
+            "Expected OCaml source or interface but got C source file %S"
+            (Src_file.to_path_c source_input |> Absolute_path.to_filename)
+        ]
+    | Error (`Unknown_extension _) ->
+      panic
+        [ Pp.textf
+            "Tried to treat %S as source path but it has an unrecognized extension."
+            (Alice_ui.absolute_path_to_string source_path)
+        ])
 ;;
 
 let compute_c_compilation_ops src_dir =
@@ -327,7 +339,7 @@ let compute_c_compilation_ops src_dir =
   in
   List.map src_paths ~f:(fun path ->
     let open Typed_op in
-    let source_input = File.C_source.of_path path in
+    let source_input = Src_file.of_path_c path in
     let object_output =
       File.Compiled.o_private_c
         (Absolute_path.basename path |> Basename.replace_extension ~ext:".o")
@@ -341,24 +353,24 @@ type lsp_ops =
   ; lsp_ops_compile_interface : Typed_op.Compile_ocaml_interface.t option
   }
 
-let lsp_ops build_dag_ocaml_compilation_only package =
+let lsp_ops build_dag_ocaml_compilation_only package compiler_backend =
   let open Typed_op in
   let package_name_s = Package_name.to_string (Package.name package) in
   let compile_source =
     let { Compile_ocaml_source.source_input
         ; compiled_inputs
-        ; compiled_object_output
         ; interface_output_if_no_matching_mli_is_present
-        ; stop_after_typing = _
+        ; _
         }
       =
-      Build_dag.library_cmx_compile_source_or_panic build_dag_ocaml_compilation_only
+      Build_dag.library_ocaml_object_compile_source_or_panic
+        build_dag_ocaml_compilation_only
+        compiler_backend
     in
     let compiled_object_output =
-      Typed_op.Generated_file.Compiled.rename
-        compiled_object_output
-        ~name_without_extension:package_name_s
-        Public_for_lsp
+      Gen_file.compiled_ocaml_object_to_generate_library_lsp_files
+        (Package.name package)
+        compiler_backend
     in
     let interface_output_if_no_matching_mli_is_present =
       Option.map
@@ -488,11 +500,14 @@ let create
     List.map c_compilation_ops ~f:(fun (op : Compile_c_source.t) -> op.object_output)
   in
   let link_library () =
-    let cmx_files =
-      Build_dag.cmx_files_in_build_order_for_library build_dag_ocaml_compilation_only
+    let ocaml_object_files =
+      Build_dag.ocaml_object_files_in_build_order_for_library
+        build_dag_ocaml_compilation_only
+        build_config.compiler_backend
+      |> List.map ~f:Gen_file.to_generated_file_compiled
     in
     let pack = Typed_op.Pack.of_package_name (Package.name package) in
-    let pack_op = Pack_library { compiled_object_inputs = cmx_files; pack } in
+    let pack_op = Pack_library { compiled_object_inputs = ocaml_object_files; pack } in
     let public_interface_to_open_ml =
       Module_name.public_interface_to_open (Package.name package)
       |> Module_name.basename_without_extension
@@ -533,12 +548,15 @@ let create
     File.Linked.exe_native exe_name
   in
   let link_executable () =
-    let cmx_files =
-      Build_dag.cmx_files_in_build_order_for_executable build_dag_ocaml_compilation_only
+    let ocaml_object_files =
+      Build_dag.ocaml_object_files_in_build_order_for_executable
+        build_dag_ocaml_compilation_only
+        build_config.compiler_backend
+      |> List.map ~f:Gen_file.to_generated_file_compiled
     in
     [ Link_executable
         { exe_output = exe_file
-        ; compiled_object_inputs = cmx_files
+        ; compiled_object_inputs = ocaml_object_files
         ; compiled_c_inputs = compiled_c_object_files
         }
     ]
@@ -552,7 +570,9 @@ let create
   let lsp_ops =
     match Package.Typed.type_ package_typed with
     | Exe_only -> None
-    | Lib_only | Exe_and_lib -> Some (lsp_ops build_dag_ocaml_compilation_only package)
+    | Lib_only | Exe_and_lib ->
+      Some
+        (lsp_ops build_dag_ocaml_compilation_only package build_config.compiler_backend)
   in
   let build_dag =
     let lsp_ops =

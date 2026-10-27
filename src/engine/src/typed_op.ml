@@ -1,6 +1,8 @@
 open! Alice_stdlib
 open Alice_hierarchy
 open Alice_error
+open Alice_ocaml_toolchain
+open Alice_package
 
 module Visibility = struct
   type t =
@@ -43,8 +45,8 @@ module Visibility = struct
   ;;
 end
 
-let lib_base = Basename.remove_extension Alice_package.Package.lib_root_ml
-let exe_base = Basename.remove_extension Alice_package.Package.exe_root_ml
+let lib_base = Basename.remove_extension Package.lib_root_ml
+let exe_base = Basename.remove_extension Package.exe_root_ml
 let lib_cmx = Basename.add_extension lib_base ~ext:".cmx"
 let lib_cmi = Basename.add_extension lib_base ~ext:".cmi"
 let exe_cmx = Basename.add_extension exe_base ~ext:".cmx"
@@ -279,6 +281,100 @@ module File_type = struct
   ;;
 end
 
+module Src_file = struct
+  include Absolute_path
+
+  type t = non_root_t
+
+  let make path ~ext =
+    assert_extension path ~ext;
+    path
+  ;;
+
+  let of_path path =
+    match extension path with
+    | ".ml" -> Ok (`Ml path)
+    | ".mli" -> Ok (`Mli path)
+    | ".c" -> Ok (`C path)
+    | other -> Error (`Unknown_extension other)
+  ;;
+
+  let of_path_ml path = make path ~ext:".ml"
+  let of_path_mli path = make path ~ext:".mli"
+  let of_path_c path = make path ~ext:".c"
+  let to_path_ml = of_path_ml
+  let to_path_mli = of_path_mli
+  let to_path_c = of_path_c
+end
+
+module Gen_file = struct
+  type t =
+    { path : Basename.t
+    ; visibility : Visibility.t
+    }
+
+  let to_dyn { path; visibility } =
+    Dyn.record
+      [ "path", Basename.to_dyn path; "visibility", Visibility.to_dyn visibility ]
+  ;;
+
+  let equal t { path; visibility } =
+    Basename.equal t.path path && Visibility.equal t.visibility visibility
+  ;;
+
+  let compare t { path; visibility } =
+    let open Compare in
+    let= () = Basename.compare t.path path in
+    Visibility.compare t.visibility visibility
+  ;;
+
+  let path t = t.path
+  let visibility t = t.visibility
+
+  let make path visibility ~exts =
+    if not (List.exists exts ~f:(fun ext -> Basename.has_extension path ~ext))
+    then
+      panic
+        [ Pp.textf
+            "Expected extension to be among [%s] but got file %S."
+            (String.concat ~sep:", " exts)
+            (Basename.to_filename path)
+        ];
+    { path; visibility }
+  ;;
+
+  let ocaml_object_file_exts = [ ".cmx"; ".cmo" ]
+
+  let compiled_ocaml_object_file basename =
+    make basename Visibility.Private ~exts:ocaml_object_file_exts
+  ;;
+
+  let to_generated_file_compiled { path; visibility } =
+    { Generated_file.Compiled.path; visibility }
+  ;;
+
+  let lib_base = Basename.remove_extension Package.lib_root_ml
+  let exe_base = Basename.remove_extension Package.exe_root_ml
+
+  let lib_ocaml_object_file compiler_backend =
+    let ext = Compiler_backend.ocaml_object_file_ext compiler_backend in
+    compiled_ocaml_object_file @@ Basename.add_extension lib_base ~ext
+  ;;
+
+  let exe_ocaml_object_file compiler_backend =
+    let ext = Compiler_backend.ocaml_object_file_ext compiler_backend in
+    compiled_ocaml_object_file @@ Basename.add_extension exe_base ~ext
+  ;;
+
+  let compiled_ocaml_object_to_generate_library_lsp_files package_name compiler_backend =
+    let package_name_s = Package_name.to_string package_name in
+    let ext = Compiler_backend.ocaml_object_file_ext compiler_backend in
+    let path = Basename.of_filename package_name_s |> Basename.add_extension ~ext in
+    let visibility = Visibility.Public_for_lsp in
+    { path; visibility }
+  ;;
+end
+
 open File_type
 
 module File = struct
@@ -507,8 +603,6 @@ module File = struct
 end
 
 module Pack = struct
-  open Alice_package
-
   type t = Package_name.t
 
   let equal = Package_name.equal
@@ -529,9 +623,9 @@ end
 
 module Compile_ocaml_source = struct
   type t =
-    { source_input : ml File.Ocaml_source_or_interface.t
+    { source_input : Src_file.t
     ; compiled_inputs : Generated_file.Compiled.t list
-    ; compiled_object_output : Generated_file.Compiled.t
+    ; compiled_object_output : Gen_file.t
     ; interface_output_if_no_matching_mli_is_present : cmi File.Compiled.t option
     ; stop_after_typing : bool
     }
@@ -545,9 +639,9 @@ module Compile_ocaml_source = struct
         ; stop_after_typing
         }
     =
-    File.Ocaml_source_or_interface.equal t.source_input source_input
+    Src_file.equal t.source_input source_input
     && List.equal t.compiled_inputs compiled_inputs ~eq:Generated_file.Compiled.equal
-    && Generated_file.Compiled.equal t.compiled_object_output compiled_object_output
+    && Gen_file.equal t.compiled_object_output compiled_object_output
     && Option.equal
          ~eq:File.Compiled.equal
          t.interface_output_if_no_matching_mli_is_present
@@ -565,13 +659,11 @@ module Compile_ocaml_source = struct
         }
     =
     let open Compare in
-    let= () = File.Ocaml_source_or_interface.compare t.source_input source_input in
+    let= () = Src_file.compare t.source_input source_input in
     let= () =
       List.compare ~cmp:Generated_file.Compiled.compare t.compiled_inputs compiled_inputs
     in
-    let= () =
-      Generated_file.Compiled.compare t.compiled_object_output compiled_object_output
-    in
+    let= () = Gen_file.compare t.compiled_object_output compiled_object_output in
     let= () =
       Option.compare
         ~cmp:File.Compiled.compare
@@ -590,9 +682,9 @@ module Compile_ocaml_source = struct
         }
     =
     Dyn.record
-      [ "source_input", File.Ocaml_source_or_interface.to_dyn source_input
+      [ "source_input", Src_file.to_dyn source_input
       ; "compiled_inputs", Dyn.list Generated_file.Compiled.to_dyn compiled_inputs
-      ; "compiled_object_output", Generated_file.Compiled.to_dyn compiled_object_output
+      ; "compiled_object_output", Gen_file.to_dyn compiled_object_output
       ; ( "interface_output_if_no_matching_mli_is_present"
         , Dyn.option File.Compiled.to_dyn interface_output_if_no_matching_mli_is_present )
       ; "stop_after_typing", Dyn.bool stop_after_typing
@@ -602,7 +694,7 @@ end
 
 module Compile_ocaml_interface = struct
   type t =
-    { interface_input : mli File.Ocaml_source_or_interface.t
+    { interface_input : Src_file.t
     ; compiled_inputs : Generated_file.Compiled.t list
     ; compiled_interface_output : Generated_file.Compiled.t
     ; stop_after_typing : bool
@@ -612,7 +704,7 @@ module Compile_ocaml_interface = struct
         t
         { interface_input; compiled_inputs; compiled_interface_output; stop_after_typing }
     =
-    File.Ocaml_source_or_interface.equal t.interface_input interface_input
+    Src_file.equal t.interface_input interface_input
     && List.equal t.compiled_inputs compiled_inputs ~eq:Generated_file.Compiled.equal
     && Generated_file.Compiled.equal t.compiled_interface_output compiled_interface_output
     && Bool.equal t.stop_after_typing stop_after_typing
@@ -623,7 +715,7 @@ module Compile_ocaml_interface = struct
         { interface_input; compiled_inputs; compiled_interface_output; stop_after_typing }
     =
     let open Compare in
-    let= () = File.Ocaml_source_or_interface.compare t.interface_input interface_input in
+    let= () = Src_file.compare t.interface_input interface_input in
     let= () =
       List.compare ~cmp:Generated_file.Compiled.compare t.compiled_inputs compiled_inputs
     in
@@ -639,7 +731,7 @@ module Compile_ocaml_interface = struct
         { interface_input; compiled_inputs; compiled_interface_output; stop_after_typing }
     =
     Dyn.record
-      [ "interface_input", File.Ocaml_source_or_interface.to_dyn interface_input
+      [ "interface_input", Src_file.to_dyn interface_input
       ; "compiled_inputs", Dyn.list Generated_file.Compiled.to_dyn compiled_inputs
       ; ( "compiled_interface_output"
         , Generated_file.Compiled.to_dyn compiled_interface_output )
@@ -650,24 +742,24 @@ end
 
 module Compile_c_source = struct
   type t =
-    { source_input : File.C_source.t
+    { source_input : Src_file.t
     ; object_output : Generated_file.Compiled.t
     }
 
   let equal t { source_input; object_output } =
-    File.C_source.equal t.source_input source_input
+    Src_file.equal t.source_input source_input
     && Generated_file.Compiled.equal t.object_output object_output
   ;;
 
   let compare t { source_input; object_output } =
     let open Compare in
-    let= () = File.C_source.compare t.source_input source_input in
+    let= () = Src_file.compare t.source_input source_input in
     Generated_file.Compiled.compare t.object_output object_output
   ;;
 
   let to_dyn { source_input; object_output } =
     Dyn.record
-      [ "source_input", File.C_source.to_dyn source_input
+      [ "source_input", Src_file.to_dyn source_input
       ; "object_output", Generated_file.Compiled.to_dyn object_output
       ]
   ;;
@@ -988,11 +1080,9 @@ module Map = Map.Make (T)
 module Set = Set.Make (T)
 
 let source_input = function
-  | Compile_ocaml_source { source_input; _ } ->
-    Some (File.Ocaml_source_or_interface.path source_input)
-  | Compile_ocaml_interface { interface_input; _ } ->
-    Some (File.Ocaml_source_or_interface.path interface_input)
-  | Compile_c_source { source_input; _ } -> Some (File.C_source.path source_input)
+  | Compile_ocaml_source { source_input; _ } -> Some source_input
+  | Compile_ocaml_interface { interface_input; _ } -> Some interface_input
+  | Compile_c_source { source_input; _ } -> Some source_input
   | Pack_library _
   | Generate_public_interface_to_open _
   | Compile_public_interface_to_open _
@@ -1029,9 +1119,15 @@ let outputs = function
       ; stop_after_typing
       ; _
       } ->
-    (if stop_after_typing then [] else [ Generated_file.Compiled compiled_object_output ])
+    (if stop_after_typing
+     then []
+     else
+       [ Generated_file.Compiled
+           (Gen_file.to_generated_file_compiled compiled_object_output)
+       ])
     @ [ Generated_file.Compiled
-          (Generated_file.Compiled.replace_extension_with_cmt compiled_object_output)
+          (Generated_file.Compiled.replace_extension_with_cmt
+             (Gen_file.to_generated_file_compiled compiled_object_output))
       ]
     @ (Option.map
          interface_output_if_no_matching_mli_is_present

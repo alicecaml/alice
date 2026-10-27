@@ -48,6 +48,18 @@ module Basename = struct
   let extension t = Filename.extension t
   let has_extension t ~ext = Filename.has_extension t ~ext
 
+  let assert_extension t ~ext =
+    if not (has_extension t ~ext)
+    then
+      panic
+        [ Pp.textf
+            "Expected file %S to have extension %S but instead it has extension %S"
+            t
+            ext
+            (extension t)
+        ]
+  ;;
+
   let replace_extension t ~ext =
     match Filename.replace_extension t ~ext with
     | Some filename -> filename
@@ -163,6 +175,19 @@ module Absolute_path = struct
   ;;
 
   let remove_extension (Non_root filename) = Non_root (Filename.remove_extension filename)
+
+  let assert_extension (Non_root filename) ~ext =
+    if not (Filename.has_extension filename ~ext)
+    then
+      panic
+        [ Pp.textf
+            "Expected file %S to have extension %S but instead it has extension %S"
+            filename
+            ext
+            (Filename.extension filename)
+        ]
+  ;;
+
   let parent (Non_root filename) = of_filename (Filename.dirname filename)
   let basename (Non_root filename) = Basename.of_filename (Filename.basename filename)
 

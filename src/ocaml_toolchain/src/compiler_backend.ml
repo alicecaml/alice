@@ -15,3 +15,7 @@ let name = function
   | Bytecode -> "bytecode"
 ;;
 
+let ocaml_object_file_ext = function
+  | Native -> ".cmx"
+  | Bytecode -> ".cmo"
+;;

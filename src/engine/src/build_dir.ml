@@ -79,6 +79,18 @@ module Package_base_dir = struct
     | Linked_executable linked_executable ->
       executable_dir t / Linked_executable.path linked_executable
   ;;
+
+  let gen_file t gen_file =
+    let open Typed_op in
+    let base =
+      match Gen_file.visibility gen_file with
+      | Private -> private_dir t
+      | Private_c -> private_c_dir t
+      | Public -> public_dir t
+      | Public_for_lsp -> public_for_lsp_dir t
+    in
+    base / Gen_file.path gen_file
+  ;;
 end
 
 let package_base_dir t package_id compiler_backend profile =
