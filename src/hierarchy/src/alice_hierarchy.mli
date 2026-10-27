@@ -17,7 +17,6 @@ module Basename : sig
   val of_filename : Filename.t -> t
 
   val to_filename : t -> Filename.t
-  val compare : t -> t -> int
   val extension : t -> string
   val has_extension : t -> ext:string -> bool
   val replace_extension : t -> ext:string -> t

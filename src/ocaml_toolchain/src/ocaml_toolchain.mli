@@ -9,10 +9,12 @@ type t
 val create : ocamlopt:Filename.t -> ocamlc:Filename.t -> ocaml:Filename.t -> Env.t -> t
 
 val ocamlopt : t -> Filename.t
+val ocamlc : t -> Filename.t
 val ocaml : t -> Filename.t
-val env : t -> Env.t
 val ocamlopt_command : t -> args:string list -> Command.t
+val ocamlc_command : t -> args:string list -> Command.t
 val ocaml_command : t -> args:string list -> Command.t
+val env : t -> Env.t
 
 module Deps : sig
   type t =

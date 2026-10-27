@@ -1,6 +1,5 @@
 open! Alice_stdlib
 open Alice_package
-open Alice_ocaml_toolchain
 
 (** Builds are orchestrated in the context of a project. This determines things
     like where build artifacts will go, and which package is the root of the
