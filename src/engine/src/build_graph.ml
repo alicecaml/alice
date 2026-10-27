@@ -76,8 +76,9 @@ module Build_dag = struct
       |> List.filter_map ~f:(fun node ->
         match Node.name node with
         | Compile_ocaml_source { cmx_output; _ }
-          when Typed_op.File.Compiled.equal cmx_output Typed_op.File.Compiled.lib_cmx ->
-          Some node
+          when Typed_op.Generated_file.Compiled.equal
+                 cmx_output
+                 Typed_op.Generated_file.Compiled.lib_cmx -> Some node
         | _ -> None)
     with
     | [] -> Alice_error.panic [ Pp.text "No ops would compile library cmx!" ]
@@ -91,8 +92,9 @@ module Build_dag = struct
       |> List.filter_map ~f:(fun node ->
         match Node.name node with
         | Compile_ocaml_source { cmx_output; _ }
-          when Typed_op.File.Compiled.equal cmx_output Typed_op.File.Compiled.exe_cmx ->
-          Some node
+          when Typed_op.Generated_file.Compiled.equal
+                 cmx_output
+                 Typed_op.Generated_file.Compiled.exe_cmx -> Some node
         | _ -> None)
     with
     | [] -> Alice_error.panic [ Pp.text "No ops would compile executable cmx!" ]
@@ -107,8 +109,9 @@ module Build_dag = struct
       |> List.filter_map ~f:(fun node ->
         match Node.name node with
         | Compile_ocaml_source ({ cmx_output; _ } as compile_source)
-          when Typed_op.File.Compiled.equal cmx_output Typed_op.File.Compiled.lib_cmx ->
-          Some compile_source
+          when Typed_op.Generated_file.Compiled.equal
+                 cmx_output
+                 Typed_op.Generated_file.Compiled.lib_cmx -> Some compile_source
         | _ -> None)
     with
     | [] -> Alice_error.panic [ Pp.text "No ops would compile library cmx!" ]
@@ -122,8 +125,9 @@ module Build_dag = struct
       |> List.filter_map ~f:(fun node ->
         match Node.name node with
         | Compile_ocaml_interface ({ cmi_output; _ } as compile_interface)
-          when Typed_op.File.Compiled.equal cmi_output Typed_op.File.Compiled.lib_cmi ->
-          Some compile_interface
+          when Typed_op.Generated_file.Compiled.equal
+                 cmi_output
+                 Typed_op.Generated_file.Compiled.lib_cmi -> Some compile_interface
         | _ -> None)
     with
     | [] -> Alice_error.panic [ Pp.text "No ops would compile library cmi!" ]
@@ -256,6 +260,7 @@ let compute_ocaml_compilation_ops
       let cmx_output =
         Basename.replace_extension source_base_name ~ext:".cmx"
         |> File.Compiled.cmx_private
+        |> File.Compiled.generated_file_compiled
       in
       let matching_mli_file = Absolute_path.replace_extension source_path ~ext:".mli" in
       let interface_output_if_no_matching_mli_is_present =
@@ -300,6 +305,7 @@ let compute_ocaml_compilation_ops
         Absolute_path.basename source_path
         |> Basename.replace_extension ~ext:".cmi"
         |> File.Compiled.cmi_private
+        |> File.Compiled.generated_file_compiled
       in
       Compile_ocaml_interface
         { interface_input; compiled_inputs; cmi_output; stop_after_typing = false })
@@ -321,6 +327,7 @@ let compute_c_compilation_ops src_dir =
     let object_output =
       File.Compiled.o_private_c
         (Absolute_path.basename path |> Basename.replace_extension ~ext:".o")
+      |> File.Compiled.generated_file_compiled
     in
     { Compile_c_source.source_input; object_output })
 ;;
@@ -344,7 +351,7 @@ let lsp_ops build_dag_ocaml_compilation_only package =
       Build_dag.library_cmx_compile_source_or_panic build_dag_ocaml_compilation_only
     in
     let cmx_output =
-      Typed_op.File.Compiled.rename
+      Typed_op.Generated_file.Compiled.rename
         cmx_output
         ~name_without_extension:package_name_s
         Public_for_lsp
@@ -374,7 +381,7 @@ let lsp_ops build_dag_ocaml_compilation_only package =
     let compiled_inputs =
       let pack_output =
         let pack = Typed_op.Pack.of_package_name (Package.name package) in
-        Typed_op.Pack.cmx_file pack |> Typed_op.File.Compiled.generated_file_compiled
+        Typed_op.Pack.cmx_file pack
       in
       (* Add the package's internal modules pack to the dependencies of this
          node. When building the cmt file we'll open this package's own
@@ -409,14 +416,14 @@ let lsp_ops build_dag_ocaml_compilation_only package =
       let compiled_inputs =
         let pack_output =
           let pack = Typed_op.Pack.of_package_name (Package.name package) in
-          Typed_op.Pack.cmx_file pack |> Typed_op.File.Compiled.generated_file_compiled
+          Typed_op.Pack.cmx_file pack
         in
         (* Add the package's internal modules pack to the dependencies of this
            node. *)
         pack_output :: compiled_inputs
       in
       let cmi_output =
-        Typed_op.File.Compiled.rename
+        Typed_op.Generated_file.Compiled.rename
           cmi_output
           ~name_without_extension:package_name_s
           Public_for_lsp

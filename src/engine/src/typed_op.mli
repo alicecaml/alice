@@ -22,6 +22,7 @@ module Generated_file : sig
     val visibility : t -> Visibility.t
     val lib_cmx : t
     val lib_cmi : t
+    val exe_cmx : t
 
     (** Rename the file, preserving its extension. *)
     val rename : t -> name_without_extension:string -> Visibility.t -> t
@@ -59,7 +60,6 @@ module Generated_file : sig
   val path : t -> Basename.t
   val lib_cmx : t
   val lib_cmi : t
-  val cmt_for_lsp : Alice_package.Package_name.t -> t
 end
 
 module File_type : sig
@@ -117,9 +117,6 @@ module File : sig
     val cmi_private : Basename.t -> cmi t
     val o_private : Basename.t -> o t
     val o_private_c : Basename.t -> o t
-    val cmt_public_for_lsp : Basename.t -> cmt t
-    val cmti_public_for_lsp : Basename.t -> cmti t
-    val cmi_public_for_lsp : Basename.t -> cmi t
 
     (** The .cmx compiled file associated with the given .cmi interface file *)
     val cmx_of_cmi : cmi t -> cmx t
@@ -166,7 +163,7 @@ module Pack : sig
   val equal : t -> t -> bool
   val of_package_name : Alice_package.Package_name.t -> t
   val package_name : t -> Alice_package.Package_name.t
-  val cmx_file : t -> cmx File.Compiled.t
+  val cmx_file : t -> Generated_file.Compiled.t
   val module_name : t -> Module_name.t
 end
 
@@ -174,7 +171,7 @@ module Compile_ocaml_source : sig
   type t =
     { source_input : ml File.Ocaml_source_or_interface.t
     ; compiled_inputs : Generated_file.Compiled.t list
-    ; cmx_output : cmx File.Compiled.t
+    ; cmx_output : Generated_file.Compiled.t
     ; interface_output_if_no_matching_mli_is_present : cmi File.Compiled.t option
     ; stop_after_typing : bool
     }
@@ -186,7 +183,7 @@ module Compile_ocaml_interface : sig
   type t =
     { interface_input : mli File.Ocaml_source_or_interface.t
     ; compiled_inputs : Generated_file.Compiled.t list
-    ; cmi_output : cmi File.Compiled.t
+    ; cmi_output : Generated_file.Compiled.t
     ; stop_after_typing : bool
     }
 
@@ -196,7 +193,7 @@ end
 module Compile_c_source : sig
   type t =
     { source_input : File.C_source.t
-    ; object_output : o File.Compiled.t
+    ; object_output : Generated_file.Compiled.t
     }
 
   val to_dyn : t -> Dyn.t
@@ -204,7 +201,7 @@ end
 
 module Pack_library : sig
   type t =
-    { cmx_inputs : cmx File.Compiled.t list
+    { cmx_inputs : Generated_file.Compiled.t list
     ; pack : Pack.t
     }
 end
@@ -217,8 +214,8 @@ module Compile_public_interface_to_open : sig
   type t =
     { generated_source_input : File.Generated_ocaml_source.t
     ; internal_modules_pack : Pack.t
-    ; cmx_output : cmx File.Compiled.t
-    ; cmi_output : cmi File.Compiled.t
+    ; cmx_output : Generated_file.Compiled.t
+    ; cmi_output : Generated_file.Compiled.t
     }
 
   val create
@@ -229,22 +226,22 @@ end
 
 module Link_library : sig
   type t =
-    { cmx_inputs : cmx File.Compiled.t list
-    ; compiled_c_inputs : o File.Compiled.t list
+    { cmx_inputs : Generated_file.Compiled.t list
+    ; compiled_c_inputs : Generated_file.Compiled.t list
     ; cmxa_output : cmxa File.Linked.t
     ; a_output : a File.Linked.t
     }
 
   val of_inputs
-    :  cmx_inputs:cmx File.Compiled.t list
-    -> compiled_c_inputs:o File.Compiled.t list
+    :  cmx_inputs:Generated_file.Compiled.t list
+    -> compiled_c_inputs:Generated_file.Compiled.t list
     -> t
 end
 
 module Link_executable : sig
   type t =
-    { cmx_inputs : cmx File.Compiled.t list
-    ; compiled_c_inputs : o File.Compiled.t list
+    { cmx_inputs : Generated_file.Compiled.t list
+    ; compiled_c_inputs : Generated_file.Compiled.t list
     ; exe_output : exe_native File.Linked.t
     }
 end

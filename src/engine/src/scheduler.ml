@@ -219,7 +219,6 @@ module Action_builder = struct
   ;;
 
   let compiled_absolute_filename t compiled =
-    let compiled = Typed_op.File.Compiled.generated_file_compiled compiled in
     Package_base_dir.generated_file_compiled t.package_base_dir compiled
     |> Absolute_path.to_filename
   ;;
@@ -231,7 +230,7 @@ module Action_builder = struct
         if stop_after_typing then t.compile_args.stop_after_typing else []
       in
       let lsp_output_args =
-        match Typed_op.File.Compiled.visibility cmx_output with
+        match Typed_op.Generated_file.Compiled.visibility cmx_output with
         | Public_for_lsp ->
           t.compile_args.lsp_only
           @ [ (* Include the public_for_lsp directory in the search path so packages
@@ -264,7 +263,7 @@ module Action_builder = struct
         if stop_after_typing then t.compile_args.stop_after_typing else []
       in
       let lsp_output_args =
-        match Typed_op.File.Compiled.visibility cmi_output with
+        match Typed_op.Generated_file.Compiled.visibility cmi_output with
         | Public_for_lsp -> t.compile_args.lsp_only
         | _ -> t.compile_args.non_lsp_only
       in
@@ -389,12 +388,7 @@ end
 (* Determines which files need to be (re)built. A file needs to be rebuilt if
    any of its dependencies need to be rebuilt, or if its mtime is earlier than
    any of its source dependencies. *)
-let incremental_files_to_build
-      build_plan
-      package_id
-      package_base_dir
-      (build_config : Build_config.t)
-  =
+let incremental_files_to_build build_plan package_base_dir =
   let rec loop build_plan =
     let deps = Build_plan.deps build_plan in
     let to_rebuild =
@@ -599,7 +593,7 @@ let make_action_graph
       build_graph
       build_plans
       package_with_deps
-      build_dir
+      package_base_dir
       build_config
       ~any_dep_rebuilt
       ~built_artifacts_from_deps
@@ -607,7 +601,7 @@ let make_action_graph
   let action_builder =
     Action_builder.create
       package_with_deps
-      build_dir
+      package_base_dir
       build_config
       ~built_artifacts_from_deps
   in
@@ -623,7 +617,7 @@ let make_action_graph
       (* No deps were rebuilt, so only rebuilt the artifacts which are
          missing or whose inputs have changed since the last build. *)
       List.fold_left build_plans ~init:Generated_file.Set.empty ~f:(fun acc build_plan ->
-        incremental_files_to_build build_plan package_id build_dir build_config
+        incremental_files_to_build build_plan package_base_dir
         |> Generated_file.Set.union acc)
   in
   if Generated_file.Set.is_empty files_to_build
@@ -708,7 +702,6 @@ let run
       (verb_message
          `Compiling
          (Package_id.name_v_version_string (Package_with_deps.id package_with_deps)));
-    let package_id = Dependency_graph.Package_with_deps.package_id package_with_deps in
     Package_base_dir.dirs package_base_dir |> List.iter ~f:File_ops.mkdir_p;
     Action_graph.run_parallel action_graph build_config.num_jobs;
     Rebuilt

@@ -39,7 +39,11 @@ module Make (Key : Key) : S with type key = Key.t = struct
   let of_list_exn list =
     match of_list list with
     | Ok t -> t
-    | Error _ -> raise (Invalid_argument "list contains duplicate key")
+    | Error (key, _, _) ->
+      Panic.panic
+        (Printf.sprintf
+           "list contains duplicate key: %s"
+           (Key.to_dyn key |> Dyn.to_string))
   ;;
 
   let keys t = to_seq t |> Seq.map ~f:fst |> List.of_seq
