@@ -19,20 +19,29 @@ let dot_merlin_text_initial () =
   sprintf "%s\nS %s" header_comment (Relative_path.to_filename source_rel_path)
 ;;
 
-let dot_merlin_text package_with_deps build_dir profile ocaml_toolchain =
+let dot_merlin_text package_with_deps build_dir (build_config : Build_config.t) =
   let build_abs_paths_for_deps =
     Package_with_deps.immediate_deps_in_dependency_order package_with_deps
     |> List.concat_map ~f:(fun dep ->
       let dep_id = Package_with_deps.id dep in
-      [ Build_dir.package_public_dir build_dir dep_id profile
-      ; Build_dir.package_public_for_lsp_dir build_dir dep_id profile
+      [ Build_dir.package_public_dir
+          build_dir
+          dep_id
+          build_config.compiler_backend
+          build_config.profile
+      ; Build_dir.package_public_for_lsp_dir
+          build_dir
+          dep_id
+          build_config.compiler_backend
+          build_config.profile
       ])
   in
   let build_abs_paths =
     Build_dir.package_private_dir
       build_dir
       (Package_with_deps.id package_with_deps)
-      profile
+      build_config.compiler_backend
+      build_config.profile
     :: build_abs_paths_for_deps
   in
   let to_relative_paths ~prefix =
@@ -45,7 +54,7 @@ let dot_merlin_text package_with_deps build_dir profile ocaml_toolchain =
   in
   let source_rel_path = Relative_path.of_basename Alice_package.Package.src in
   let ocamllib_path_line =
-    let ocamllib_path = Ocaml_toolchain.standard_library ocaml_toolchain in
+    let ocamllib_path = Ocaml_toolchain.standard_library build_config.ocaml_toolchain in
     (* It's probably more correct to specify the OCaml library path with
        "FLG -ocamllib-path" however this doesn't seem to work on Windows, so
        just use a "B" directive instead. *)
@@ -57,7 +66,7 @@ let dot_merlin_text package_with_deps build_dir profile ocaml_toolchain =
     |> List.map ~f:(fun builtin_module ->
       sprintf
         "B %s"
-        (Ocaml_toolchain.builtin_module_dir ocaml_toolchain builtin_module
+        (Ocaml_toolchain.builtin_module_dir build_config.ocaml_toolchain builtin_module
          |> Absolute_path.to_filename))
   in
   let lines =

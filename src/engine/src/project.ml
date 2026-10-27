@@ -28,10 +28,8 @@ let write_dot_merlin_initial t =
   File_ops.write_text_file (dot_merlin_path t) text
 ;;
 
-let write_dot_merlin t root_package_with_deps profile ocaml_toolchain =
-  let text =
-    Dot_merlin.dot_merlin_text root_package_with_deps t.build_dir profile ocaml_toolchain
-  in
+let write_dot_merlin t root_package_with_deps build_config =
+  let text = Dot_merlin.dot_merlin_text root_package_with_deps t.build_dir build_config in
   File_ops.write_text_file (dot_merlin_path t) text
 ;;
 
@@ -56,64 +54,29 @@ let build_single_package
   : type exe lib.
     t
     -> (exe, lib) Package_with_deps.t
-    -> Profile.t
-    -> Alice_env.Os_type.t
-    -> Ocaml_toolchain.t
-    -> Compiler_backend.t
-    -> Alice_io.Num_jobs.t
+    -> Build_config.t
     -> any_dep_rebuilt:bool
     -> built_artifacts_from_deps:bool
     -> Scheduler.Package_built.t
   =
-  fun t
-    package_with_deps
-    profile
-    os_type
-    ocaml_toolchain
-    compiler_backend
-    num_jobs
-    ~any_dep_rebuilt
-    ~built_artifacts_from_deps ->
+  fun t package_with_deps build_config ~any_dep_rebuilt ~built_artifacts_from_deps ->
   let package_typed = Package_with_deps.package_typed package_with_deps in
-  let build_graph =
-    Build_graph.create
-      package_typed
-      t.build_dir
-      os_type
-      ocaml_toolchain
-      compiler_backend
-      num_jobs
-  in
+  let build_graph = Build_graph.create package_typed t.build_dir build_config in
   Scheduler.run
     build_graph
     package_with_deps
-    profile
     t.build_dir
-    ocaml_toolchain
-    num_jobs
+    build_config
     ~any_dep_rebuilt
     ~built_artifacts_from_deps
 ;;
 
-let build_dependency_graph
-      t
-      dependency_graph
-      profile
-      os_type
-      ocaml_toolchain
-      compiler_backend
-      num_jobs
-      ~built_artifacts_from_deps
-  =
+let build_dependency_graph t dependency_graph build_config ~built_artifacts_from_deps =
   let build_single_package package_with_deps ~any_dep_rebuilt =
     build_single_package
       t
       package_with_deps
-      profile
-      os_type
-      ocaml_toolchain
-      compiler_backend
-      num_jobs
+      build_config
       ~any_dep_rebuilt
       ~built_artifacts_from_deps
   in
@@ -167,84 +130,37 @@ let build_dependency_graph
   ()
 ;;
 
-let build_package_typed
-      t
-      package_typed
-      profile
-      os_type
-      ocaml_toolchain
-      num_jobs
-      ~built_artifacts_from_deps
-  =
+let build_package_typed t package_typed build_config ~built_artifacts_from_deps =
   let dependency_graph = Dependency_graph.compute package_typed in
   write_dot_merlin
     t
     (Dependency_graph.root_package_with_deps dependency_graph)
-    profile
-    ocaml_toolchain;
-  build_dependency_graph
-    t
-    dependency_graph
-    profile
-    os_type
-    ocaml_toolchain
-    num_jobs
-    ~built_artifacts_from_deps
+    build_config;
+  build_dependency_graph t dependency_graph build_config ~built_artifacts_from_deps
 ;;
 
-let build_package t package profile ocaml_toolchain num_jobs ~built_artifacts_from_deps =
+let build_package t package build_config ~built_artifacts_from_deps =
   Package.with_typed
     { f =
         (fun package_typed ->
-          build_package_typed
-            t
-            package_typed
-            profile
-            ocaml_toolchain
-            num_jobs
-            ~built_artifacts_from_deps)
+          build_package_typed t package_typed build_config ~built_artifacts_from_deps)
     }
     package
 ;;
 
-let build
-      t
-      profile
-      os_type
-      ocaml_toolchain
-      compiler_backend
-      num_jobs
-      ~built_artifacts_from_deps
-  =
+let build t (build_config : Build_config.t) ~built_artifacts_from_deps =
   let open Alice_ui in
-  build_package
-    t
-    t.package
-    profile
-    os_type
-    ocaml_toolchain
-    compiler_backend
-    num_jobs
-    ~built_artifacts_from_deps;
+  build_package t t.package build_config ~built_artifacts_from_deps;
   println
     (verb_message
        `Finished
        (sprintf
           "%s build of package: '%s'"
-          (Profile.name profile)
+          (Profile.name build_config.profile)
           (Package_id.name_v_version_string (Package.id t.package))))
 ;;
 
-let run
-      t
-      profile
-      os_type
-      ocaml_toolchain
-      compiler_backend
-      num_jobs
-      ~args
-      ~built_artifacts_from_deps
-  =
+let run t (build_config : Build_config.t) ~args ~built_artifacts_from_deps =
   let open Alice_ui in
   let package_typed =
     match Package.typed t.package with
@@ -252,23 +168,20 @@ let run
     | `Exe_only pt -> pt
     | `Exe_and_lib pt -> Package.Typed.limit_to_exe_only pt
   in
-  build_package_typed
-    t
-    package_typed
-    profile
-    os_type
-    ocaml_toolchain
-    compiler_backend
-    num_jobs
-    ~built_artifacts_from_deps;
+  build_package_typed t package_typed build_config ~built_artifacts_from_deps;
   let exe_name =
     Package.name t.package
     |> Package_name.to_string
     |> Basename.of_filename
-    |> Alice_env.Os_type.basename_add_exe_extension_on_windows os_type
+    |> Alice_env.Os_type.basename_add_exe_extension_on_windows build_config.os_type
   in
   let exe_path =
-    Build_dir.package_executable_dir t.build_dir (Package.id t.package) profile / exe_name
+    Build_dir.package_executable_dir
+      t.build_dir
+      (Package.id t.package)
+      build_config.compiler_backend
+      build_config.profile
+    / exe_name
   in
   let exe_filename = Absolute_path.to_filename exe_path in
   println (verb_message `Running (absolute_path_to_string exe_path));
@@ -277,7 +190,7 @@ let run
     Alice_io.Process.Blocking.run
       exe_filename
       ~args
-      ~env:(Ocaml_toolchain.env ocaml_toolchain)
+      ~env:(Ocaml_toolchain.env build_config.ocaml_toolchain)
   with
   | Error (`Prog_not_available prog) ->
     panic
@@ -306,34 +219,14 @@ let clean t =
   File_ops.rm_rf to_remove
 ;;
 
-let dot_package_build_artifacts
-      t
-      package
-      os_type
-      ocaml_toolchain
-      compiler_backend
-      num_jobs
-  =
+let dot_build_artifacts t build_config =
   Package.with_typed
-    { f =
-        (fun pt ->
-          Build_graph.create
-            pt
-            t.build_dir
-            os_type
-            ocaml_toolchain
-            compiler_backend
-            num_jobs
-          |> Build_graph.dot)
-    }
-    package
+    { f = (fun pt -> Build_graph.create pt t.build_dir build_config |> Build_graph.dot) }
+    t.package
 ;;
 
-let dot_package_dependencies package =
+let dot_dependencies t =
   Package.with_typed
     { f = (fun pt -> Dependency_graph.dot (Dependency_graph.compute pt)) }
-    package
+    t.package
 ;;
-
-let dot_build_artifacts t num_jobs = dot_package_build_artifacts t t.package num_jobs
-let dot_dependencies t = dot_package_dependencies t.package

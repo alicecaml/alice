@@ -21,9 +21,7 @@ val store : t -> Compiler_backend.t -> dep_table -> unit
     not present or up to date in the cache. *)
 val get_deps_batch
   :  t
-  -> Ocaml_toolchain.t
-  -> Compiler_backend.t
-  -> Alice_io.Num_jobs.t
+  -> Build_config.t
   -> local_src_dir_path:Absolute_path.non_root_t
   -> src_file_names:Basename.t list
   -> (Absolute_path.non_root_t * Ocaml_toolchain.Deps.t) list

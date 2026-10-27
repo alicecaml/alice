@@ -16,7 +16,7 @@ type t =
 
 let load build_dir compiler_backend package_id =
   let path =
-    Build_dir.package_ocamldeps_cache_file build_dir compiler_backend package_id
+    Build_dir.package_ocamldeps_cache_file build_dir package_id compiler_backend
   in
   if File_ops.exists path
   then (
@@ -42,7 +42,7 @@ let load build_dir compiler_backend package_id =
 
 let store t compiler_backend (dep_table : dep_table) =
   let path =
-    Build_dir.package_ocamldeps_cache_file t.build_dir compiler_backend t.package_id
+    Build_dir.package_ocamldeps_cache_file t.build_dir t.package_id compiler_backend
   in
   File_ops.mkdir_p
     (Absolute_path.parent path |> Absolute_path.Root_or_non_root.assert_non_root);
@@ -50,16 +50,12 @@ let store t compiler_backend (dep_table : dep_table) =
     Marshal.to_channel channel dep_table [])
 ;;
 
-let get_deps_batch
-      t
-      ocaml_toolchain
-      compiler_backend
-      num_jobs
-      ~local_src_dir_path
-      ~src_file_names
-  =
+let get_deps_batch t (build_config : Build_config.t) ~local_src_dir_path ~src_file_names =
   let path =
-    Build_dir.package_ocamldeps_cache_file t.build_dir compiler_backend t.package_id
+    Build_dir.package_ocamldeps_cache_file
+      t.build_dir
+      t.package_id
+      build_config.compiler_backend
   in
   let src_file_names_to_compute_deps_for, known_deps =
     List.partition_map src_file_names ~f:(fun src_file_name ->
@@ -97,9 +93,9 @@ let get_deps_batch
           ]);
     let deps =
       Ocaml_toolchain.depends_batch
-        ocaml_toolchain
-        compiler_backend
-        num_jobs
+        build_config.ocaml_toolchain
+        build_config.compiler_backend
+        build_config.num_jobs
         ~local_src_dir_path
         ~src_file_names:src_file_names_to_compute_deps_for
     in

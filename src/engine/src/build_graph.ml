@@ -164,11 +164,11 @@ let compute_ocaml_compilation_ops
       src_dir
       package_id
       build_dir
-      ocaml_toolchain
-      compiler_backend
-      num_jobs
+      (build_config : Build_config.t)
   =
-  let ocamldep_cache = Ocamldep_cache.load build_dir compiler_backend package_id in
+  let ocamldep_cache =
+    Ocamldep_cache.load build_dir build_config.compiler_backend package_id
+  in
   let src_file_names =
     Dir_non_root.contents src_dir
     |> List.filter_map ~f:(fun (file : File_non_root.t) ->
@@ -185,15 +185,13 @@ let compute_ocaml_compilation_ops
   let deps_key_value_pairs =
     Ocamldep_cache.get_deps_batch
       ocamldep_cache
-      ocaml_toolchain
-      compiler_backend
-      num_jobs
+      build_config
       ~src_file_names
       ~local_src_dir_path:(Dir_non_root.path src_dir)
   in
   let src_file_names = Basename.Set.of_list src_file_names in
   let deps = Absolute_path.Non_root_map.of_list_exn deps_key_value_pairs in
-  Ocamldep_cache.store ocamldep_cache compiler_backend deps;
+  Ocamldep_cache.store ocamldep_cache build_config.compiler_backend deps;
   Absolute_path.Non_root_map.to_list deps
   |> List.map ~f:(fun (source_path, (deps : Ocaml_toolchain.Deps.t)) ->
     let open Typed_op in
@@ -462,26 +460,14 @@ let to_dyn { build_dag; package_typed; lsp_ops } =
 
 let create
   : type exe lib.
-    (exe, lib) Package.Typed.t
-    -> Build_dir.t
-    -> Alice_env.Os_type.t
-    -> Ocaml_toolchain.t
-    -> Compiler_backend.t
-    -> Alice_io.Num_jobs.t
-    -> (exe, lib) t
+    (exe, lib) Package.Typed.t -> Build_dir.t -> Build_config.t -> (exe, lib) t
   =
-  fun package_typed build_dir os_type ocaml_toolchain compiler_backend num_jobs ->
+  fun package_typed build_dir build_config ->
   let open Typed_op in
   let package = Package.Typed.package package_typed in
   let src_dir = Package.src_dir_exn package in
   let ocaml_compilation_ops =
-    compute_ocaml_compilation_ops
-      src_dir
-      (Package.id package)
-      build_dir
-      ocaml_toolchain
-      compiler_backend
-      num_jobs
+    compute_ocaml_compilation_ops src_dir (Package.id package) build_dir build_config
   in
   let c_compilation_ops = compute_c_compilation_ops src_dir in
   let build_dag_ocaml_compilation_only = Build_dag.of_ops ocaml_compilation_ops in
@@ -527,7 +513,7 @@ let create
   let exe_file =
     let exe_name =
       Basename.of_filename (Package.name package |> Package_name.to_string)
-      |> Alice_env.Os_type.basename_add_exe_extension_on_windows os_type
+      |> Alice_env.Os_type.basename_add_exe_extension_on_windows build_config.os_type
     in
     File.Linked.exe exe_name
   in

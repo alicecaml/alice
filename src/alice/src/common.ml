@@ -190,3 +190,14 @@ let parse_debug_blocking_subprocesses =
     ~doc:"Don't use eio to spawn processes"
     ~hidden:true
 ;;
+
+let parse_build_config =
+  let open Arg_parser in
+  let+ profile = parse_profile
+  and+ compiler_backend = parse_compiler_backend
+  and+ num_jobs = parse_num_jobs in
+  let env = Alice_env.current_env () in
+  let os_type = Alice_env.Os_type.current () in
+  let ocaml_toolchain = Alice_which.ocaml_toolchain os_type env in
+  { Build_config.profile; ocaml_toolchain; compiler_backend; num_jobs; os_type }
+;;

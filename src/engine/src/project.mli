@@ -8,38 +8,17 @@ open Alice_ocaml_toolchain
 type t
 
 val of_package : Package.t -> t
-
-val build
-  :  t
-  -> Profile.t
-  -> Alice_env.Os_type.t
-  -> Ocaml_toolchain.t
-  -> Compiler_backend.t
-  -> Alice_io.Num_jobs.t
-  -> built_artifacts_from_deps:bool
-  -> unit
+val build : t -> Build_config.t -> built_artifacts_from_deps:bool -> unit
 
 val run
   :  t
-  -> Profile.t
-  -> Alice_env.Os_type.t
-  -> Ocaml_toolchain.t
-  -> Compiler_backend.t
-  -> Alice_io.Num_jobs.t
+  -> Build_config.t
   -> args:string list
   -> built_artifacts_from_deps:bool
   -> unit
 
 val clean : t -> unit
-
-val dot_build_artifacts
-  :  t
-  -> Alice_env.Os_type.t
-  -> Ocaml_toolchain.t
-  -> Compiler_backend.t
-  -> Alice_io.Num_jobs.t
-  -> string
-
+val dot_build_artifacts : t -> Build_config.t -> string
 val dot_dependencies : t -> string
 val write_dot_merlin_initial : t -> unit
 val write_dot_gitignore : t -> unit

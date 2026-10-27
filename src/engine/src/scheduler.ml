@@ -101,9 +101,8 @@ module Action_builder = struct
       [Typed_op.t] *)
   type ('exe, 'lib) t =
     { package_with_deps : ('exe, 'lib) Package_with_deps.t
-    ; profile : Profile.t
     ; build_dir : Build_dir.t
-    ; ocaml_toolchain : Ocaml_toolchain.t
+    ; build_config : Build_config.t
     ; compile_args : compile_args
     ; dep_args : dep_args
     ; dirs : dirs
@@ -112,9 +111,8 @@ module Action_builder = struct
 
   let create
         package_with_deps
-        profile
         build_dir
-        ocaml_toolchain
+        (build_config : Build_config.t)
         ~built_artifacts_from_deps
     =
     let package = Package_with_deps.package package_with_deps in
@@ -139,7 +137,13 @@ module Action_builder = struct
         List.map transitive_dep_libs ~f:(fun dep_lib ->
           let build_dir = dep_build_dir dep_lib in
           let package_id = Package.Typed.package dep_lib |> Package.id in
-          let public = Build_dir.package_public_dir build_dir package_id profile in
+          let public =
+            Build_dir.package_public_dir
+              build_dir
+              package_id
+              build_config.compiler_backend
+              build_config.profile
+          in
           public / Linked.path Linked.lib_cmxa |> Absolute_path.to_filename)
       in
       let immediate_dep_libs =
@@ -157,19 +161,45 @@ module Action_builder = struct
           let build_dir = dep_build_dir dep_lib in
           let package_id = Package.Typed.package dep_lib |> Package.id in
           [ "-I"
-          ; Build_dir.package_public_dir build_dir package_id profile
+          ; Build_dir.package_public_dir
+              build_dir
+              package_id
+              build_config.compiler_backend
+              build_config.profile
             |> Absolute_path.to_filename
           ])
       in
       { cmxa_files; open_; include_ }
     in
     let dirs : dirs =
-      let private_ = Build_dir.package_private_dir build_dir package_id profile in
-      let public = Build_dir.package_public_dir build_dir package_id profile in
-      let public_for_lsp =
-        Build_dir.package_public_for_lsp_dir build_dir package_id profile
+      let private_ =
+        Build_dir.package_private_dir
+          build_dir
+          package_id
+          build_config.compiler_backend
+          build_config.profile
       in
-      let executable = Build_dir.package_executable_dir build_dir package_id profile in
+      let public =
+        Build_dir.package_public_dir
+          build_dir
+          package_id
+          build_config.compiler_backend
+          build_config.profile
+      in
+      let public_for_lsp =
+        Build_dir.package_public_for_lsp_dir
+          build_dir
+          package_id
+          build_config.compiler_backend
+          build_config.profile
+      in
+      let executable =
+        Build_dir.package_executable_dir
+          build_dir
+          package_id
+          build_config.compiler_backend
+          build_config.profile
+      in
       { private_; public; public_for_lsp; executable }
     in
     let compile_args =
@@ -211,9 +241,8 @@ module Action_builder = struct
           Builtin_module.Set.union acc (Package.Typed.builtin_modules dep))
     in
     { package_with_deps
-    ; profile
     ; build_dir
-    ; ocaml_toolchain
+    ; build_config
     ; dep_args
     ; compile_args
     ; dirs
@@ -226,7 +255,8 @@ module Action_builder = struct
     Build_dir.package_generated_file_compiled
       t.build_dir
       (Package_with_deps.package_id t.package_with_deps)
-      t.profile
+      t.build_config.compiler_backend
+      t.build_config.profile
       compiled
     |> Absolute_path.to_filename
   ;;
@@ -251,8 +281,8 @@ module Action_builder = struct
       in
       Command
         (Profile.ocamlopt_command
-           t.profile
-           t.ocaml_toolchain
+           t.build_config.profile
+           t.build_config.ocaml_toolchain
            ~args:
              (t.dep_args.include_
               @ t.dep_args.open_
@@ -277,8 +307,8 @@ module Action_builder = struct
       in
       Command
         (Profile.ocamlopt_command
-           t.profile
-           t.ocaml_toolchain
+           t.build_config.profile
+           t.build_config.ocaml_toolchain
            ~args:
              (t.dep_args.include_
               @ t.dep_args.open_
@@ -301,8 +331,8 @@ module Action_builder = struct
       in
       Command
         (Profile.ocamlopt_command
-           t.profile
-           t.ocaml_toolchain
+           t.build_config.profile
+           t.build_config.ocaml_toolchain
            ~args:
              ([ Absolute_path.to_filename @@ C_source.path source_input ] @ output_args))
     | Pack_library { cmx_inputs; pack; _ } ->
@@ -320,8 +350,8 @@ module Action_builder = struct
           ];
       Command
         (Profile.ocamlopt_command
-           t.profile
-           t.ocaml_toolchain
+           t.build_config.profile
+           t.build_config.ocaml_toolchain
            ~args:
              (List.map cmx_inputs ~f:(compiled_absolute_filename t)
               @ [ "-pack"
@@ -333,7 +363,8 @@ module Action_builder = struct
         Build_dir.package_generated_file
           t.build_dir
           (Package_with_deps.package_id t.package_with_deps)
-          t.profile
+          t.build_config.compiler_backend
+          t.build_config.profile
           (Typed_op.File.Generated_ocaml_source.generated_file ml_output)
       in
       let public_interface_to_open =
@@ -343,13 +374,17 @@ module Action_builder = struct
     | Compile_public_interface_to_open { generated_source_input; cmx_output; _ } ->
       let package_id = Package_with_deps.package_id t.package_with_deps in
       let impl =
-        Build_dir.package_generated_source_dir t.build_dir package_id t.profile
+        Build_dir.package_generated_source_dir
+          t.build_dir
+          package_id
+          t.build_config.compiler_backend
+          t.build_config.profile
         / Typed_op.File.Generated_ocaml_source.basename generated_source_input
       in
       Action.Command
         (Profile.ocamlopt_command
-           t.profile
-           t.ocaml_toolchain
+           t.build_config.profile
+           t.build_config.ocaml_toolchain
            ~args:
              [ "-I"
              ; Absolute_path.to_filename t.dirs.public
@@ -362,8 +397,8 @@ module Action_builder = struct
     | Link_library { cmx_inputs; cmxa_output; compiled_c_inputs; _ } ->
       Command
         (Profile.ocamlopt_command
-           t.profile
-           t.ocaml_toolchain
+           t.build_config.profile
+           t.build_config.ocaml_toolchain
            ~args:
              (t.dep_args.include_
               @ List.map compiled_c_inputs ~f:(compiled_absolute_filename t)
@@ -376,13 +411,15 @@ module Action_builder = struct
       let builtin_module_args =
         Builtin_module.Set.to_list t.dep_closure_builtin_modules
         |> List.map ~f:(fun builtin_module ->
-          Ocaml_toolchain.builtin_module_cmxa t.ocaml_toolchain builtin_module
+          Ocaml_toolchain.builtin_module_cmxa
+            t.build_config.ocaml_toolchain
+            builtin_module
           |> Absolute_path.to_filename)
       in
       Command
         (Profile.ocamlopt_command
-           t.profile
-           t.ocaml_toolchain
+           t.build_config.profile
+           t.build_config.ocaml_toolchain
            ~args:
              (builtin_module_args
               @ t.dep_args.cmxa_files
@@ -397,7 +434,12 @@ end
 (* Determines which files need to be (re)built. A file needs to be rebuilt if
    any of its dependencies need to be rebuilt, or if its mtime is earlier than
    any of its source dependencies. *)
-let incremental_files_to_build build_plan package_id profile build_dir =
+let incremental_files_to_build
+      build_plan
+      package_id
+      build_dir
+      (build_config : Build_config.t)
+  =
   let rec loop build_plan =
     let deps = Build_plan.deps build_plan in
     let to_rebuild =
@@ -415,7 +457,12 @@ let incremental_files_to_build build_plan package_id profile build_dir =
          output depends on. *)
       Generated_file.Set.filter (Build_plan.outputs build_plan) ~f:(fun output ->
         let output_abs =
-          Build_dir.package_generated_file build_dir package_id profile output
+          Build_dir.package_generated_file
+            build_dir
+            package_id
+            build_config.compiler_backend
+            build_config.profile
+            output
         in
         match File_ops.exists output_abs with
         | false ->
@@ -604,18 +651,16 @@ let make_action_graph
       build_graph
       build_plans
       package_with_deps
-      profile
       build_dir
-      ocaml_toolchain
+      build_config
       ~any_dep_rebuilt
       ~built_artifacts_from_deps
   =
   let action_builder =
     Action_builder.create
       package_with_deps
-      profile
       build_dir
-      ocaml_toolchain
+      build_config
       ~built_artifacts_from_deps
   in
   let package_id = Dependency_graph.Package_with_deps.package_id package_with_deps in
@@ -630,7 +675,7 @@ let make_action_graph
       (* No deps were rebuilt, so only rebuilt the artifacts which are
          missing or whose inputs have changed since the last build. *)
       List.fold_left build_plans ~init:Generated_file.Set.empty ~f:(fun acc build_plan ->
-        incremental_files_to_build build_plan package_id profile build_dir
+        incremental_files_to_build build_plan package_id build_dir build_config
         |> Generated_file.Set.union acc)
   in
   if Generated_file.Set.is_empty files_to_build
@@ -676,20 +721,16 @@ let run
   : type exe lib.
     (exe, lib) Build_graph.t
     -> (exe, lib) Package_with_deps.t
-    -> Profile.t
     -> Build_dir.t
-    -> Ocaml_toolchain.t
-    -> Alice_io.Num_jobs.t
+    -> Build_config.t
     -> any_dep_rebuilt:bool
     -> built_artifacts_from_deps:bool
     -> Package_built.t
   =
   fun build_graph
     package_with_deps
-    profile
     build_dir
-    ocaml_toolchain
-    num_jobs
+    build_config
     ~any_dep_rebuilt
     ~built_artifacts_from_deps ->
   let open Alice_ui in
@@ -708,9 +749,8 @@ let run
       build_graph
       build_plans
       package_with_deps
-      profile
       build_dir
-      ocaml_toolchain
+      build_config
       ~any_dep_rebuilt
       ~built_artifacts_from_deps
   with
@@ -721,7 +761,12 @@ let run
          `Compiling
          (Package_id.name_v_version_string (Package_with_deps.id package_with_deps)));
     let package_id = Dependency_graph.Package_with_deps.package_id package_with_deps in
-    Build_dir.package_dirs build_dir package_id profile |> List.iter ~f:File_ops.mkdir_p;
-    Action_graph.run_parallel action_graph num_jobs;
+    Build_dir.package_dirs
+      build_dir
+      package_id
+      build_config.compiler_backend
+      build_config.profile
+    |> List.iter ~f:File_ops.mkdir_p;
+    Action_graph.run_parallel action_graph build_config.num_jobs;
     Rebuilt
 ;;

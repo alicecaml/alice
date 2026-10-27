@@ -11,10 +11,8 @@ end
 val run
   :  ('exe, 'lib) Build_graph.t
   -> ('exe, 'lib) Dependency_graph.Package_with_deps.t
-  -> Profile.t
   -> Build_dir.t
-  -> Ocaml_toolchain.t
-  -> Alice_io.Num_jobs.t
+  -> Build_config.t
   -> any_dep_rebuilt:bool
   -> built_artifacts_from_deps:bool
   -> Package_built.t

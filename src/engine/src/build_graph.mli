@@ -26,10 +26,7 @@ val to_dyn : (_, _) t -> Dyn.t
 val create
   :  ('exe, 'lib) Package.Typed.t
   -> Build_dir.t
-  -> Alice_env.Os_type.t
-  -> Ocaml_toolchain.t
-  -> Compiler_backend.t
-  -> Alice_io.Num_jobs.t
+  -> Build_config.t
   -> ('exe, 'lib) t
 
 val build_plan : (_, _) t -> op:Typed_op.t -> Build_plan.t
