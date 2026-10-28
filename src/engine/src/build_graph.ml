@@ -4,7 +4,7 @@ open Alice_package
 open Alice_ocaml_toolchain
 
 module Build_dag = struct
-  include Alice_dag.Make (Typed_op)
+  include Alice_dag.Make (Op)
 
   type nonrec t = unit t
 
@@ -13,19 +13,19 @@ module Build_dag = struct
   let of_ops ops =
     let ops_by_output_files =
       List.concat_map ops ~f:(fun op ->
-        List.map (Typed_op.outputs op) ~f:(fun output -> output, op))
-      |> Typed_op.Gen_file.Map.of_list_exn
+        List.map (Op.outputs op) ~f:(fun output -> output, op))
+      |> Op.Gen_file.Map.of_list_exn
     in
     let op_deps op =
-      Typed_op.generated_inputs op
+      Op.generated_inputs op
       |> List.map ~f:(fun input ->
-        match Typed_op.Gen_file.Map.find_opt input ops_by_output_files with
+        match Op.Gen_file.Map.find_opt input ops_by_output_files with
         | Some x -> x
         | None ->
           Alice_error.panic
             [ Pp.textf
                 "Unable to find generated file named %S"
-                (Typed_op.Gen_file.path input |> Basename.to_filename)
+                (Op.Gen_file.path input |> Basename.to_filename)
             ])
     in
     List.fold_left ops ~init:Staging.empty ~f:(fun acc op ->
@@ -36,7 +36,7 @@ module Build_dag = struct
   (* Returns the cmx files in build order produced by [node] and all the nodes
      which [node] transitively depends on. *)
   let ocaml_object_files_in_build_order node =
-    let open Typed_op in
+    let open Op in
     Node.transitive_closure_in_child_first_order node ~include_start:true
     |> List.filter_map ~f:(fun node ->
       match Node.name node with
@@ -49,7 +49,7 @@ module Build_dag = struct
       all_nodes t
       |> List.filter_map ~f:(fun node ->
         match Node.name node with
-        | Typed_op.Link_library _ -> Some node
+        | Op.Link_library _ -> Some node
         | _ -> None)
     with
     | [] -> Alice_error.panic [ Pp.text "No ops would link library!" ]
@@ -62,7 +62,7 @@ module Build_dag = struct
       all_nodes t
       |> List.filter_map ~f:(fun node ->
         match Node.name node with
-        | Typed_op.Link_executable _ -> Some node
+        | Op.Link_executable _ -> Some node
         | _ -> None)
     with
     | [] -> Alice_error.panic [ Pp.text "No ops would link executable!" ]
@@ -71,7 +71,7 @@ module Build_dag = struct
   ;;
 
   let compile_library_ocaml_object_node_or_panic t compiler_backend =
-    let open Typed_op in
+    let open Op in
     match
       all_nodes t
       |> List.filter_map ~f:(fun node ->
@@ -88,7 +88,7 @@ module Build_dag = struct
   ;;
 
   let compile_executable_ocaml_object_node_or_panic t compiler_backend =
-    let open Typed_op in
+    let open Op in
     match
       all_nodes t
       |> List.filter_map ~f:(fun node ->
@@ -106,7 +106,7 @@ module Build_dag = struct
   ;;
 
   let library_ocaml_object_compile_source_or_panic t compiler_backend =
-    let open Typed_op in
+    let open Op in
     match
       all_nodes t
       |> List.filter_map ~f:(fun node ->
@@ -128,10 +128,9 @@ module Build_dag = struct
       |> List.filter_map ~f:(fun node ->
         match Node.name node with
         | Compile_ocaml_interface ({ compiled_interface_output; _ } as compile_interface)
-          when Typed_op.Gen_file.equal
+          when Op.Gen_file.equal
                  compiled_interface_output
-                 Typed_op.Gen_file.lib_ocaml_compiled_interface_file ->
-          Some compile_interface
+                 Op.Gen_file.lib_ocaml_compiled_interface_file -> Some compile_interface
         | _ -> None)
     with
     | [] -> Alice_error.panic [ Pp.text "No ops would compile library cmi!" ]
@@ -160,13 +159,13 @@ module Build_plan = struct
   let equal = equal ~eq:Unit.equal
   let deps t = children t
   let op t = name t
-  let source_input t = Typed_op.source_input (op t)
-  let generated_inputs t = Typed_op.generated_inputs (op t)
-  let outputs t = Typed_op.outputs (op t) |> Typed_op.Gen_file.Set.of_list
+  let source_input t = Op.source_input (op t)
+  let generated_inputs t = Op.generated_inputs (op t)
+  let outputs t = Op.outputs (op t) |> Op.Gen_file.Set.of_list
   let transitive_closure t = transitive_closure_in_child_first_order t ~include_start:true
 
   let transitive_closure_outputs t =
-    transitive_closure t |> List.map ~f:outputs |> Typed_op.Gen_file.Set.union_all
+    transitive_closure t |> List.map ~f:outputs |> Op.Gen_file.Set.union_all
   ;;
 end
 
@@ -204,7 +203,7 @@ let compute_ocaml_compilation_ops
   Ocamldep_cache.store ocamldep_cache build_config.compiler_backend deps;
   Absolute_path.Non_root_map.to_list deps
   |> List.map ~f:(fun (source_path, (deps : Ocaml_toolchain.Deps.t)) ->
-    let open Typed_op in
+    let open Op in
     let open Alice_error in
     match Src_file.of_path source_path with
     | Ok (`Ml source_input) ->
@@ -329,7 +328,7 @@ let compute_c_compilation_ops src_dir =
       else None)
   in
   List.map src_paths ~f:(fun path ->
-    let open Typed_op in
+    let open Op in
     let source_input = Src_file.of_path_c path in
     let object_output =
       Gen_file.compiled_c_object_file
@@ -339,13 +338,12 @@ let compute_c_compilation_ops src_dir =
 ;;
 
 type lsp_ops =
-  { lsp_ops_compile_source : Typed_op.Compile_ocaml_source.t
-  ; lsp_ops_compile_interface : Typed_op.Compile_ocaml_interface.t option
+  { lsp_ops_compile_source : Op.Compile_ocaml_source.t
+  ; lsp_ops_compile_interface : Op.Compile_ocaml_interface.t option
   }
 
 let lsp_ops build_dag_ocaml_compilation_only package compiler_backend =
-  let open Typed_op in
-  let package_name_s = Package_name.to_string (Package.name package) in
+  let open Op in
   let package_cmi_for_lsp =
     Gen_file.compiled_ocaml_interface_to_generate_library_lsp_files (Package.name package)
   in
@@ -380,8 +378,8 @@ let lsp_ops build_dag_ocaml_compilation_only package compiler_backend =
     in
     let compiled_inputs =
       let pack_output =
-        let pack = Typed_op.Pack.of_package_name (Package.name package) in
-        Typed_op.Pack.compiled_ocaml_object_file pack
+        let pack = Op.Pack.of_package_name (Package.name package) in
+        Op.Pack.compiled_ocaml_object_file pack
       in
       (* Add the package's internal modules pack to the dependencies of this
          node. When building the cmt file we'll open this package's own
@@ -405,18 +403,13 @@ let lsp_ops build_dag_ocaml_compilation_only package compiler_backend =
       (* .cmi file is produced by compiling the source *)
       None
     | None ->
-      let { Compile_ocaml_interface.interface_input
-          ; compiled_inputs
-          ; compiled_interface_output
-          ; stop_after_typing = _
-          }
-        =
+      let { Compile_ocaml_interface.interface_input; compiled_inputs; _ } =
         Build_dag.library_cmi_compile_interface_or_panic build_dag_ocaml_compilation_only
       in
       let compiled_inputs =
         let pack_output =
-          let pack = Typed_op.Pack.of_package_name (Package.name package) in
-          Typed_op.Pack.compiled_ocaml_object_file pack
+          let pack = Op.Pack.of_package_name (Package.name package) in
+          Op.Pack.compiled_ocaml_object_file pack
         in
         (* Add the package's internal modules pack to the dependencies of this
            node. *)
@@ -449,11 +442,10 @@ let to_dyn { build_dag; package_typed; lsp_ops } =
           (fun { lsp_ops_compile_source; lsp_ops_compile_interface } ->
              Dyn.record
                [ ( "lsp_ops_compile_source"
-                 , Typed_op.Compile_ocaml_source.to_dyn lsp_ops_compile_source )
+                 , Op.Compile_ocaml_source.to_dyn lsp_ops_compile_source )
                ; ( "lsp_ops_compile_interface"
-                 , Dyn.option
-                     Typed_op.Compile_ocaml_interface.to_dyn
-                     lsp_ops_compile_interface )
+                 , Dyn.option Op.Compile_ocaml_interface.to_dyn lsp_ops_compile_interface
+                 )
                ])
           lsp_ops )
     ]
@@ -464,7 +456,7 @@ let create
     (exe, lib) Package.Typed.t -> Build_dir.t -> Build_config.t -> (exe, lib) t
   =
   fun package_typed build_dir build_config ->
-  let open Typed_op in
+  let open Op in
   let package = Package.Typed.package package_typed in
   let src_dir = Package.src_dir_exn package in
   let ocaml_compilation_ops =
@@ -481,7 +473,7 @@ let create
         build_dag_ocaml_compilation_only
         build_config.compiler_backend
     in
-    let pack = Typed_op.Pack.of_package_name (Package.name package) in
+    let pack = Op.Pack.of_package_name (Package.name package) in
     let pack_op = Pack_library { compiled_object_inputs = ocaml_object_files; pack } in
     let public_interface_to_open_ml =
       Module_name.public_interface_to_open (Package.name package)
@@ -504,7 +496,7 @@ let create
       Link_library
         (Link_library.of_inputs
            ~compiled_object_inputs:
-             [ Typed_op.Pack.compiled_ocaml_object_file pack
+             [ Op.Pack.compiled_ocaml_object_file pack
              ; compile_public_interface_to_open.compiled_object_output
              ]
            ~compiled_c_inputs:compiled_c_object_files)
@@ -587,7 +579,7 @@ let plan_lsp ({ build_dag; lsp_ops; _ } : (_, Type_bool.true_t) t) =
 ;;
 
 let dot { build_dag; _ } =
-  let open Typed_op in
+  let open Op in
   let gen_file_to_string gen_file =
     let path = Alice_ui.basename_to_string (Gen_file.path gen_file) in
     match Gen_file.out_dir gen_file with
@@ -598,14 +590,14 @@ let dot { build_dag; _ } =
   |> List.fold_left ~init:String.Map.empty ~f:(fun acc node ->
     let op = Build_plan.op node in
     let inputs =
-      (Typed_op.generated_inputs op |> List.map ~f:gen_file_to_string)
-      @ (Typed_op.source_input op
+      (Op.generated_inputs op |> List.map ~f:gen_file_to_string)
+      @ (Op.source_input op
          |> Option.map ~f:(fun path ->
            Absolute_path.basename path |> Basename.to_filename)
          |> Option.to_list)
       |> String.Set.of_list
     in
-    let outputs = Typed_op.outputs op |> List.map ~f:gen_file_to_string in
+    let outputs = Op.outputs op |> List.map ~f:gen_file_to_string in
     List.fold_left outputs ~init:acc ~f:(fun acc output ->
       String.Map.update acc ~key:output ~f:(function
         | None -> Some inputs

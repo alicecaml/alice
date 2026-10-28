@@ -6,10 +6,11 @@ open Alice_ocaml_toolchain
 module File_ops = Alice_io.File_ops
 module Log = Alice_log
 module Build_plan = Build_graph.Build_plan
-module Generated_file = Typed_op.Generated_file
 module Package_with_deps = Dependency_graph.Package_with_deps
 module Builtin_module = Alice_builtin_module
 module Package_base_dir = Build_dir.Package_base_dir
+module Gen_file = Op.Gen_file
+module Src_file = Op.Src_file
 
 module Package_built = struct
   type t =
@@ -76,8 +77,6 @@ module Action = struct
 end
 
 module Action_builder = struct
-  open Typed_op.File
-
   type compile_args =
     { builtin_modules : string list
     ; lsp_only : string list
@@ -135,7 +134,7 @@ module Action_builder = struct
         (Package.Typed.id dep)
         build_config
     in
-    let package_pack = Typed_op.Pack.of_package_name (Package.name package) in
+    let package_pack = Op.Pack.of_package_name (Package.name package) in
     let dep_args =
       let cmxa_files =
         let transitive_dep_libs =
@@ -144,7 +143,10 @@ module Action_builder = struct
         in
         List.map transitive_dep_libs ~f:(fun dep_lib ->
           let public = dep_package_base_dir dep_lib |> Package_base_dir.public_dir in
-          public / Linked.path Linked.lib_cmxa |> Absolute_path.to_filename)
+          let archive =
+            Gen_file.lib_ocaml_archive_file build_config.compiler_backend |> Gen_file.path
+          in
+          Absolute_path.to_filename (public / archive))
       in
       let immediate_dep_libs =
         Package_with_deps.immediate_deps_in_dependency_order package_with_deps
@@ -194,8 +196,7 @@ module Action_builder = struct
         [ "-I"
         ; Absolute_path.to_filename dirs.private_
         ; "-for-pack"
-        ; Typed_op.Pack.module_name package_pack
-          |> Module_name.to_string_uppercase_first_letter
+        ; Op.Pack.module_name package_pack |> Module_name.to_string_uppercase_first_letter
         ]
       in
       let stop_after_typing = [ "-stop-after"; "typing" ] in
@@ -223,8 +224,7 @@ module Action_builder = struct
   ;;
 
   let op_action t op : Action.t =
-    let open Typed_op in
-    match (op : Typed_op.t) with
+    match (op : Op.t) with
     | Compile_ocaml_source { source_input; compiled_object_output; stop_after_typing; _ }
       ->
       let stop_after_typing_args =
@@ -265,7 +265,7 @@ module Action_builder = struct
         if stop_after_typing then t.compile_args.stop_after_typing else []
       in
       let lsp_output_args =
-        match Typed_op.Gen_file.out_dir compiled_interface_output with
+        match Op.Gen_file.out_dir compiled_interface_output with
         | Public_for_lsp -> t.compile_args.lsp_only
         | _ -> t.compile_args.non_lsp_only
       in
@@ -301,16 +301,16 @@ module Action_builder = struct
               @ output_args))
     | Pack_library { compiled_object_inputs; pack; _ } ->
       let package_pack =
-        Package_with_deps.name t.package_with_deps |> Typed_op.Pack.of_package_name
+        Package_with_deps.name t.package_with_deps |> Op.Pack.of_package_name
       in
-      if not (Typed_op.Pack.equal pack package_pack)
+      if not (Op.Pack.equal pack package_pack)
       then
         panic
           [ Pp.textf
               "Tried to generate pack module for package %S but we're currently building \
                a different package (%S)."
-              (Package_name.to_string @@ Typed_op.Pack.package_name pack)
-              (Package_name.to_string @@ Typed_op.Pack.package_name package_pack)
+              (Package_name.to_string @@ Op.Pack.package_name pack)
+              (Package_name.to_string @@ Op.Pack.package_name package_pack)
           ];
       Command
         (Profile.ocamlopt_command
@@ -320,9 +320,7 @@ module Action_builder = struct
              (List.map compiled_object_inputs ~f:(gen_file_absolute_filename t)
               @ [ "-pack"
                 ; "-o"
-                ; gen_file_absolute_filename
-                    t
-                    (Typed_op.Pack.compiled_ocaml_object_file pack)
+                ; gen_file_absolute_filename t (Op.Pack.compiled_ocaml_object_file pack)
                 ]))
     | Generate_public_interface_to_open { ml_output } ->
       let output_path = Package_base_dir.gen_file t.package_base_dir ml_output in
@@ -393,7 +391,6 @@ end
    any of its dependencies need to be rebuilt, or if its mtime is earlier than
    any of its source dependencies. *)
 let incremental_files_to_build build_plan package_base_dir =
-  let open Typed_op in
   let rec loop build_plan =
     let deps = Build_plan.deps build_plan in
     let to_rebuild =
@@ -430,7 +427,7 @@ let incremental_files_to_build build_plan package_base_dir =
 module Action_graph = struct
   (* This DAG is keyed by [Typed_op] because each action will have a unique
      operation, and knows the operations of their dependencies. *)
-  include Alice_dag.Make (Typed_op)
+  include Alice_dag.Make (Op)
 
   module Entry = struct
     type t =
@@ -512,7 +509,6 @@ module Action_graph = struct
 
   let log_build node =
     let open Alice_ui in
-    let open Typed_op in
     let entry : Entry.t = Node.value node in
     let outputs = Build_plan.outputs entry.build_plan in
     Log.info
@@ -603,7 +599,6 @@ let make_action_graph
       ~any_dep_rebuilt
       ~built_artifacts_from_deps
   =
-  let open Typed_op in
   let action_builder =
     Action_builder.create
       package_with_deps
@@ -631,15 +626,15 @@ let make_action_graph
     let all_ops =
       List.concat_map build_plans ~f:Build_plan.transitive_closure
       |> List.map ~f:Build_plan.op
-      |> Typed_op.Set.of_list
+      |> Op.Set.of_list
     in
     let ops_that_need_to_run =
-      Typed_op.Set.filter all_ops ~f:(fun op ->
-        List.exists (Typed_op.outputs op) ~f:(fun output ->
+      Op.Set.filter all_ops ~f:(fun op ->
+        List.exists (Op.outputs op) ~f:(fun output ->
           Gen_file.Set.mem output files_to_build))
     in
     let action_graph =
-      Typed_op.Set.fold
+      Op.Set.fold
         ops_that_need_to_run
         ~init:Action_graph.Staging.empty
         ~f:(fun op staging ->
@@ -648,7 +643,7 @@ let make_action_graph
             Build_plan.deps build_plan
             |> List.filter_map ~f:(fun build_plan ->
               let op = Build_plan.op build_plan in
-              if Typed_op.Set.mem op ops_that_need_to_run then Some op else None)
+              if Op.Set.mem op ops_that_need_to_run then Some op else None)
           in
           let action = Action_builder.op_action action_builder op in
           let entry =

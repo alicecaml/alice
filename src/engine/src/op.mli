@@ -3,18 +3,6 @@ open Alice_hierarchy
 open Alice_ocaml_toolchain
 open Alice_package
 
-module Visibility : sig
-  (** How a compiled file will be visible to other files during compilation.
-      Note that this is orthogonal to OCaml's own visibility mechanism via .mli
-      files. Each of these visibility levels corresponds to a directory in a
-      package's build directory. *)
-  type t =
-    | Private
-    | Private_c
-    | Public
-    | Public_for_lsp
-end
-
 module Out_dir : sig
   (** A directory in a package's base direrctory inside the build directory *)
   type t =
@@ -42,55 +30,6 @@ module Src_file : sig
   val to_path_c : t -> Absolute_path.non_root_t
 end
 
-module Generated_file : sig
-  module Compiled : sig
-    type t
-
-    val equal : t -> t -> bool
-    val path : t -> Basename.t
-    val visibility : t -> Visibility.t
-    val lib_cmx : t
-    val lib_cmi : t
-    val exe_cmx : t
-
-    (** Rename the file, preserving its extension. *)
-    val rename : t -> name_without_extension:string -> Visibility.t -> t
-  end
-
-  module Linked_library : sig
-    type t =
-      | Cmxa
-      | Cma
-      | A
-
-    val path : t -> Basename.t
-  end
-
-  module Linked_executable : sig
-    type t =
-      | Native of Basename.t
-      | Bytecode of Basename.t
-
-    val path : t -> Basename.t
-  end
-
-  type t =
-    | Generated_ocaml_source of Basename.t
-    | Compiled of Compiled.t
-    | Linked_library of Linked_library.t
-    | Linked_executable of Linked_executable.t
-
-  val to_dyn : t -> Dyn.t
-  val equal : t -> t -> bool
-
-  module Set : Set.S with type elt = t
-  module Map : Map.S with type key = t
-
-  val path : t -> Basename.t
-  val lib_cmx : t
-  val lib_cmi : t
-end
-
 module Gen_file : sig
   (** A file in a package base directory inside the build directory *)
   type t
@@ -106,6 +45,7 @@ module Gen_file : sig
   val compiled_ocaml_interface_file : Basename.t -> t
   val compiled_c_object_file : Basename.t -> t
   val lib_ocaml_object_file : Compiler_backend.t -> t
+  val lib_ocaml_archive_file : Compiler_backend.t -> t
   val lib_ocaml_compiled_interface_file : t
   val exe_ocaml_object_file : Compiler_backend.t -> t
   val generated_ocaml_src_file : Basename.t -> t
@@ -125,101 +65,6 @@ module Gen_file : sig
   (** Interface file that will be generated alongside the .cmt file when
       generating inputs for merlin/ocamllsp *)
   val compiled_ocaml_interface_to_generate_library_lsp_files : Package_name.t -> t
-end
-
-module File_type : sig
-  type ml
-  type mli
-  type cmx
-  type cmo
-  type cmi
-  type cmt
-  type cmti
-  type o
-  type exe_native
-  type exe_bytecode
-  type a
-  type cmxa
-  type cma
-  type c
-end
-
-open File_type
-
-module File : sig
-  module Ocaml_source_or_interface : sig
-    (** ['a] is either [ml] or [mli] *)
-    type 'a t
-
-    val path : _ t -> Absolute_path.non_root_t
-
-    val of_path_by_extension
-      :  Absolute_path.non_root_t
-      -> ([ `Ml of ml t | `Mli of mli t ], [ `Unknown_extension of string ]) result
-  end
-
-  module C_source : sig
-    type t
-
-    val of_path : Absolute_path.non_root_t -> t
-    val path : t -> Absolute_path.non_root_t
-  end
-
-  module Generated_ocaml_source : sig
-    type t
-
-    val of_basename : Basename.t -> t
-    val basename : t -> Basename.t
-    val generated_file : t -> Generated_file.t
-  end
-
-  module Compiled : sig
-    type 'a t
-
-    val equal : 'a t -> 'a t -> bool
-    val path : _ t -> Basename.t
-    val cmx_private : Basename.t -> cmx t
-    val cmi_private : Basename.t -> cmi t
-    val o_private : Basename.t -> o t
-    val o_private_c : Basename.t -> o t
-
-    (** The .cmx compiled file associated with the given .cmi interface file *)
-    val cmx_of_cmi : cmi t -> cmx t
-
-    val ml_of_cmi : cmi t -> ml t
-
-    val of_path_by_extension_private
-      :  Basename.t
-      -> ( [ `Cmx of cmx t | `Cmi of cmi t | `O of o t ]
-           , [ `Unknown_extension of string ] )
-           result
-
-    val generated_file : _ t -> Generated_file.t
-    val generated_file_compiled : _ t -> Generated_file.Compiled.t
-    val lib_cmx : cmx t
-    val lib_cmi : cmi t
-    val exe_cmx : cmx t
-    val rename : 'a t -> name_without_extension:string -> Visibility.t -> 'a t
-
-    (** The .o file with the same name as a .cmx file (besides its extension)
-        with the same visibility. *)
-    val o_of_cmx : cmx t -> o t
-
-    val visibility : _ t -> Visibility.t
-  end
-
-  module Linked : sig
-    type 'a t
-
-    val to_dyn : _ t -> Dyn.t
-    val lib_cmxa : cmxa t
-    val lib_cma : cma t
-    val lib_a : a t
-    val exe_native : Basename.t -> exe_native t
-    val exe_bytecode : Basename.t -> exe_bytecode t
-    val generated_file : _ t -> Generated_file.t
-    val path : _ t -> Basename.t
-  end
 end
 
 module Pack : sig

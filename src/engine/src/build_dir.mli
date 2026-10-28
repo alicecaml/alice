@@ -38,14 +38,7 @@ module Package_base_dir : sig
 
   val executable_dir : t -> Absolute_path.non_root_t
   val dirs : t -> Absolute_path.non_root_t list
-
-  val generated_file_compiled
-    :  t
-    -> Typed_op.Generated_file.Compiled.t
-    -> Absolute_path.non_root_t
-
-  val generated_file : t -> Typed_op.Generated_file.t -> Absolute_path.non_root_t
-  val gen_file : t -> Typed_op.Gen_file.t -> Absolute_path.non_root_t
+  val gen_file : t -> Op.Gen_file.t -> Absolute_path.non_root_t
 end
 
 val package_base_dir

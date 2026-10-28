@@ -8,12 +8,12 @@ module Build_plan : sig
 
   val equal : t -> t -> bool
   val deps : t -> t list
-  val op : t -> Typed_op.t
+  val op : t -> Op.t
   val source_input : t -> Absolute_path.non_root_t option
-  val generated_inputs : t -> Typed_op.Gen_file.t list
-  val outputs : t -> Typed_op.Gen_file.Set.t
+  val generated_inputs : t -> Op.Gen_file.t list
+  val outputs : t -> Op.Gen_file.Set.t
   val transitive_closure : t -> t list
-  val transitive_closure_outputs : t -> Typed_op.Gen_file.Set.t
+  val transitive_closure_outputs : t -> Op.Gen_file.Set.t
 end
 
 (** A DAG that knows how to build a collection of interdependent files and the
@@ -28,7 +28,7 @@ val create
   -> Build_config.t
   -> ('exe, 'lib) t
 
-val build_plan : (_, _) t -> op:Typed_op.t -> Build_plan.t
+val build_plan : (_, _) t -> op:Op.t -> Build_plan.t
 val plan_exe : (true_t, _) t -> Build_plan.t
 val plan_lib : (_, true_t) t -> Build_plan.t
 val plan_lsp : (_, true_t) t -> Build_plan.t

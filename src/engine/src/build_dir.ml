@@ -58,32 +58,9 @@ module Package_base_dir = struct
     ]
   ;;
 
-  let generated_file_compiled t compiled =
-    let open Typed_op.Generated_file in
-    let base =
-      match Compiled.visibility compiled with
-      | Private -> private_dir t
-      | Private_c -> private_c_dir t
-      | Public -> public_dir t
-      | Public_for_lsp -> public_for_lsp_dir t
-    in
-    base / Compiled.path compiled
-  ;;
-
-  let generated_file t generated_file =
-    let open Typed_op.Generated_file in
-    match (generated_file : t) with
-    | Generated_ocaml_source path -> generated_src_dir t / path
-    | Compiled compiled -> generated_file_compiled t compiled
-    | Linked_library linked_library -> public_dir t / Linked_library.path linked_library
-    | Linked_executable linked_executable ->
-      executable_dir t / Linked_executable.path linked_executable
-  ;;
-
   let gen_file t gen_file =
-    let open Typed_op in
     let base =
-      match Gen_file.out_dir gen_file with
+      match Op.Gen_file.out_dir gen_file with
       | Private -> private_dir t
       | Private_c -> private_c_dir t
       | Public -> public_dir t
@@ -91,7 +68,7 @@ module Package_base_dir = struct
       | Generated_src -> generated_src_dir t
       | Executable -> executable_dir t
     in
-    base / Gen_file.path gen_file
+    base / Op.Gen_file.path gen_file
   ;;
 end
 
