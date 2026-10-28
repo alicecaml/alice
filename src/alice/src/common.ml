@@ -119,7 +119,9 @@ let parse_compiler_backend =
     [ "b"; "backend" ]
     ~default:Compiler_backend.Native
     conv
-    ~doc:"Which compiler backend to use (\"native\" or \"bytecode\")"
+    ~doc:
+      "Which compiler backend to use (\"native\" or \"bytecode\"). Defaults to \
+       \"native\"."
 ;;
 
 let parse_built_artifacts_from_deps =

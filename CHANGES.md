@@ -4,6 +4,9 @@
 
 ### Added
 
+- Add "--backend" argument to for choosing the compiler backend. Alice builds
+  with the native backend by defdault, but now supports the bytecode backend
+  too if `--backend bytecode` is passed.
 - Add hidden "--built-artifacts-from-deps" flag to "build" command for
   re-using built artifacts from dependency package direrctories rather than
   rebuilding them in the current project. This prevents the need to rebuild

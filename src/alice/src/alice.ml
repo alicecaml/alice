@@ -40,7 +40,7 @@ Internal.command_for_completion_script := Some command
 let () =
   let help_style =
     let open Help_style in
-    { default with margin = Some 100 }
+    { default with margin = Some 90 }
   in
   match Command.run command ~program_name:(Literal "alice") ~version ~help_style with
   | () -> ()
