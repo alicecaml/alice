@@ -176,13 +176,12 @@ jobs:
           allowUpdates: true
           artifacts: "out/*.tar.gz"
 
-  # For dogfooding reasons Alice is usually built using a compiler toolchain
-  # installed by Alice itself (though with builds orchestrated with Dune).
-  # However it's sometimes convenient to build the project without using Alice
-  # to install a compiler tolchain, and instead let Dune install all
-  # dependencies including the compiler. This job creates a source archive with
-  # dependency metadata changed to allow this. Within the resulting source
-  # repo, the project can be built with a single `dune build` command.
+  # For dogfooding reasons Alice is usually built using a compiler toolchain installed by Alice
+  # itself (though with builds orchestrated with Dune). However it's sometimes convenient to build
+  # the project without using Alice to install a compiler tolchain, and instead let Dune install all
+  # dependencies including the compiler. This job creates a source archive with dependency metadata
+  # changed to allow this. Within the resulting source repo, the project can be built with a single
+  # `dune build  --only-packages alice` command.
   release-hermetic-source:
     name: Make a source archive that can be built without ocaml-system
     runs-on: ubuntu-latest
@@ -206,7 +205,7 @@ jobs:
           cd alice
           rm dune-workspace
           DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock --only-packages alice
-          rm -rf _build
+          rm -rf _build .git
           cd ..
           mv alice $ALICE_OUT_NAME
 
