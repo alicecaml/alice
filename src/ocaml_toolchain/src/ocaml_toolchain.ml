@@ -11,9 +11,6 @@ type t =
   }
 
 let create ~ocamlopt ~ocamlc ~ocaml env = { ocamlopt; ocamlc; ocaml; env }
-let ocamlopt { ocamlopt; _ } = ocamlopt
-let ocamlc { ocamlc; _ } = ocamlc
-let ocaml { ocaml; _ } = ocaml
 let ocamlopt_command { ocamlopt; env; _ } ~args = Command.create ocamlopt ~args env
 let ocamlc_command { ocamlc; env; _ } ~args = Command.create ocamlc ~args env
 let ocaml_command { ocaml; env; _ } ~args = Command.create ocaml ~args env

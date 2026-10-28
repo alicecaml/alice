@@ -1,5 +1,4 @@
 open! Alice_stdlib
-open Alice_ocaml_toolchain
 
 type t
 
