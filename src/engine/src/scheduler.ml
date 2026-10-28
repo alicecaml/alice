@@ -611,11 +611,11 @@ let make_action_graph
     if any_dep_rebuilt
     then
       (* At least one of this package's dependencies was just rebuilt.
-         Rebuilt this entire package. *)
+         Rebuild this entire package. *)
       List.fold_left build_plans ~init:Gen_file.Set.empty ~f:(fun acc build_plan ->
         Gen_file.Set.union acc (Build_plan.transitive_closure_outputs build_plan))
     else
-      (* No deps were rebuilt, so only rebuilt the artifacts which are
+      (* No deps were rebuilt, so only rebuild the artifacts which are
          missing or whose inputs have changed since the last build. *)
       List.fold_left build_plans ~init:Gen_file.Set.empty ~f:(fun acc build_plan ->
         incremental_files_to_build build_plan package_base_dir |> Gen_file.Set.union acc)
