@@ -19,3 +19,9 @@ let ocaml_object_file_ext = function
   | Native -> ".cmx"
   | Bytecode -> ".cmo"
 ;;
+
+let ocaml_archive_file_ext = function
+  | Native -> ".cmxa"
+  | Bytecode -> ".cma"
+;;
+

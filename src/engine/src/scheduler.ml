@@ -218,11 +218,6 @@ module Action_builder = struct
     }
   ;;
 
-  let compiled_absolute_filename t compiled =
-    Package_base_dir.generated_file_compiled t.package_base_dir compiled
-    |> Absolute_path.to_filename
-  ;;
-
   let gen_file_absolute_filename t gen_file =
     Package_base_dir.gen_file t.package_base_dir gen_file |> Absolute_path.to_filename
   ;;
@@ -236,7 +231,7 @@ module Action_builder = struct
         if stop_after_typing then t.compile_args.stop_after_typing else []
       in
       let lsp_output_args =
-        match Gen_file.visibility compiled_object_output with
+        match Gen_file.out_dir compiled_object_output with
         | Public_for_lsp ->
           t.compile_args.lsp_only
           @ [ (* Include the public_for_lsp directory in the search path so packages
@@ -270,7 +265,7 @@ module Action_builder = struct
         if stop_after_typing then t.compile_args.stop_after_typing else []
       in
       let lsp_output_args =
-        match Typed_op.Generated_file.Compiled.visibility compiled_interface_output with
+        match Typed_op.Gen_file.out_dir compiled_interface_output with
         | Public_for_lsp -> t.compile_args.lsp_only
         | _ -> t.compile_args.non_lsp_only
       in
@@ -287,7 +282,7 @@ module Action_builder = struct
               @ [ "-c"
                 ; "-bin-annot" (* Needed for LSP *)
                 ; "-o"
-                ; compiled_absolute_filename t compiled_interface_output
+                ; gen_file_absolute_filename t compiled_interface_output
                 ; "-intf"
                 ; Absolute_path.to_filename @@ Src_file.to_path_mli interface_input
                 ]))
@@ -295,7 +290,7 @@ module Action_builder = struct
       (* Arguments to tell the OCaml compiler to tell the C compiler (which
          it invokes) to put the compiled object file at the expected path: *)
       let output_args =
-        [ "-ccopt"; "-o"; "-ccopt"; compiled_absolute_filename t object_output ]
+        [ "-ccopt"; "-o"; "-ccopt"; gen_file_absolute_filename t object_output ]
       in
       Command
         (Profile.ocamlopt_command
@@ -322,17 +317,15 @@ module Action_builder = struct
            t.build_config.profile
            t.build_config.ocaml_toolchain
            ~args:
-             (List.map compiled_object_inputs ~f:(compiled_absolute_filename t)
+             (List.map compiled_object_inputs ~f:(gen_file_absolute_filename t)
               @ [ "-pack"
                 ; "-o"
-                ; compiled_absolute_filename t (Typed_op.Pack.cmx_file pack)
+                ; gen_file_absolute_filename
+                    t
+                    (Typed_op.Pack.compiled_ocaml_object_file pack)
                 ]))
     | Generate_public_interface_to_open { ml_output } ->
-      let output_path =
-        Package_base_dir.generated_file
-          t.package_base_dir
-          (Typed_op.File.Generated_ocaml_source.generated_file ml_output)
-      in
+      let output_path = Package_base_dir.gen_file t.package_base_dir ml_output in
       let public_interface_to_open =
         Public_interface_to_open.of_package_with_deps t.package_with_deps
       in
@@ -340,8 +333,8 @@ module Action_builder = struct
     | Compile_public_interface_to_open
         { generated_source_input; compiled_object_output; _ } ->
       let impl =
-        Package_base_dir.generated_source_dir t.package_base_dir
-        / Typed_op.File.Generated_ocaml_source.basename generated_source_input
+        Package_base_dir.generated_src_dir t.package_base_dir
+        / Gen_file.path generated_source_input
       in
       Action.Command
         (Profile.ocamlopt_command
@@ -352,22 +345,24 @@ module Action_builder = struct
              ; Absolute_path.to_filename t.dirs.public
              ; "-c"
              ; "-o"
-             ; compiled_absolute_filename t compiled_object_output
+             ; gen_file_absolute_filename t compiled_object_output
              ; "-impl"
              ; Absolute_path.to_filename impl
              ])
-    | Link_library { compiled_object_inputs; cmxa_output; compiled_c_inputs; _ } ->
+    | Link_library { compiled_object_inputs; ocaml_archive_output; compiled_c_inputs; _ }
+      ->
       Command
         (Profile.ocamlopt_command
            t.build_config.profile
            t.build_config.ocaml_toolchain
            ~args:
              (t.dep_args.include_
-              @ List.map compiled_c_inputs ~f:(compiled_absolute_filename t)
-              @ List.map compiled_object_inputs ~f:(compiled_absolute_filename t)
+              @ List.map compiled_c_inputs ~f:(gen_file_absolute_filename t)
+              @ List.map compiled_object_inputs ~f:(gen_file_absolute_filename t)
               @ [ "-a"
                 ; "-o"
-                ; Absolute_path.to_filename @@ (t.dirs.public / Linked.path cmxa_output)
+                ; Absolute_path.to_filename
+                  @@ (t.dirs.public / Gen_file.path ocaml_archive_output)
                 ]))
     | Link_executable { compiled_object_inputs; exe_output; compiled_c_inputs } ->
       let builtin_module_args =
@@ -385,10 +380,11 @@ module Action_builder = struct
            ~args:
              (builtin_module_args
               @ t.dep_args.cmxa_files
-              @ List.map compiled_c_inputs ~f:(compiled_absolute_filename t)
-              @ List.map compiled_object_inputs ~f:(compiled_absolute_filename t)
+              @ List.map compiled_c_inputs ~f:(gen_file_absolute_filename t)
+              @ List.map compiled_object_inputs ~f:(gen_file_absolute_filename t)
               @ [ "-o"
-                ; Absolute_path.to_filename @@ (t.dirs.executable / Linked.path exe_output)
+                ; Absolute_path.to_filename
+                  @@ (t.dirs.executable / Gen_file.path exe_output)
                 ]))
   ;;
 end
@@ -397,23 +393,24 @@ end
    any of its dependencies need to be rebuilt, or if its mtime is earlier than
    any of its source dependencies. *)
 let incremental_files_to_build build_plan package_base_dir =
+  let open Typed_op in
   let rec loop build_plan =
     let deps = Build_plan.deps build_plan in
     let to_rebuild =
-      List.fold_left deps ~init:Generated_file.Set.empty ~f:(fun acc_to_rebuild dep ->
+      List.fold_left deps ~init:Gen_file.Set.empty ~f:(fun acc_to_rebuild dep ->
         let to_rebuild = loop dep in
-        Generated_file.Set.union to_rebuild acc_to_rebuild)
+        Gen_file.Set.union to_rebuild acc_to_rebuild)
     in
-    match Generated_file.Set.is_empty to_rebuild with
+    match Gen_file.Set.is_empty to_rebuild with
     | false ->
       (* If any dependencies need rebuilding, all our out outputs need rebuilding too. *)
-      Generated_file.Set.union (Build_plan.outputs build_plan) to_rebuild
+      Gen_file.Set.union (Build_plan.outputs build_plan) to_rebuild
     | true ->
       (* Rebuild all the outputs which either don't exist, or whose mtime
          is earlier than the latest mtime among source files which the
          output depends on. *)
-      Generated_file.Set.filter (Build_plan.outputs build_plan) ~f:(fun output ->
-        let output_abs = Package_base_dir.generated_file package_base_dir output in
+      Gen_file.Set.filter (Build_plan.outputs build_plan) ~f:(fun output ->
+        let output_abs = Package_base_dir.gen_file package_base_dir output in
         match File_ops.exists output_abs with
         | false ->
           (* File doesn't exist. Build it! *)
@@ -515,15 +512,15 @@ module Action_graph = struct
 
   let log_build node =
     let open Alice_ui in
+    let open Typed_op in
     let entry : Entry.t = Node.value node in
     let outputs = Build_plan.outputs entry.build_plan in
     Log.info
       ~package_id:entry.package_id
       [ Pp.textf
           "Building targets: %s"
-          (Generated_file.Set.to_list outputs
-           |> List.map ~f:(fun gen_file ->
-             Generated_file.path gen_file |> basename_to_string)
+          (Gen_file.Set.to_list outputs
+           |> List.map ~f:(fun gen_file -> Gen_file.path gen_file |> basename_to_string)
            |> String.concat ~sep:", ")
       ]
   ;;
@@ -606,6 +603,7 @@ let make_action_graph
       ~any_dep_rebuilt
       ~built_artifacts_from_deps
   =
+  let open Typed_op in
   let action_builder =
     Action_builder.create
       package_with_deps
@@ -619,16 +617,15 @@ let make_action_graph
     then
       (* At least one of this package's dependencies was just rebuilt.
          Rebuilt this entire package. *)
-      List.fold_left build_plans ~init:Generated_file.Set.empty ~f:(fun acc build_plan ->
-        Generated_file.Set.union acc (Build_plan.transitive_closure_outputs build_plan))
+      List.fold_left build_plans ~init:Gen_file.Set.empty ~f:(fun acc build_plan ->
+        Gen_file.Set.union acc (Build_plan.transitive_closure_outputs build_plan))
     else
       (* No deps were rebuilt, so only rebuilt the artifacts which are
          missing or whose inputs have changed since the last build. *)
-      List.fold_left build_plans ~init:Generated_file.Set.empty ~f:(fun acc build_plan ->
-        incremental_files_to_build build_plan package_base_dir
-        |> Generated_file.Set.union acc)
+      List.fold_left build_plans ~init:Gen_file.Set.empty ~f:(fun acc build_plan ->
+        incremental_files_to_build build_plan package_base_dir |> Gen_file.Set.union acc)
   in
-  if Generated_file.Set.is_empty files_to_build
+  if Gen_file.Set.is_empty files_to_build
   then None
   else (
     let all_ops =
@@ -639,7 +636,7 @@ let make_action_graph
     let ops_that_need_to_run =
       Typed_op.Set.filter all_ops ~f:(fun op ->
         List.exists (Typed_op.outputs op) ~f:(fun output ->
-          Generated_file.Set.mem output files_to_build))
+          Gen_file.Set.mem output files_to_build))
     in
     let action_graph =
       Typed_op.Set.fold

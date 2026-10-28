@@ -14,18 +14,18 @@ module Build_dag = struct
     let ops_by_output_files =
       List.concat_map ops ~f:(fun op ->
         List.map (Typed_op.outputs op) ~f:(fun output -> output, op))
-      |> Typed_op.Generated_file.Map.of_list_exn
+      |> Typed_op.Gen_file.Map.of_list_exn
     in
     let op_deps op =
       Typed_op.generated_inputs op
       |> List.map ~f:(fun input ->
-        match Typed_op.Generated_file.Map.find_opt input ops_by_output_files with
+        match Typed_op.Gen_file.Map.find_opt input ops_by_output_files with
         | Some x -> x
         | None ->
           Alice_error.panic
             [ Pp.textf
                 "Unable to find generated file named %S"
-                (Typed_op.Generated_file.path input |> Basename.to_filename)
+                (Typed_op.Gen_file.path input |> Basename.to_filename)
             ])
     in
     List.fold_left ops ~init:Staging.empty ~f:(fun acc op ->
@@ -128,9 +128,10 @@ module Build_dag = struct
       |> List.filter_map ~f:(fun node ->
         match Node.name node with
         | Compile_ocaml_interface ({ compiled_interface_output; _ } as compile_interface)
-          when Typed_op.Generated_file.Compiled.equal
+          when Typed_op.Gen_file.equal
                  compiled_interface_output
-                 Typed_op.Generated_file.Compiled.lib_cmi -> Some compile_interface
+                 Typed_op.Gen_file.lib_ocaml_compiled_interface_file ->
+          Some compile_interface
         | _ -> None)
     with
     | [] -> Alice_error.panic [ Pp.text "No ops would compile library cmi!" ]
@@ -161,11 +162,11 @@ module Build_plan = struct
   let op t = name t
   let source_input t = Typed_op.source_input (op t)
   let generated_inputs t = Typed_op.generated_inputs (op t)
-  let outputs t = Typed_op.outputs (op t) |> Typed_op.Generated_file.Set.of_list
+  let outputs t = Typed_op.outputs (op t) |> Typed_op.Gen_file.Set.of_list
   let transitive_closure t = transitive_closure_in_child_first_order t ~include_start:true
 
   let transitive_closure_outputs t =
-    transitive_closure t |> List.map ~f:outputs |> Typed_op.Generated_file.Set.union_all
+    transitive_closure t |> List.map ~f:outputs |> Typed_op.Gen_file.Set.union_all
   ;;
 end
 
@@ -209,19 +210,22 @@ let compute_ocaml_compilation_ops
     | Ok (`Ml source_input) ->
       let compiled_inputs =
         List.concat_map deps.inputs ~f:(fun dep ->
-          match File.Compiled.of_path_by_extension_private dep with
-          | Ok (`Cmx cmx) -> [ File.Compiled.generated_file_compiled cmx ]
-          | Ok (`Cmi cmi) ->
-            let ml_of_cmi = File.Compiled.ml_of_cmi cmi |> File.Compiled.path in
-            let ml_current_source =
-              Src_file.to_path_ml source_input |> Absolute_path.basename
-            in
+          match Basename.extension dep with
+          | ".cmx" -> [ Gen_file.compiled_ocaml_object_file dep ]
+          | ".cmi" ->
             let cmx_of_cmi =
-              if
-                Basename.Set.mem ml_of_cmi src_file_names
-                && not (Basename.equal ml_of_cmi ml_current_source)
-              then
-                (* Ocamldep doesn't report dependencies between bytecode object
+              match build_config.compiler_backend with
+              | Native -> []
+              | Bytecode ->
+                let ml_of_cmi = Basename.replace_extension dep ~ext:".ml" in
+                let ml_current_source =
+                  Src_file.to_path_ml source_input |> Absolute_path.basename
+                in
+                if
+                  Basename.Set.mem ml_of_cmi src_file_names
+                  && not (Basename.equal ml_of_cmi ml_current_source)
+                then
+                  (* Ocamldep doesn't report dependencies between bytecode object
                    files the same way it reports dependencies between native object files.
                    Dependencies between native object files are expressed as a .cmx file depending on
                    another .cmx file, however dependencies between bytecode object files are
@@ -234,25 +238,20 @@ let compute_ocaml_compilation_ops
                    during compilation, but it's not expected to regurlarly be building bytecode
                    projects. If this turns out to be false we can better optimise this case in the
                    future. *)
-                [ File.Compiled.cmx_of_cmi cmi |> File.Compiled.generated_file_compiled ]
-              else []
+                  [ Gen_file.compiled_ocaml_object_file
+                    @@ Basename.replace_extension dep ~ext:".cmo"
+                  ]
+                else []
             in
-            File.Compiled.generated_file_compiled cmi :: cmx_of_cmi
-          | Ok _ ->
+            Gen_file.compiled_ocaml_interface_file dep :: cmx_of_cmi
+          | other ->
             panic
               [ Pp.textf
-                  "Running ocamldep on %S produced build input %S whose extension is \
-                   unexpected (expected either \".cmx\" or \".cmi\")."
+                  "Running ocamldep on %S produced build input %S whose extension is %S \
+                   which is unrecognized."
                   (Alice_ui.absolute_path_to_string source_path)
                   (Basename.to_filename dep)
-              ]
-          | Error (`Unknown_extension _) ->
-            panic
-              [ Pp.textf
-                  "Running ocamldep on %S produced build input %S whose extension is \
-                   unrecognized."
-                  (Alice_ui.absolute_path_to_string source_path)
-                  (Basename.to_filename dep)
+                  other
               ])
       in
       let source_base_name = Absolute_path.basename source_path in
@@ -268,8 +267,8 @@ let compute_ocaml_compilation_ops
         then None
         else
           Some
-            (Basename.replace_extension source_base_name ~ext:".cmi"
-             |> File.Compiled.cmi_private)
+            (Gen_file.compiled_ocaml_interface_file
+             @@ Basename.replace_extension source_base_name ~ext:".cmi")
       in
       Compile_ocaml_source
         { source_input
@@ -281,31 +280,23 @@ let compute_ocaml_compilation_ops
     | Ok (`Mli interface_input) ->
       let compiled_inputs =
         List.map deps.inputs ~f:(fun dep ->
-          match File.Compiled.of_path_by_extension_private dep with
-          | Ok (`Cmx cmx) -> File.Compiled.generated_file_compiled cmx
-          | Ok (`Cmi cmi) -> File.Compiled.generated_file_compiled cmi
-          | Ok _ ->
+          match Basename.extension dep with
+          | ".cmx" -> Gen_file.compiled_ocaml_object_file dep
+          | ".cmi" -> Gen_file.compiled_ocaml_interface_file dep
+          | other ->
             panic
               [ Pp.textf
-                  "Running ocamldep on %S produced build input %S whose extension is \
-                   unexpected (expected either \".cmi\")."
+                  "Running ocamldep on %S produced build input %S whose extension is %S \
+                   which is unrecognized."
                   (Alice_ui.absolute_path_to_string source_path)
                   (Basename.to_filename dep)
-              ]
-          | Error (`Unknown_extension _) ->
-            panic
-              [ Pp.textf
-                  "Running ocamldep on %S produced build input %S whose extension is \
-                   unrecognized."
-                  (Alice_ui.absolute_path_to_string source_path)
-                  (Basename.to_filename dep)
+                  other
               ])
       in
       let compiled_interface_output =
         Absolute_path.basename source_path
         |> Basename.replace_extension ~ext:".cmi"
-        |> File.Compiled.cmi_private
-        |> File.Compiled.generated_file_compiled
+        |> Gen_file.compiled_ocaml_interface_file
       in
       Compile_ocaml_interface
         { interface_input
@@ -341,9 +332,8 @@ let compute_c_compilation_ops src_dir =
     let open Typed_op in
     let source_input = Src_file.of_path_c path in
     let object_output =
-      File.Compiled.o_private_c
+      Gen_file.compiled_c_object_file
         (Absolute_path.basename path |> Basename.replace_extension ~ext:".o")
-      |> File.Compiled.generated_file_compiled
     in
     { Compile_c_source.source_input; object_output })
 ;;
@@ -356,6 +346,9 @@ type lsp_ops =
 let lsp_ops build_dag_ocaml_compilation_only package compiler_backend =
   let open Typed_op in
   let package_name_s = Package_name.to_string (Package.name package) in
+  let package_cmi_for_lsp =
+    Gen_file.compiled_ocaml_interface_to_generate_library_lsp_files (Package.name package)
+  in
   let compile_source =
     let { Compile_ocaml_source.source_input
         ; compiled_inputs
@@ -373,33 +366,22 @@ let lsp_ops build_dag_ocaml_compilation_only package compiler_backend =
         compiler_backend
     in
     let interface_output_if_no_matching_mli_is_present =
-      Option.map
-        interface_output_if_no_matching_mli_is_present
-        ~f:(fun compiled_interface_output ->
-          Typed_op.File.Compiled.rename
-            compiled_interface_output
-            ~name_without_extension:package_name_s
-            Public_for_lsp)
+      Option.map interface_output_if_no_matching_mli_is_present ~f:(fun _ ->
+        package_cmi_for_lsp)
     in
     let compiled_inputs =
       List.map compiled_inputs ~f:(fun input ->
-        if
-          Typed_op.Generated_file.Compiled.equal
-            input
-            Typed_op.Generated_file.Compiled.lib_cmi
+        if Gen_file.equal input Gen_file.lib_ocaml_compiled_interface_file
         then
           (* If the package has a lib.mli file then lib.cmx will depend
              on lib.cmi. Swap the dependency out for <package>.cmi here. *)
-          Generated_file.Compiled.rename
-            input
-            ~name_without_extension:package_name_s
-            Public_for_lsp
+          package_cmi_for_lsp
         else input)
     in
     let compiled_inputs =
       let pack_output =
         let pack = Typed_op.Pack.of_package_name (Package.name package) in
-        Typed_op.Pack.cmx_file pack
+        Typed_op.Pack.compiled_ocaml_object_file pack
       in
       (* Add the package's internal modules pack to the dependencies of this
          node. When building the cmt file we'll open this package's own
@@ -434,22 +416,16 @@ let lsp_ops build_dag_ocaml_compilation_only package compiler_backend =
       let compiled_inputs =
         let pack_output =
           let pack = Typed_op.Pack.of_package_name (Package.name package) in
-          Typed_op.Pack.cmx_file pack
+          Typed_op.Pack.compiled_ocaml_object_file pack
         in
         (* Add the package's internal modules pack to the dependencies of this
            node. *)
         pack_output :: compiled_inputs
       in
-      let compiled_interface_output =
-        Typed_op.Generated_file.Compiled.rename
-          compiled_interface_output
-          ~name_without_extension:package_name_s
-          Public_for_lsp
-      in
       Some
         { Compile_ocaml_interface.interface_input
         ; compiled_inputs
-        ; compiled_interface_output
+        ; compiled_interface_output = package_cmi_for_lsp
         ; stop_after_typing = true
         }
   in
@@ -504,7 +480,6 @@ let create
       Build_dag.ocaml_object_files_in_build_order_for_library
         build_dag_ocaml_compilation_only
         build_config.compiler_backend
-      |> List.map ~f:Gen_file.to_generated_file_compiled
     in
     let pack = Typed_op.Pack.of_package_name (Package.name package) in
     let pack_op = Pack_library { compiled_object_inputs = ocaml_object_files; pack } in
@@ -512,7 +487,7 @@ let create
       Module_name.public_interface_to_open (Package.name package)
       |> Module_name.basename_without_extension
       |> Basename.add_extension ~ext:".ml"
-      |> File.Generated_ocaml_source.of_basename
+      |> Gen_file.generated_ocaml_src_file
     in
     let generate_public_interface_to_open_op =
       Generate_public_interface_to_open { ml_output = public_interface_to_open_ml }
@@ -529,7 +504,7 @@ let create
       Link_library
         (Link_library.of_inputs
            ~compiled_object_inputs:
-             [ Typed_op.Pack.cmx_file pack
+             [ Typed_op.Pack.compiled_ocaml_object_file pack
              ; compile_public_interface_to_open.compiled_object_output
              ]
            ~compiled_c_inputs:compiled_c_object_files)
@@ -545,14 +520,13 @@ let create
       Basename.of_filename (Package.name package |> Package_name.to_string)
       |> Alice_env.Os_type.basename_add_exe_extension_on_windows build_config.os_type
     in
-    File.Linked.exe_native exe_name
+    Gen_file.executable exe_name
   in
   let link_executable () =
     let ocaml_object_files =
       Build_dag.ocaml_object_files_in_build_order_for_executable
         build_dag_ocaml_compilation_only
         build_config.compiler_backend
-      |> List.map ~f:Gen_file.to_generated_file_compiled
     in
     [ Link_executable
         { exe_output = exe_file
@@ -613,29 +587,25 @@ let plan_lsp ({ build_dag; lsp_ops; _ } : (_, Type_bool.true_t) t) =
 ;;
 
 let dot { build_dag; _ } =
-  let generated_file_to_string (generated_file : Typed_op.Generated_file.t) =
-    let path =
-      Alice_ui.basename_to_string (Typed_op.Generated_file.path generated_file)
-    in
-    match generated_file with
-    | Compiled compiled ->
-      (match Typed_op.Generated_file.Compiled.visibility compiled with
-       | Public_for_lsp -> sprintf "%s (for lsp)" path
-       | _ -> path)
+  let open Typed_op in
+  let gen_file_to_string gen_file =
+    let path = Alice_ui.basename_to_string (Gen_file.path gen_file) in
+    match Gen_file.out_dir gen_file with
+    | Public_for_lsp -> sprintf "%s (for lsp)" path
     | _ -> path
   in
   Build_dag.all_nodes build_dag
   |> List.fold_left ~init:String.Map.empty ~f:(fun acc node ->
     let op = Build_plan.op node in
     let inputs =
-      (Typed_op.generated_inputs op |> List.map ~f:generated_file_to_string)
+      (Typed_op.generated_inputs op |> List.map ~f:gen_file_to_string)
       @ (Typed_op.source_input op
          |> Option.map ~f:(fun path ->
            Absolute_path.basename path |> Basename.to_filename)
          |> Option.to_list)
       |> String.Set.of_list
     in
-    let outputs = Typed_op.outputs op |> List.map ~f:generated_file_to_string in
+    let outputs = Typed_op.outputs op |> List.map ~f:gen_file_to_string in
     List.fold_left outputs ~init:acc ~f:(fun acc output ->
       String.Map.update acc ~key:output ~f:(function
         | None -> Some inputs

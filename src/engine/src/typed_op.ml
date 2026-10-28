@@ -45,6 +45,61 @@ module Visibility = struct
   ;;
 end
 
+module Out_dir = struct
+  type t =
+    | Private
+    | Private_c
+    | Public
+    | Public_for_lsp
+    | Generated_src
+    | Executable
+
+  let to_dyn = function
+    | Private -> Dyn.variant "Private" []
+    | Private_c -> Dyn.variant "Private_c" []
+    | Public -> Dyn.variant "Public" []
+    | Public_for_lsp -> Dyn.variant "Public_for_lsp" []
+    | Generated_src -> Dyn.variant "Generated_src" []
+    | Executable -> Dyn.variant "Executable" []
+  ;;
+
+  let equal a b =
+    match a, b with
+    | Private, Private -> true
+    | Private, _ -> false
+    | Private_c, Private_c -> true
+    | Private_c, _ -> false
+    | Public, Public -> true
+    | Public, _ -> false
+    | Public_for_lsp, Public_for_lsp -> true
+    | Public_for_lsp, _ -> false
+    | Generated_src, Generated_src -> true
+    | Generated_src, _ -> false
+    | Executable, Executable -> true
+    | Executable, _ -> false
+  ;;
+
+  let compare a b =
+    match a, b with
+    | Private, Private -> 0
+    | Private, _ -> -1
+    | _, Private -> 1
+    | Private_c, Private_c -> 0
+    | Private_c, _ -> -1
+    | _, Private_c -> 1
+    | Public, Public -> 0
+    | Public, _ -> -1
+    | _, Public -> 1
+    | Public_for_lsp, Public_for_lsp -> 0
+    | Public_for_lsp, _ -> -1
+    | _, Public_for_lsp -> 1
+    | Generated_src, Generated_src -> 0
+    | Generated_src, _ -> -1
+    | _, Generated_src -> 1
+    | Executable, Executable -> 0
+  ;;
+end
+
 let lib_base = Basename.remove_extension Package.lib_root_ml
 let exe_base = Basename.remove_extension Package.exe_root_ml
 let lib_cmx = Basename.add_extension lib_base ~ext:".cmx"
@@ -308,51 +363,84 @@ module Src_file = struct
 end
 
 module Gen_file = struct
-  type t =
-    { path : Basename.t
-    ; visibility : Visibility.t
-    }
+  module T = struct
+    type t =
+      { path : Basename.t
+      ; out_dir : Out_dir.t
+      }
 
-  let to_dyn { path; visibility } =
-    Dyn.record
-      [ "path", Basename.to_dyn path; "visibility", Visibility.to_dyn visibility ]
-  ;;
+    let to_dyn { path; out_dir } =
+      Dyn.record [ "path", Basename.to_dyn path; "out_dir", Out_dir.to_dyn out_dir ]
+    ;;
 
-  let equal t { path; visibility } =
-    Basename.equal t.path path && Visibility.equal t.visibility visibility
-  ;;
+    let equal t { path; out_dir } =
+      Basename.equal t.path path && Out_dir.equal t.out_dir out_dir
+    ;;
 
-  let compare t { path; visibility } =
-    let open Compare in
-    let= () = Basename.compare t.path path in
-    Visibility.compare t.visibility visibility
-  ;;
+    let compare t { path; out_dir } =
+      let open Compare in
+      let= () = Basename.compare t.path path in
+      Out_dir.compare t.out_dir out_dir
+    ;;
+  end
+
+  include T
+  module Map = Map.Make (T)
+  module Set = Set.Make (T)
 
   let path t = t.path
-  let visibility t = t.visibility
+  let out_dir t = t.out_dir
 
-  let make path visibility ~exts =
-    if not (List.exists exts ~f:(fun ext -> Basename.has_extension path ~ext))
-    then
-      panic
-        [ Pp.textf
-            "Expected extension to be among [%s] but got file %S."
-            (String.concat ~sep:", " exts)
-            (Basename.to_filename path)
-        ];
-    { path; visibility }
+  let basename_assert_has_one_of_exts basename ~exts =
+    if not (List.exists exts ~f:(fun ext -> Basename.has_extension basename ~ext))
+    then (
+      match exts with
+      | [ ext ] ->
+        panic
+          [ Pp.textf
+              "Expected extension to be %s but got file %S."
+              ext
+              (Basename.to_filename basename)
+          ]
+      | _ ->
+        panic
+          [ Pp.textf
+              "Expected extension to be among [%s] but got file %S."
+              (String.concat ~sep:", " exts)
+              (Basename.to_filename basename)
+          ])
+  ;;
+
+  let make path out_dir ~exts =
+    basename_assert_has_one_of_exts path ~exts;
+    { path; out_dir }
   ;;
 
   let ocaml_object_file_exts = [ ".cmx"; ".cmo" ]
+  let ocaml_archive_file_exts = [ ".cmxa"; ".cma" ]
+  let ocaml_compiled_interface_file_ext = ".cmi"
 
   let compiled_ocaml_object_file basename =
-    make basename Visibility.Private ~exts:ocaml_object_file_exts
+    make basename Private ~exts:ocaml_object_file_exts
   ;;
 
-  let to_generated_file_compiled { path; visibility } =
-    { Generated_file.Compiled.path; visibility }
+  let compiled_ocaml_object_file_public basename =
+    make basename Public ~exts:ocaml_object_file_exts
   ;;
 
+  let compiled_c_object_file basename = make basename Private_c ~exts:[ ".o" ]
+
+  let compiled_ocaml_interface_file basename =
+    make basename Private ~exts:[ ocaml_compiled_interface_file_ext ]
+  ;;
+
+  let compiled_ocaml_interface_file_public basename =
+    make basename Public ~exts:[ ocaml_compiled_interface_file_ext ]
+  ;;
+
+  let ocaml_archive_file basename = make basename Public ~exts:ocaml_archive_file_exts
+  let executable basename = { path = basename; out_dir = Executable }
+  let generated_ocaml_src_file basename = make basename Generated_src ~exts:[ ".ml" ]
   let lib_base = Basename.remove_extension Package.lib_root_ml
   let exe_base = Basename.remove_extension Package.exe_root_ml
 
@@ -361,17 +449,50 @@ module Gen_file = struct
     compiled_ocaml_object_file @@ Basename.add_extension lib_base ~ext
   ;;
 
+  let lib_ocaml_compiled_interface_file =
+    compiled_ocaml_interface_file
+    @@ Basename.add_extension lib_base ~ext:ocaml_compiled_interface_file_ext
+  ;;
+
   let exe_ocaml_object_file compiler_backend =
     let ext = Compiler_backend.ocaml_object_file_ext compiler_backend in
     compiled_ocaml_object_file @@ Basename.add_extension exe_base ~ext
+  ;;
+
+  let lib_ocaml_archive_file compiler_backend =
+    let ext = Compiler_backend.ocaml_archive_file_ext compiler_backend in
+    ocaml_archive_file @@ Basename.add_extension lib_base ~ext
+  ;;
+
+  let lib_archive_file =
+    let basename = Basename.add_extension lib_base ~ext:".a" in
+    make basename Public ~exts:[ ".a" ]
   ;;
 
   let compiled_ocaml_object_to_generate_library_lsp_files package_name compiler_backend =
     let package_name_s = Package_name.to_string package_name in
     let ext = Compiler_backend.ocaml_object_file_ext compiler_backend in
     let path = Basename.of_filename package_name_s |> Basename.add_extension ~ext in
-    let visibility = Visibility.Public_for_lsp in
-    { path; visibility }
+    { path; out_dir = Public_for_lsp }
+  ;;
+
+  let compiled_ocaml_interface_to_generate_library_lsp_files package_name =
+    let package_name_s = Package_name.to_string package_name in
+    let path =
+      Basename.of_filename package_name_s
+      |> Basename.add_extension ~ext:ocaml_compiled_interface_file_ext
+    in
+    { path; out_dir = Public_for_lsp }
+  ;;
+
+  let replace_compiled_ocaml_object_ext_with_cmt t =
+    basename_assert_has_one_of_exts t.path ~exts:ocaml_object_file_exts;
+    { t with path = Basename.replace_extension t.path ~ext:".cmt" }
+  ;;
+
+  let replace_compiled_ocaml_interface_ext_with_cmti t =
+    basename_assert_has_one_of_exts t.path ~exts:[ ocaml_compiled_interface_file_ext ];
+    { t with path = Basename.replace_extension t.path ~ext:".cmti" }
   ;;
 end
 
@@ -612,21 +733,19 @@ module Pack = struct
   let package_name t = t
   let module_name t = Module_name.internal_modules t
 
-  let cmx_file t =
-    let basename =
-      Module_name.basename_without_extension (module_name t)
-      |> Basename.add_extension ~ext:".cmx"
-    in
-    File.Compiled.cmx_public basename |> File.Compiled.generated_file_compiled
+  let compiled_ocaml_object_file t =
+    Module_name.basename_without_extension (module_name t)
+    |> Basename.add_extension ~ext:".cmx"
+    |> Gen_file.compiled_ocaml_object_file_public
   ;;
 end
 
 module Compile_ocaml_source = struct
   type t =
     { source_input : Src_file.t
-    ; compiled_inputs : Generated_file.Compiled.t list
+    ; compiled_inputs : Gen_file.t list
     ; compiled_object_output : Gen_file.t
-    ; interface_output_if_no_matching_mli_is_present : cmi File.Compiled.t option
+    ; interface_output_if_no_matching_mli_is_present : Gen_file.t option
     ; stop_after_typing : bool
     }
 
@@ -640,10 +759,10 @@ module Compile_ocaml_source = struct
         }
     =
     Src_file.equal t.source_input source_input
-    && List.equal t.compiled_inputs compiled_inputs ~eq:Generated_file.Compiled.equal
+    && List.equal t.compiled_inputs compiled_inputs ~eq:Gen_file.equal
     && Gen_file.equal t.compiled_object_output compiled_object_output
     && Option.equal
-         ~eq:File.Compiled.equal
+         ~eq:Gen_file.equal
          t.interface_output_if_no_matching_mli_is_present
          interface_output_if_no_matching_mli_is_present
     && Bool.equal t.stop_after_typing stop_after_typing
@@ -660,13 +779,11 @@ module Compile_ocaml_source = struct
     =
     let open Compare in
     let= () = Src_file.compare t.source_input source_input in
-    let= () =
-      List.compare ~cmp:Generated_file.Compiled.compare t.compiled_inputs compiled_inputs
-    in
+    let= () = List.compare ~cmp:Gen_file.compare t.compiled_inputs compiled_inputs in
     let= () = Gen_file.compare t.compiled_object_output compiled_object_output in
     let= () =
       Option.compare
-        ~cmp:File.Compiled.compare
+        ~cmp:Gen_file.compare
         t.interface_output_if_no_matching_mli_is_present
         interface_output_if_no_matching_mli_is_present
     in
@@ -683,10 +800,10 @@ module Compile_ocaml_source = struct
     =
     Dyn.record
       [ "source_input", Src_file.to_dyn source_input
-      ; "compiled_inputs", Dyn.list Generated_file.Compiled.to_dyn compiled_inputs
+      ; "compiled_inputs", Dyn.list Gen_file.to_dyn compiled_inputs
       ; "compiled_object_output", Gen_file.to_dyn compiled_object_output
       ; ( "interface_output_if_no_matching_mli_is_present"
-        , Dyn.option File.Compiled.to_dyn interface_output_if_no_matching_mli_is_present )
+        , Dyn.option Gen_file.to_dyn interface_output_if_no_matching_mli_is_present )
       ; "stop_after_typing", Dyn.bool stop_after_typing
       ]
   ;;
@@ -695,8 +812,8 @@ end
 module Compile_ocaml_interface = struct
   type t =
     { interface_input : Src_file.t
-    ; compiled_inputs : Generated_file.Compiled.t list
-    ; compiled_interface_output : Generated_file.Compiled.t
+    ; compiled_inputs : Gen_file.t list
+    ; compiled_interface_output : Gen_file.t
     ; stop_after_typing : bool
     }
 
@@ -705,8 +822,8 @@ module Compile_ocaml_interface = struct
         { interface_input; compiled_inputs; compiled_interface_output; stop_after_typing }
     =
     Src_file.equal t.interface_input interface_input
-    && List.equal t.compiled_inputs compiled_inputs ~eq:Generated_file.Compiled.equal
-    && Generated_file.Compiled.equal t.compiled_interface_output compiled_interface_output
+    && List.equal t.compiled_inputs compiled_inputs ~eq:Gen_file.equal
+    && Gen_file.equal t.compiled_interface_output compiled_interface_output
     && Bool.equal t.stop_after_typing stop_after_typing
   ;;
 
@@ -716,14 +833,8 @@ module Compile_ocaml_interface = struct
     =
     let open Compare in
     let= () = Src_file.compare t.interface_input interface_input in
-    let= () =
-      List.compare ~cmp:Generated_file.Compiled.compare t.compiled_inputs compiled_inputs
-    in
-    let= () =
-      Generated_file.Compiled.compare
-        t.compiled_interface_output
-        compiled_interface_output
-    in
+    let= () = List.compare ~cmp:Gen_file.compare t.compiled_inputs compiled_inputs in
+    let= () = Gen_file.compare t.compiled_interface_output compiled_interface_output in
     Bool.compare t.stop_after_typing stop_after_typing
   ;;
 
@@ -732,9 +843,8 @@ module Compile_ocaml_interface = struct
     =
     Dyn.record
       [ "interface_input", Src_file.to_dyn interface_input
-      ; "compiled_inputs", Dyn.list Generated_file.Compiled.to_dyn compiled_inputs
-      ; ( "compiled_interface_output"
-        , Generated_file.Compiled.to_dyn compiled_interface_output )
+      ; "compiled_inputs", Dyn.list Gen_file.to_dyn compiled_inputs
+      ; "compiled_interface_output", Gen_file.to_dyn compiled_interface_output
       ; "stop_after_typing", Dyn.bool stop_after_typing
       ]
   ;;
@@ -743,97 +853,82 @@ end
 module Compile_c_source = struct
   type t =
     { source_input : Src_file.t
-    ; object_output : Generated_file.Compiled.t
+    ; object_output : Gen_file.t
     }
 
   let equal t { source_input; object_output } =
     Src_file.equal t.source_input source_input
-    && Generated_file.Compiled.equal t.object_output object_output
+    && Gen_file.equal t.object_output object_output
   ;;
 
   let compare t { source_input; object_output } =
     let open Compare in
     let= () = Src_file.compare t.source_input source_input in
-    Generated_file.Compiled.compare t.object_output object_output
+    Gen_file.compare t.object_output object_output
   ;;
 
   let to_dyn { source_input; object_output } =
     Dyn.record
       [ "source_input", Src_file.to_dyn source_input
-      ; "object_output", Generated_file.Compiled.to_dyn object_output
+      ; "object_output", Gen_file.to_dyn object_output
       ]
   ;;
 end
 
 module Pack_library = struct
   type t =
-    { compiled_object_inputs : Generated_file.Compiled.t list
+    { compiled_object_inputs : Gen_file.t list
     ; pack : Pack.t
     }
 
   let equal t { compiled_object_inputs; pack } =
-    List.equal
-      ~eq:Generated_file.Compiled.equal
-      t.compiled_object_inputs
-      compiled_object_inputs
+    List.equal ~eq:Gen_file.equal t.compiled_object_inputs compiled_object_inputs
     && Pack.equal t.pack pack
   ;;
 
   let compare t { compiled_object_inputs; pack } =
     let open Compare in
     let= () =
-      List.compare
-        ~cmp:Generated_file.Compiled.compare
-        t.compiled_object_inputs
-        compiled_object_inputs
+      List.compare ~cmp:Gen_file.compare t.compiled_object_inputs compiled_object_inputs
     in
     Pack.compare t.pack pack
   ;;
 
   let to_dyn { compiled_object_inputs; pack } =
     Dyn.record
-      [ ( "compiled_object_inputs"
-        , Dyn.list Generated_file.Compiled.to_dyn compiled_object_inputs )
+      [ "compiled_object_inputs", Dyn.list Gen_file.to_dyn compiled_object_inputs
       ; "pack", Pack.to_dyn pack
       ]
   ;;
 end
 
 module Generate_public_interface_to_open = struct
-  type t = { ml_output : File.Generated_ocaml_source.t }
+  type t = { ml_output : Gen_file.t }
 
-  let equal t { ml_output } = File.Generated_ocaml_source.equal t.ml_output ml_output
-  let compare t { ml_output } = File.Generated_ocaml_source.compare t.ml_output ml_output
-
-  let to_dyn { ml_output } =
-    Dyn.record [ "ml_output", File.Generated_ocaml_source.to_dyn ml_output ]
-  ;;
+  let equal t { ml_output } = Gen_file.equal t.ml_output ml_output
+  let compare t { ml_output } = Gen_file.compare t.ml_output ml_output
+  let to_dyn { ml_output } = Dyn.record [ "ml_output", Gen_file.to_dyn ml_output ]
 end
 
 module Compile_public_interface_to_open = struct
   type t =
-    { generated_source_input : File.Generated_ocaml_source.t
+    { generated_source_input : Gen_file.t
     ; internal_modules_pack : Pack.t
-    ; compiled_object_output : Generated_file.Compiled.t
-    ; compiled_interface_output : Generated_file.Compiled.t
+    ; compiled_object_output : Gen_file.t
+    ; compiled_interface_output : Gen_file.t
     }
 
-  let create
-        ~(generated_source_input : File.Generated_ocaml_source.t)
-        ~internal_modules_pack
-    =
+  let create ~generated_source_input ~internal_modules_pack =
     let open File.Compiled in
-    let basename = generated_source_input in
+    let basename = Gen_file.path generated_source_input in
     { generated_source_input
     ; internal_modules_pack
     ; compiled_object_output =
         Basename.replace_extension basename ~ext:".cmx"
-        |> cmx_public
-        |> File.Compiled.generated_file_compiled
+        |> Gen_file.compiled_ocaml_object_file_public
     ; compiled_interface_output =
         Basename.replace_extension basename ~ext:".cmi"
-        |> cmi_public
-        |> File.Compiled.generated_file_compiled
+        |> Gen_file.compiled_ocaml_interface_file_public
     }
   ;;
 
@@ -845,10 +940,10 @@ module Compile_public_interface_to_open = struct
         ; compiled_interface_output
         }
     =
-    File.Generated_ocaml_source.equal t.generated_source_input generated_source_input
+    Gen_file.equal t.generated_source_input generated_source_input
     && Pack.equal t.internal_modules_pack internal_modules_pack
-    && Generated_file.Compiled.equal t.compiled_object_output compiled_object_output
-    && Generated_file.Compiled.equal t.compiled_interface_output compiled_interface_output
+    && Gen_file.equal t.compiled_object_output compiled_object_output
+    && Gen_file.equal t.compiled_interface_output compiled_interface_output
   ;;
 
   let compare
@@ -860,14 +955,10 @@ module Compile_public_interface_to_open = struct
         }
     =
     let open Compare in
-    let= () =
-      File.Generated_ocaml_source.compare t.generated_source_input generated_source_input
-    in
+    let= () = Gen_file.compare t.generated_source_input generated_source_input in
     let= () = Pack.compare t.internal_modules_pack internal_modules_pack in
-    let= () =
-      Generated_file.Compiled.compare t.compiled_object_output compiled_object_output
-    in
-    Generated_file.Compiled.compare t.compiled_interface_output compiled_interface_output
+    let= () = Gen_file.compare t.compiled_object_output compiled_object_output in
+    Gen_file.compare t.compiled_interface_output compiled_interface_output
   ;;
 
   let to_dyn
@@ -878,110 +969,104 @@ module Compile_public_interface_to_open = struct
         }
     =
     Dyn.record
-      [ ( "generated_source_input"
-        , File.Generated_ocaml_source.to_dyn generated_source_input )
+      [ "generated_source_input", Gen_file.to_dyn generated_source_input
       ; "internal_modules_pack", Pack.to_dyn internal_modules_pack
-      ; "compiled_object_output", Generated_file.Compiled.to_dyn compiled_object_output
-      ; ( "compiled_interface_output"
-        , Generated_file.Compiled.to_dyn compiled_interface_output )
+      ; "compiled_object_output", Gen_file.to_dyn compiled_object_output
+      ; "compiled_interface_output", Gen_file.to_dyn compiled_interface_output
       ]
   ;;
 end
 
 module Link_library = struct
   type t =
-    { compiled_object_inputs : Generated_file.Compiled.t list
-    ; compiled_c_inputs : Generated_file.Compiled.t list
-    ; cmxa_output : cmxa File.Linked.t
-    ; a_output : a File.Linked.t
+    { compiled_object_inputs : Gen_file.t list
+    ; compiled_c_inputs : Gen_file.t list
+    ; ocaml_archive_output : Gen_file.t
+    ; archive_output : Gen_file.t
     }
 
-  let equal t { compiled_object_inputs; compiled_c_inputs; cmxa_output; a_output } =
-    List.equal
-      t.compiled_object_inputs
-      compiled_object_inputs
-      ~eq:Generated_file.Compiled.equal
-    && List.equal t.compiled_c_inputs compiled_c_inputs ~eq:Generated_file.Compiled.equal
-    && File.Linked.equal t.cmxa_output cmxa_output
-    && File.Linked.equal t.a_output a_output
+  let equal
+        t
+        { compiled_object_inputs
+        ; compiled_c_inputs
+        ; ocaml_archive_output
+        ; archive_output
+        }
+    =
+    let eq = Gen_file.equal in
+    List.equal t.compiled_object_inputs compiled_object_inputs ~eq
+    && List.equal t.compiled_c_inputs compiled_c_inputs ~eq
+    && eq t.ocaml_archive_output ocaml_archive_output
+    && eq t.archive_output archive_output
   ;;
 
-  let compare t { compiled_object_inputs; compiled_c_inputs; cmxa_output; a_output } =
+  let compare
+        t
+        { compiled_object_inputs
+        ; compiled_c_inputs
+        ; ocaml_archive_output
+        ; archive_output
+        }
+    =
+    let cmp = Gen_file.compare in
     let open Compare in
-    let= () =
-      List.compare
-        ~cmp:Generated_file.Compiled.compare
-        t.compiled_object_inputs
-        compiled_object_inputs
-    in
-    let= () =
-      List.compare
-        ~cmp:Generated_file.Compiled.compare
-        t.compiled_c_inputs
-        compiled_c_inputs
-    in
-    let= () = File.Linked.compare t.cmxa_output cmxa_output in
-    File.Linked.compare t.a_output a_output
+    let= () = List.compare ~cmp t.compiled_object_inputs compiled_object_inputs in
+    let= () = List.compare ~cmp t.compiled_c_inputs compiled_c_inputs in
+    let= () = Gen_file.compare t.ocaml_archive_output ocaml_archive_output in
+    Gen_file.compare t.archive_output archive_output
   ;;
 
-  let to_dyn { compiled_object_inputs; compiled_c_inputs; cmxa_output; a_output } =
+  let to_dyn
+        { compiled_object_inputs
+        ; compiled_c_inputs
+        ; ocaml_archive_output
+        ; archive_output
+        }
+    =
     Dyn.record
-      [ ( "compiled_object_inputs"
-        , Dyn.list Generated_file.Compiled.to_dyn compiled_object_inputs )
-      ; "compiled_c_inputs", Dyn.list Generated_file.Compiled.to_dyn compiled_c_inputs
-      ; "cmxa_output", File.Linked.to_dyn cmxa_output
-      ; "a_output", File.Linked.to_dyn a_output
+      [ "compiled_object_inputs", Dyn.list Gen_file.to_dyn compiled_object_inputs
+      ; "compiled_c_inputs", Dyn.list Gen_file.to_dyn compiled_c_inputs
+      ; "ocaml_archive_output", Gen_file.to_dyn ocaml_archive_output
+      ; "archive_output", Gen_file.to_dyn archive_output
       ]
   ;;
 
   let of_inputs ~compiled_object_inputs ~compiled_c_inputs =
     { compiled_object_inputs
     ; compiled_c_inputs
-    ; cmxa_output = Lib_cmxa
-    ; a_output = Lib_a
+    ; ocaml_archive_output = Gen_file.lib_ocaml_archive_file Native
+    ; archive_output = Gen_file.lib_archive_file
     }
   ;;
 end
 
 module Link_executable = struct
   type t =
-    { compiled_object_inputs : Generated_file.Compiled.t list
-    ; compiled_c_inputs : Generated_file.Compiled.t list
-    ; exe_output : exe_native File.Linked.t
+    { compiled_object_inputs : Gen_file.t list
+    ; compiled_c_inputs : Gen_file.t list
+    ; exe_output : Gen_file.t
     }
 
   let equal t { compiled_object_inputs; compiled_c_inputs; exe_output } =
-    List.equal
-      t.compiled_object_inputs
-      compiled_object_inputs
-      ~eq:Generated_file.Compiled.equal
-    && List.equal t.compiled_c_inputs compiled_c_inputs ~eq:Generated_file.Compiled.equal
-    && File.Linked.equal t.exe_output exe_output
+    let eq = Gen_file.equal in
+    List.equal t.compiled_object_inputs compiled_object_inputs ~eq
+    && List.equal t.compiled_c_inputs compiled_c_inputs ~eq
+    && eq t.exe_output exe_output
   ;;
 
   let compare t { compiled_object_inputs; compiled_c_inputs; exe_output } =
+    let cmp = Gen_file.compare in
     let open Compare in
-    let= () =
-      List.compare
-        ~cmp:Generated_file.Compiled.compare
-        t.compiled_object_inputs
-        compiled_object_inputs
-    in
-    let= () =
-      List.compare
-        ~cmp:Generated_file.Compiled.compare
-        t.compiled_c_inputs
-        compiled_c_inputs
-    in
-    File.Linked.compare t.exe_output exe_output
+    let= () = List.compare ~cmp t.compiled_object_inputs compiled_object_inputs in
+    let= () = List.compare ~cmp t.compiled_c_inputs compiled_c_inputs in
+    cmp t.exe_output exe_output
   ;;
 
   let to_dyn { compiled_object_inputs; compiled_c_inputs; exe_output } =
     Dyn.record
-      [ ( "compiled_object_inputs"
-        , Dyn.list Generated_file.Compiled.to_dyn compiled_object_inputs )
-      ; "compiled_c_inputs", Dyn.list Generated_file.Compiled.to_dyn compiled_c_inputs
-      ; "exe_output", File.Linked.to_dyn exe_output
+      [ "compiled_object_inputs", Dyn.list Gen_file.to_dyn compiled_object_inputs
+      ; "compiled_c_inputs", Dyn.list Gen_file.to_dyn compiled_c_inputs
+      ; "exe_output", Gen_file.to_dyn exe_output
       ]
   ;;
 end
@@ -1093,23 +1178,16 @@ let source_input = function
 let generated_inputs t =
   match t with
   | Compile_ocaml_source { compiled_inputs; _ }
-  | Compile_ocaml_interface { compiled_inputs; _ } ->
-    List.map compiled_inputs ~f:(fun compiled -> Generated_file.Compiled compiled)
+  | Compile_ocaml_interface { compiled_inputs; _ } -> compiled_inputs
   | Compile_c_source _ -> []
-  | Pack_library { compiled_object_inputs; _ } ->
-    List.map compiled_object_inputs ~f:(fun file -> Generated_file.Compiled file)
+  | Pack_library { compiled_object_inputs; _ } -> compiled_object_inputs
   | Generate_public_interface_to_open _ -> []
   | Compile_public_interface_to_open { generated_source_input; internal_modules_pack; _ }
-    ->
-    [ File.Generated_ocaml_source.generated_file generated_source_input
-    ; Generated_file.Compiled (Pack.cmx_file internal_modules_pack)
-    ]
+    -> [ generated_source_input; Pack.compiled_ocaml_object_file internal_modules_pack ]
   | Link_library { compiled_object_inputs; compiled_c_inputs; _ } ->
-    List.map compiled_c_inputs ~f:(fun file -> Generated_file.Compiled file)
-    @ List.map compiled_object_inputs ~f:(fun file -> Generated_file.Compiled file)
+    compiled_c_inputs @ compiled_object_inputs
   | Link_executable { compiled_object_inputs; compiled_c_inputs; _ } ->
-    List.map compiled_c_inputs ~f:(fun file -> Generated_file.Compiled file)
-    @ List.map compiled_object_inputs ~f:(fun file -> Generated_file.Compiled file)
+    compiled_c_inputs @ compiled_object_inputs
 ;;
 
 let outputs = function
@@ -1119,32 +1197,19 @@ let outputs = function
       ; stop_after_typing
       ; _
       } ->
-    (if stop_after_typing
-     then []
-     else
-       [ Generated_file.Compiled
-           (Gen_file.to_generated_file_compiled compiled_object_output)
-       ])
-    @ [ Generated_file.Compiled
-          (Generated_file.Compiled.replace_extension_with_cmt
-             (Gen_file.to_generated_file_compiled compiled_object_output))
-      ]
-    @ (Option.map
-         interface_output_if_no_matching_mli_is_present
-         ~f:File.Compiled.generated_file
-       |> Option.to_list)
+    (if stop_after_typing then [] else [ compiled_object_output ])
+    @ [ Gen_file.replace_compiled_ocaml_object_ext_with_cmt compiled_object_output ]
+    @ Option.to_list interface_output_if_no_matching_mli_is_present
   | Compile_ocaml_interface { compiled_interface_output; _ } ->
-    [ Generated_file.Compiled compiled_interface_output
-    ; Generated_file.Compiled
-        (Generated_file.Compiled.replace_extension_with_cmti compiled_interface_output)
+    [ compiled_interface_output
+    ; Gen_file.replace_compiled_ocaml_interface_ext_with_cmti compiled_interface_output
     ]
-  | Compile_c_source { object_output; _ } -> [ Generated_file.Compiled object_output ]
-  | Pack_library { pack; _ } -> [ Generated_file.Compiled (Pack.cmx_file pack) ]
-  | Generate_public_interface_to_open { ml_output } ->
-    [ File.Generated_ocaml_source.generated_file ml_output ]
+  | Compile_c_source { object_output; _ } -> [ object_output ]
+  | Pack_library { pack; _ } -> [ Pack.compiled_ocaml_object_file pack ]
+  | Generate_public_interface_to_open { ml_output } -> [ ml_output ]
   | Compile_public_interface_to_open { compiled_object_output; _ } ->
-    [ Generated_file.Compiled compiled_object_output ]
-  | Link_library { cmxa_output; a_output; _ } ->
-    [ File.Linked.generated_file cmxa_output; File.Linked.generated_file a_output ]
-  | Link_executable { exe_output; _ } -> [ File.Linked.generated_file exe_output ]
+    [ compiled_object_output ]
+  | Link_library { ocaml_archive_output; archive_output; _ } ->
+    [ ocaml_archive_output; archive_output ]
+  | Link_executable { exe_output; _ } -> [ exe_output ]
 ;;

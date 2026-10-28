@@ -36,7 +36,7 @@ module Package_base_dir = struct
     }
 
   let build_dir { build_dir; _ } = build_dir
-  let generated_source_dir t = t.path / b "generated"
+  let generated_src_dir t = t.path / b "generated_src"
   let private_dir t = t.path / b "private"
 
   (* Directory for containing the object files compiled from C code in the src
@@ -49,7 +49,7 @@ module Package_base_dir = struct
   let executable_dir t = t.path / b "executable"
 
   let dirs t =
-    [ generated_source_dir t
+    [ generated_src_dir t
     ; public_dir t
     ; public_for_lsp_dir t
     ; private_dir t
@@ -73,7 +73,7 @@ module Package_base_dir = struct
   let generated_file t generated_file =
     let open Typed_op.Generated_file in
     match (generated_file : t) with
-    | Generated_ocaml_source path -> generated_source_dir t / path
+    | Generated_ocaml_source path -> generated_src_dir t / path
     | Compiled compiled -> generated_file_compiled t compiled
     | Linked_library linked_library -> public_dir t / Linked_library.path linked_library
     | Linked_executable linked_executable ->
@@ -83,11 +83,13 @@ module Package_base_dir = struct
   let gen_file t gen_file =
     let open Typed_op in
     let base =
-      match Gen_file.visibility gen_file with
+      match Gen_file.out_dir gen_file with
       | Private -> private_dir t
       | Private_c -> private_c_dir t
       | Public -> public_dir t
       | Public_for_lsp -> public_for_lsp_dir t
+      | Generated_src -> generated_src_dir t
+      | Executable -> executable_dir t
     in
     base / Gen_file.path gen_file
   ;;

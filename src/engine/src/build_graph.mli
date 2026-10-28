@@ -10,10 +10,10 @@ module Build_plan : sig
   val deps : t -> t list
   val op : t -> Typed_op.t
   val source_input : t -> Absolute_path.non_root_t option
-  val generated_inputs : t -> Typed_op.Generated_file.t list
-  val outputs : t -> Typed_op.Generated_file.Set.t
+  val generated_inputs : t -> Typed_op.Gen_file.t list
+  val outputs : t -> Typed_op.Gen_file.Set.t
   val transitive_closure : t -> t list
-  val transitive_closure_outputs : t -> Typed_op.Generated_file.Set.t
+  val transitive_closure_outputs : t -> Typed_op.Gen_file.Set.t
 end
 
 (** A DAG that knows how to build a collection of interdependent files and the

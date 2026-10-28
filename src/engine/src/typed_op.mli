@@ -15,6 +15,17 @@ module Visibility : sig
     | Public_for_lsp
 end
 
+module Out_dir : sig
+  (** A directory in a package's base direrctory inside the build directory *)
+  type t =
+    | Private
+    | Private_c
+    | Public
+    | Public_for_lsp
+    | Generated_src
+    | Executable
+end
+
 module Src_file : sig
   (** A file in the src directory *)
   type t
@@ -84,14 +95,21 @@ module Gen_file : sig
   (** A file in a package base directory inside the build directory *)
   type t
 
+  module Set : Set.S with type elt = t
+  module Map : Map.S with type key = t
+
   val to_dyn : t -> Dyn.t
   val equal : t -> t -> bool
   val path : t -> Basename.t
-  val visibility : t -> Visibility.t
+  val out_dir : t -> Out_dir.t
   val compiled_ocaml_object_file : Basename.t -> t
-  val to_generated_file_compiled : t -> Generated_file.Compiled.t
+  val compiled_ocaml_interface_file : Basename.t -> t
+  val compiled_c_object_file : Basename.t -> t
   val lib_ocaml_object_file : Compiler_backend.t -> t
+  val lib_ocaml_compiled_interface_file : t
   val exe_ocaml_object_file : Compiler_backend.t -> t
+  val generated_ocaml_src_file : Basename.t -> t
+  val executable : Basename.t -> t
 
   (** An OCaml object file to specify as an output to the compiler when
       generating a library's top-level .cmt file which merlin/ocamllsp will
@@ -103,6 +121,10 @@ module Gen_file : sig
     :  Package_name.t
     -> Compiler_backend.t
     -> t
+
+  (** Interface file that will be generated alongside the .cmt file when
+      generating inputs for merlin/ocamllsp *)
+  val compiled_ocaml_interface_to_generate_library_lsp_files : Package_name.t -> t
 end
 
 module File_type : sig
@@ -206,16 +228,16 @@ module Pack : sig
   val equal : t -> t -> bool
   val of_package_name : Alice_package.Package_name.t -> t
   val package_name : t -> Alice_package.Package_name.t
-  val cmx_file : t -> Generated_file.Compiled.t
+  val compiled_ocaml_object_file : t -> Gen_file.t
   val module_name : t -> Module_name.t
 end
 
 module Compile_ocaml_source : sig
   type t =
     { source_input : Src_file.t
-    ; compiled_inputs : Generated_file.Compiled.t list
+    ; compiled_inputs : Gen_file.t list
     ; compiled_object_output : Gen_file.t
-    ; interface_output_if_no_matching_mli_is_present : cmi File.Compiled.t option
+    ; interface_output_if_no_matching_mli_is_present : Gen_file.t option
     ; stop_after_typing : bool
     }
 
@@ -225,8 +247,8 @@ end
 module Compile_ocaml_interface : sig
   type t =
     { interface_input : Src_file.t
-    ; compiled_inputs : Generated_file.Compiled.t list
-    ; compiled_interface_output : Generated_file.Compiled.t
+    ; compiled_inputs : Gen_file.t list
+    ; compiled_interface_output : Gen_file.t
     ; stop_after_typing : bool
     }
 
@@ -236,7 +258,7 @@ end
 module Compile_c_source : sig
   type t =
     { source_input : Src_file.t
-    ; object_output : Generated_file.Compiled.t
+    ; object_output : Gen_file.t
     }
 
   val to_dyn : t -> Dyn.t
@@ -244,48 +266,45 @@ end
 
 module Pack_library : sig
   type t =
-    { compiled_object_inputs : Generated_file.Compiled.t list
+    { compiled_object_inputs : Gen_file.t list
     ; pack : Pack.t
     }
 end
 
 module Generate_public_interface_to_open : sig
-  type t = { ml_output : File.Generated_ocaml_source.t }
+  type t = { ml_output : Gen_file.t }
 end
 
 module Compile_public_interface_to_open : sig
   type t =
-    { generated_source_input : File.Generated_ocaml_source.t
+    { generated_source_input : Gen_file.t
     ; internal_modules_pack : Pack.t
-    ; compiled_object_output : Generated_file.Compiled.t
-    ; compiled_interface_output : Generated_file.Compiled.t
+    ; compiled_object_output : Gen_file.t
+    ; compiled_interface_output : Gen_file.t
     }
 
-  val create
-    :  generated_source_input:File.Generated_ocaml_source.t
-    -> internal_modules_pack:Pack.t
-    -> t
+  val create : generated_source_input:Gen_file.t -> internal_modules_pack:Pack.t -> t
 end
 
 module Link_library : sig
   type t =
-    { compiled_object_inputs : Generated_file.Compiled.t list
-    ; compiled_c_inputs : Generated_file.Compiled.t list
-    ; cmxa_output : cmxa File.Linked.t
-    ; a_output : a File.Linked.t
+    { compiled_object_inputs : Gen_file.t list
+    ; compiled_c_inputs : Gen_file.t list
+    ; ocaml_archive_output : Gen_file.t
+    ; archive_output : Gen_file.t
     }
 
   val of_inputs
-    :  compiled_object_inputs:Generated_file.Compiled.t list
-    -> compiled_c_inputs:Generated_file.Compiled.t list
+    :  compiled_object_inputs:Gen_file.t list
+    -> compiled_c_inputs:Gen_file.t list
     -> t
 end
 
 module Link_executable : sig
   type t =
-    { compiled_object_inputs : Generated_file.Compiled.t list
-    ; compiled_c_inputs : Generated_file.Compiled.t list
-    ; exe_output : exe_native File.Linked.t
+    { compiled_object_inputs : Gen_file.t list
+    ; compiled_c_inputs : Gen_file.t list
+    ; exe_output : Gen_file.t
     }
 end
 
@@ -302,8 +321,8 @@ type t =
 val equal : t -> t -> bool
 val to_dyn : t -> Dyn.t
 val source_input : t -> Absolute_path.non_root_t option
-val generated_inputs : t -> Generated_file.t list
-val outputs : t -> Generated_file.t list
+val generated_inputs : t -> Gen_file.t list
+val outputs : t -> Gen_file.t list
 
 module Set : Set.S with type elt = t
 module Map : Map.S with type key = t

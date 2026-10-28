@@ -104,8 +104,8 @@ Initial build:
    [INFO] [foo v0.1.0] Building targets: foo_dep.cmi, foo_dep.cmti
    [INFO] [foo v0.1.0] Building targets: foo_dep.cmt, foo_dep.cmx
    [INFO] [foo v0.1.0] Building targets: internal_modules_of_foo.cmx
+   [INFO] [foo v0.1.0] Building targets: lib.a, lib.cmxa
    [INFO] [foo v0.1.0] Building targets: lib.cmi, lib.cmt, lib.cmx
-   [INFO] [foo v0.1.0] Building targets: lib.cmxa, lib.a
    [INFO] [foo v0.1.0] Building targets: main.cmi, main.cmt, main.cmx
    [INFO] [foo v0.1.0] Building targets: public_interface_to_open_of_foo.cmx
    [INFO] [foo v0.1.0] Building targets: public_interface_to_open_of_foo.ml
@@ -125,8 +125,8 @@ the dependency graph from this file to the output should be rebuilt:
    [INFO] [foo v0.1.0] Building targets: foo.cmt, foo.cmx
    [INFO] [foo v0.1.0] Building targets: foo_dep.cmt, foo_dep.cmx
    [INFO] [foo v0.1.0] Building targets: internal_modules_of_foo.cmx
+   [INFO] [foo v0.1.0] Building targets: lib.a, lib.cmxa
    [INFO] [foo v0.1.0] Building targets: lib.cmi, lib.cmt, lib.cmx
-   [INFO] [foo v0.1.0] Building targets: lib.cmxa, lib.a
    [INFO] [foo v0.1.0] Building targets: main.cmi, main.cmt, main.cmx
    [INFO] [foo v0.1.0] Building targets: public_interface_to_open_of_foo.cmx
    [INFO] [foo v0.1.0] Loading ocamldeps cache from: build/packages/foo-0.1.0/native/ocamldeps_cache.marshal
@@ -159,8 +159,8 @@ Change an interface and rebuild:
    [INFO] [foo v0.1.0] Building targets: foo.cmi, foo.cmti
    [INFO] [foo v0.1.0] Building targets: foo.cmt, foo.cmx
    [INFO] [foo v0.1.0] Building targets: internal_modules_of_foo.cmx
+   [INFO] [foo v0.1.0] Building targets: lib.a, lib.cmxa
    [INFO] [foo v0.1.0] Building targets: lib.cmi, lib.cmt, lib.cmx
-   [INFO] [foo v0.1.0] Building targets: lib.cmxa, lib.a
    [INFO] [foo v0.1.0] Building targets: main.cmi, main.cmt, main.cmx
    [INFO] [foo v0.1.0] Building targets: public_interface_to_open_of_foo.cmx
    [INFO] [foo v0.1.0] Loading ocamldeps cache from: build/packages/foo-0.1.0/native/ocamldeps_cache.marshal
