@@ -223,6 +223,16 @@ module Action_builder = struct
     Package_base_dir.gen_file t.package_base_dir gen_file |> Absolute_path.to_filename
   ;;
 
+  let ocaml_compiler_command t args =
+    let ocaml_compiler_command_base =
+      match t.build_config.compiler_backend with
+      | Native -> Ocaml_toolchain.ocamlopt_command
+      | Bytecode -> Ocaml_toolchain.ocamlc_command
+    in
+    let args = Profile.ocaml_compiler_args t.build_config.profile @ args in
+    ocaml_compiler_command_base t.build_config.ocaml_toolchain ~args
+  ;;
+
   let op_action t op : Action.t =
     match (op : Op.t) with
     | Compile_ocaml_source { source_input; compiled_object_output; stop_after_typing; _ }
@@ -243,22 +253,20 @@ module Action_builder = struct
         | _ -> t.compile_args.non_lsp_only
       in
       Command
-        (Profile.ocamlopt_command
-           t.build_config.profile
-           t.build_config.ocaml_toolchain
-           ~args:
-             (t.dep_args.include_
-              @ t.dep_args.open_
-              @ lsp_output_args
-              @ stop_after_typing_args
-              @ t.compile_args.builtin_modules
-              @ [ "-c"
-                ; "-bin-annot" (* Needed for LSP *)
-                ; "-o"
-                ; gen_file_absolute_filename t compiled_object_output
-                ; "-impl"
-                ; Absolute_path.to_filename @@ Src_file.to_path_ml source_input
-                ]))
+        (ocaml_compiler_command
+           t
+           (t.dep_args.include_
+            @ t.dep_args.open_
+            @ lsp_output_args
+            @ stop_after_typing_args
+            @ t.compile_args.builtin_modules
+            @ [ "-c"
+              ; "-bin-annot" (* Needed for LSP *)
+              ; "-o"
+              ; gen_file_absolute_filename t compiled_object_output
+              ; "-impl"
+              ; Absolute_path.to_filename @@ Src_file.to_path_ml source_input
+              ]))
     | Compile_ocaml_interface
         { interface_input; compiled_interface_output; stop_after_typing; _ } ->
       let stop_after_typing_args =
@@ -270,22 +278,20 @@ module Action_builder = struct
         | _ -> t.compile_args.non_lsp_only
       in
       Command
-        (Profile.ocamlopt_command
-           t.build_config.profile
-           t.build_config.ocaml_toolchain
-           ~args:
-             (t.dep_args.include_
-              @ t.dep_args.open_
-              @ stop_after_typing_args
-              @ lsp_output_args
-              @ t.compile_args.builtin_modules
-              @ [ "-c"
-                ; "-bin-annot" (* Needed for LSP *)
-                ; "-o"
-                ; gen_file_absolute_filename t compiled_interface_output
-                ; "-intf"
-                ; Absolute_path.to_filename @@ Src_file.to_path_mli interface_input
-                ]))
+        (ocaml_compiler_command
+           t
+           (t.dep_args.include_
+            @ t.dep_args.open_
+            @ stop_after_typing_args
+            @ lsp_output_args
+            @ t.compile_args.builtin_modules
+            @ [ "-c"
+              ; "-bin-annot" (* Needed for LSP *)
+              ; "-o"
+              ; gen_file_absolute_filename t compiled_interface_output
+              ; "-intf"
+              ; Absolute_path.to_filename @@ Src_file.to_path_mli interface_input
+              ]))
     | Compile_c_source { source_input; object_output } ->
       (* Arguments to tell the OCaml compiler to tell the C compiler (which
          it invokes) to put the compiled object file at the expected path: *)
@@ -293,12 +299,9 @@ module Action_builder = struct
         [ "-ccopt"; "-o"; "-ccopt"; gen_file_absolute_filename t object_output ]
       in
       Command
-        (Profile.ocamlopt_command
-           t.build_config.profile
-           t.build_config.ocaml_toolchain
-           ~args:
-             ([ Absolute_path.to_filename @@ Src_file.to_path_c source_input ]
-              @ output_args))
+        (ocaml_compiler_command
+           t
+           ([ Absolute_path.to_filename @@ Src_file.to_path_c source_input ] @ output_args))
     | Pack_library { compiled_object_inputs; pack; _ } ->
       let package_pack =
         Package_with_deps.name t.package_with_deps |> Op.Pack.of_package_name
@@ -313,15 +316,13 @@ module Action_builder = struct
               (Package_name.to_string @@ Op.Pack.package_name package_pack)
           ];
       Command
-        (Profile.ocamlopt_command
-           t.build_config.profile
-           t.build_config.ocaml_toolchain
-           ~args:
-             (List.map compiled_object_inputs ~f:(gen_file_absolute_filename t)
-              @ [ "-pack"
-                ; "-o"
-                ; gen_file_absolute_filename t (Op.Pack.compiled_ocaml_object_file pack)
-                ]))
+        (ocaml_compiler_command
+           t
+           (List.map compiled_object_inputs ~f:(gen_file_absolute_filename t)
+            @ [ "-pack"
+              ; "-o"
+              ; gen_file_absolute_filename t (Op.Pack.compiled_ocaml_object_file pack)
+              ]))
     | Generate_public_interface_to_open { ml_output } ->
       let output_path = Package_base_dir.gen_file t.package_base_dir ml_output in
       let public_interface_to_open =
@@ -335,33 +336,29 @@ module Action_builder = struct
         / Gen_file.path generated_source_input
       in
       Action.Command
-        (Profile.ocamlopt_command
-           t.build_config.profile
-           t.build_config.ocaml_toolchain
-           ~args:
-             [ "-I"
-             ; Absolute_path.to_filename t.dirs.public
-             ; "-c"
-             ; "-o"
-             ; gen_file_absolute_filename t compiled_object_output
-             ; "-impl"
-             ; Absolute_path.to_filename impl
-             ])
+        (ocaml_compiler_command
+           t
+           [ "-I"
+           ; Absolute_path.to_filename t.dirs.public
+           ; "-c"
+           ; "-o"
+           ; gen_file_absolute_filename t compiled_object_output
+           ; "-impl"
+           ; Absolute_path.to_filename impl
+           ])
     | Link_library { compiled_object_inputs; ocaml_archive_output; compiled_c_inputs; _ }
       ->
       Command
-        (Profile.ocamlopt_command
-           t.build_config.profile
-           t.build_config.ocaml_toolchain
-           ~args:
-             (t.dep_args.include_
-              @ List.map compiled_c_inputs ~f:(gen_file_absolute_filename t)
-              @ List.map compiled_object_inputs ~f:(gen_file_absolute_filename t)
-              @ [ "-a"
-                ; "-o"
-                ; Absolute_path.to_filename
-                  @@ (t.dirs.public / Gen_file.path ocaml_archive_output)
-                ]))
+        (ocaml_compiler_command
+           t
+           (t.dep_args.include_
+            @ List.map compiled_c_inputs ~f:(gen_file_absolute_filename t)
+            @ List.map compiled_object_inputs ~f:(gen_file_absolute_filename t)
+            @ [ "-a"
+              ; "-o"
+              ; Absolute_path.to_filename
+                @@ (t.dirs.public / Gen_file.path ocaml_archive_output)
+              ]))
     | Link_executable { compiled_object_inputs; exe_output; compiled_c_inputs } ->
       let builtin_module_args =
         Builtin_module.Set.to_list t.dep_closure_builtin_modules
@@ -372,18 +369,15 @@ module Action_builder = struct
           |> Absolute_path.to_filename)
       in
       Command
-        (Profile.ocamlopt_command
-           t.build_config.profile
-           t.build_config.ocaml_toolchain
-           ~args:
-             (builtin_module_args
-              @ t.dep_args.cmxa_files
-              @ List.map compiled_c_inputs ~f:(gen_file_absolute_filename t)
-              @ List.map compiled_object_inputs ~f:(gen_file_absolute_filename t)
-              @ [ "-o"
-                ; Absolute_path.to_filename
-                  @@ (t.dirs.executable / Gen_file.path exe_output)
-                ]))
+        (ocaml_compiler_command
+           t
+           (builtin_module_args
+            @ t.dep_args.cmxa_files
+            @ List.map compiled_c_inputs ~f:(gen_file_absolute_filename t)
+            @ List.map compiled_object_inputs ~f:(gen_file_absolute_filename t)
+            @ [ "-o"
+              ; Absolute_path.to_filename @@ (t.dirs.executable / Gen_file.path exe_output)
+              ]))
   ;;
 end
 
