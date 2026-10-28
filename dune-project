@@ -24,7 +24,9 @@
   "Alice is a radical, experimental OCaml build system, package manager, and toolchain manager for Windows, macOS, and Linux. Its goal is to allow anyone to program in OCaml with as little friction as possible.")
  (depends
   (ocaml
-   (>= "5.1"))
+   (and
+    (>= "5.1")
+    (< "5.4")))
   (climate
    (>= "0.9"))
   sha
