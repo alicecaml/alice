@@ -24,7 +24,10 @@ RUN opam init --disable-sandbox --auto-setup --bare
 RUN opam switch create . --empty
 RUN opam repo add alice git+https://github.com/alicecaml/alice-opam-repo --all-switches
 RUN opam update
-RUN opam install -y ocaml-system.5.3.1+relocatable dune
+
+# Freeze Dune at an old version since new versions attempt to load a shared
+# library while building which is not supported on this platform.
+RUN opam install -y ocaml-system.5.3.1+relocatable dune.3.21.0
 ENV DUNE_PROFILE=static
 RUN opam exec dune build
 
