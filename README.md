@@ -291,6 +291,10 @@ n/a
 (This dune doesn't know its version because it wasn't released in the proper
 way but it will still work for us.)
 
+If you get an error like `Program 'dune.exe' failed to run: An Application
+Control policy has blocked this file` try turning off a Windows feature called
+"Smart App Control" (though do so at your own risk!).
+
 In total all the `$env:PATH` additions we needed are:
 ```powershell
 # OCaml toolchain installed by Alice.
