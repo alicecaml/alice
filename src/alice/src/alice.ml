@@ -2,7 +2,7 @@ open! Alice_stdlib
 open Climate
 module Tools = Tools
 
-let version = "0.6.0-alpha2"
+let version = "0.6.0-alpha3"
 
 let command =
   let tagline = "Alice is a build system for OCaml projects." in
