@@ -10,7 +10,7 @@ homepage: "https://alicecaml.org"
 bug-reports: "https://github.com/alicecaml/alice/issues"
 depends: [
   "dune" {>= "3.20"}
-  "ocaml" {>= "5.1"}
+  "ocaml" {>= "5.1" & < "5.4"}
   "climate" {>= "0.9"}
   "sha"
   "dyn"
