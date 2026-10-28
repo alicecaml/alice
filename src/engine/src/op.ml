@@ -659,7 +659,7 @@ include T
 module Map = Map.Make (T)
 module Set = Set.Make (T)
 
-let source_input = function
+let src_input = function
   | Compile_ocaml_source { source_input; _ } -> Some source_input
   | Compile_ocaml_interface { interface_input; _ } -> Some interface_input
   | Compile_c_source { source_input; _ } -> Some source_input

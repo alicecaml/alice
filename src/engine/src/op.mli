@@ -165,7 +165,7 @@ type t =
 
 val equal : t -> t -> bool
 val to_dyn : t -> Dyn.t
-val source_input : t -> Absolute_path.non_root_t option
+val src_input : t -> Absolute_path.non_root_t option
 val generated_inputs : t -> Gen_file.t list
 val outputs : t -> Gen_file.t list
 

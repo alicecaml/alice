@@ -415,7 +415,7 @@ let incremental_files_to_build build_plan package_base_dir =
         | true ->
           (* File exists. If it has a source file, compare the source
              file's mtime with this file's mtime. *)
-          (match Build_plan.source_input build_plan with
+          (match Build_plan.src_input build_plan with
            | None ->
              (* No source dependency, so no need ot rebuild. *)
              false

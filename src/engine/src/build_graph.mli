@@ -9,7 +9,7 @@ module Build_plan : sig
   val equal : t -> t -> bool
   val deps : t -> t list
   val op : t -> Op.t
-  val source_input : t -> Absolute_path.non_root_t option
+  val src_input : t -> Absolute_path.non_root_t option
   val generated_inputs : t -> Op.Gen_file.t list
   val outputs : t -> Op.Gen_file.Set.t
   val transitive_closure : t -> t list

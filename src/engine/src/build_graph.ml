@@ -159,7 +159,7 @@ module Build_plan = struct
   let equal = equal ~eq:Unit.equal
   let deps t = children t
   let op t = name t
-  let source_input t = Op.source_input (op t)
+  let src_input t = Op.src_input (op t)
   let generated_inputs t = Op.generated_inputs (op t)
   let outputs t = Op.outputs (op t) |> Op.Gen_file.Set.of_list
   let transitive_closure t = transitive_closure_in_child_first_order t ~include_start:true
@@ -591,7 +591,7 @@ let dot { build_dag; _ } =
     let op = Build_plan.op node in
     let inputs =
       (Op.generated_inputs op |> List.map ~f:gen_file_to_string)
-      @ (Op.source_input op
+      @ (Op.src_input op
          |> Option.map ~f:(fun path ->
            Absolute_path.basename path |> Basename.to_filename)
          |> Option.to_list)
