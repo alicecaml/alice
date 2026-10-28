@@ -85,7 +85,7 @@ module Action_builder = struct
     }
 
   type dep_args =
-    { cmxa_files : string list
+    { ocaml_archive_files : string list
     ; include_ : string list
     ; open_ : string list
     }
@@ -109,6 +109,7 @@ module Action_builder = struct
     ; dep_args : dep_args
     ; dirs : dirs
     ; dep_closure_builtin_modules : Builtin_module.Set.t
+    ; custom_linker_args_for_bytecode_backend : string list lazy_t
     }
 
   let create
@@ -134,9 +135,11 @@ module Action_builder = struct
         (Package.Typed.id dep)
         build_config
     in
-    let package_pack = Op.Pack.of_package_name (Package.name package) in
+    let package_pack =
+      Op.Pack.create (Package.name package) build_config.compiler_backend
+    in
     let dep_args =
-      let cmxa_files =
+      let ocaml_archive_files =
         let transitive_dep_libs =
           Package_with_deps.transitive_dependency_closure_excluding_package
             package_with_deps
@@ -163,7 +166,7 @@ module Action_builder = struct
           let public = dep_package_base_dir dep_lib |> Package_base_dir.public_dir in
           [ "-I"; Absolute_path.to_filename public ])
       in
-      { cmxa_files; open_; include_ }
+      { ocaml_archive_files; open_; include_ }
     in
     let dirs : dirs =
       let private_ = Package_base_dir.private_dir package_base_dir in
@@ -209,6 +212,24 @@ module Action_builder = struct
         ~f:(fun acc dep ->
           Builtin_module.Set.union acc (Package.Typed.builtin_modules dep))
     in
+    let custom_linker_args_for_bytecode_backend =
+      lazy
+        (match build_config.compiler_backend with
+         | Native -> []
+         | Bytecode ->
+           (* Bytecode executables must be linked with "-custom" if there is
+              any C code among the transitive closure of the package's
+              dependencies. *)
+           let c_code_in_transitive_closure =
+             List.exists transitive_dep_libs ~f:(fun dep ->
+               let c_dir_path =
+                 dep_package_base_dir dep |> Package_base_dir.private_c_dir
+               in
+               let c_dir = Alice_io.Read_hierarchy.read_dir_exn c_dir_path in
+               not (List.is_empty c_dir.contents))
+           in
+           if c_code_in_transitive_closure then [ "-custom" ] else [])
+    in
     { package_with_deps
     ; package_base_dir
     ; build_config
@@ -216,6 +237,7 @@ module Action_builder = struct
     ; compile_args
     ; dirs
     ; dep_closure_builtin_modules
+    ; custom_linker_args_for_bytecode_backend
     }
   ;;
 
@@ -304,7 +326,9 @@ module Action_builder = struct
            ([ Absolute_path.to_filename @@ Src_file.to_path_c source_input ] @ output_args))
     | Pack_library { compiled_object_inputs; pack; _ } ->
       let package_pack =
-        Package_with_deps.name t.package_with_deps |> Op.Pack.of_package_name
+        Op.Pack.create
+          (Package_with_deps.name t.package_with_deps)
+          t.build_config.compiler_backend
       in
       if not (Op.Pack.equal pack package_pack)
       then
@@ -371,8 +395,9 @@ module Action_builder = struct
       Command
         (ocaml_compiler_command
            t
-           (builtin_module_args
-            @ t.dep_args.cmxa_files
+           (Lazy.force t.custom_linker_args_for_bytecode_backend
+            @ builtin_module_args
+            @ t.dep_args.ocaml_archive_files
             @ List.map compiled_c_inputs ~f:(gen_file_absolute_filename t)
             @ List.map compiled_object_inputs ~f:(gen_file_absolute_filename t)
             @ [ "-o"

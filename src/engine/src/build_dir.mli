@@ -26,6 +26,7 @@ module Package_base_dir : sig
   val build_dir : t -> build_dir
   val generated_src_dir : t -> Absolute_path.non_root_t
   val private_dir : t -> Absolute_path.non_root_t
+  val private_c_dir : t -> Absolute_path.non_root_t
   val public_dir : t -> Absolute_path.non_root_t
 
   (** Directory for files generated for consumption by LSP. If package internals

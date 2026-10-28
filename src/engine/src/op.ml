@@ -220,18 +220,37 @@ module Gen_file = struct
 end
 
 module Pack = struct
-  type t = Package_name.t
+  type t =
+    { package_name : Package_name.t
+    ; compiler_backend : Compiler_backend.t
+    }
 
-  let equal = Package_name.equal
-  let compare = Package_name.compare
-  let to_dyn = Package_name.to_dyn
-  let of_package_name t = t
-  let package_name t = t
-  let module_name t = Module_name.internal_modules t
+  let equal t { package_name; compiler_backend } =
+    Package_name.equal t.package_name package_name
+    && Compiler_backend.equal t.compiler_backend compiler_backend
+  ;;
+
+  let compare t { package_name; compiler_backend } =
+    let open Compare in
+    let= () = Package_name.compare t.package_name package_name in
+    Compiler_backend.compare t.compiler_backend compiler_backend
+  ;;
+
+  let to_dyn { package_name; compiler_backend } =
+    Dyn.record
+      [ "package_name", Package_name.to_dyn package_name
+      ; "compiler_backend", Compiler_backend.to_dyn compiler_backend
+      ]
+  ;;
+
+  let create package_name compiler_backend = { package_name; compiler_backend }
+  let package_name { package_name; _ } = package_name
+  let module_name t = Module_name.internal_modules (package_name t)
 
   let compiled_ocaml_object_file t =
     Module_name.basename_without_extension (module_name t)
-    |> Basename.add_extension ~ext:".cmx"
+    |> Basename.add_extension
+         ~ext:(Compiler_backend.ocaml_object_file_ext t.compiler_backend)
     |> Gen_file.compiled_ocaml_object_file_public
   ;;
 end
@@ -414,12 +433,14 @@ module Compile_public_interface_to_open = struct
     ; compiled_interface_output : Gen_file.t
     }
 
-  let create ~generated_source_input ~internal_modules_pack =
+  let create ~generated_source_input ~internal_modules_pack compiler_backend =
     let basename = Gen_file.path generated_source_input in
     { generated_source_input
     ; internal_modules_pack
     ; compiled_object_output =
-        Basename.replace_extension basename ~ext:".cmx"
+        Basename.replace_extension
+          basename
+          ~ext:(Compiler_backend.ocaml_object_file_ext compiler_backend)
         |> Gen_file.compiled_ocaml_object_file_public
     ; compiled_interface_output =
         Basename.replace_extension basename ~ext:".cmi"
@@ -477,7 +498,7 @@ module Link_library = struct
     { compiled_object_inputs : Gen_file.t list
     ; compiled_c_inputs : Gen_file.t list
     ; ocaml_archive_output : Gen_file.t
-    ; archive_output : Gen_file.t
+    ; archive_output : Gen_file.t option
     }
 
   let equal
@@ -492,7 +513,7 @@ module Link_library = struct
     List.equal t.compiled_object_inputs compiled_object_inputs ~eq
     && List.equal t.compiled_c_inputs compiled_c_inputs ~eq
     && eq t.ocaml_archive_output ocaml_archive_output
-    && eq t.archive_output archive_output
+    && Option.equal ~eq t.archive_output archive_output
   ;;
 
   let compare
@@ -507,8 +528,8 @@ module Link_library = struct
     let open Compare in
     let= () = List.compare ~cmp t.compiled_object_inputs compiled_object_inputs in
     let= () = List.compare ~cmp t.compiled_c_inputs compiled_c_inputs in
-    let= () = Gen_file.compare t.ocaml_archive_output ocaml_archive_output in
-    Gen_file.compare t.archive_output archive_output
+    let= () = cmp t.ocaml_archive_output ocaml_archive_output in
+    Option.compare ~cmp t.archive_output archive_output
   ;;
 
   let to_dyn
@@ -522,15 +543,21 @@ module Link_library = struct
       [ "compiled_object_inputs", Dyn.list Gen_file.to_dyn compiled_object_inputs
       ; "compiled_c_inputs", Dyn.list Gen_file.to_dyn compiled_c_inputs
       ; "ocaml_archive_output", Gen_file.to_dyn ocaml_archive_output
-      ; "archive_output", Gen_file.to_dyn archive_output
+      ; "archive_output", Dyn.option Gen_file.to_dyn archive_output
       ]
   ;;
 
-  let of_inputs ~compiled_object_inputs ~compiled_c_inputs =
+  let of_inputs ~compiled_object_inputs ~compiled_c_inputs compiler_backend =
+    let archive_output =
+      (* lib.a is only produced when compiling with the native backend *)
+      match (compiler_backend : Compiler_backend.t) with
+      | Native -> Some Gen_file.lib_archive_file
+      | Bytecode -> None
+    in
     { compiled_object_inputs
     ; compiled_c_inputs
-    ; ocaml_archive_output = Gen_file.lib_ocaml_archive_file Native
-    ; archive_output = Gen_file.lib_archive_file
+    ; ocaml_archive_output = Gen_file.lib_ocaml_archive_file compiler_backend
+    ; archive_output
     }
   ;;
 end
@@ -705,6 +732,6 @@ let outputs = function
   | Compile_public_interface_to_open { compiled_object_output; _ } ->
     [ compiled_object_output ]
   | Link_library { ocaml_archive_output; archive_output; _ } ->
-    [ ocaml_archive_output; archive_output ]
+    ocaml_archive_output :: Option.to_list archive_output
   | Link_executable { exe_output; _ } -> [ exe_output ]
 ;;

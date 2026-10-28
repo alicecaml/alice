@@ -40,9 +40,9 @@ module Package_base_dir = struct
   let private_dir t = t.path / b "private"
 
   (* Directory for containing the object files compiled from C code in the src
-   directory. This is separate from the "private" directory because otherwise a
-   C source file with the same name as an OCaml source file (besides the
-   extension) would collide in their compiled object file. *)
+     directory. This is separate from the "private" directory because otherwise a
+     C source file with the same name as an OCaml source file (besides the
+     extension) would collide in their compiled object file. *)
   let private_c_dir t = t.path / b "private_c"
   let public_dir t = t.path / b "public"
   let public_for_lsp_dir t = t.path / b "public_for_lsp"

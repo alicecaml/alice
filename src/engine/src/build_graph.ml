@@ -216,15 +216,7 @@ let compute_ocaml_compilation_ops
               match build_config.compiler_backend with
               | Native -> []
               | Bytecode ->
-                let ml_of_cmi = Basename.replace_extension dep ~ext:".ml" in
-                let ml_current_source =
-                  Src_file.to_path_ml source_input |> Absolute_path.basename
-                in
-                if
-                  Basename.Set.mem ml_of_cmi src_file_names
-                  && not (Basename.equal ml_of_cmi ml_current_source)
-                then
-                  (* Ocamldep doesn't report dependencies between bytecode object
+                (* Ocamldep doesn't report dependencies between bytecode object
                    files the same way it reports dependencies between native object files.
                    Dependencies between native object files are expressed as a .cmx file depending on
                    another .cmx file, however dependencies between bytecode object files are
@@ -237,6 +229,14 @@ let compute_ocaml_compilation_ops
                    during compilation, but it's not expected to regurlarly be building bytecode
                    projects. If this turns out to be false we can better optimise this case in the
                    future. *)
+                let ml_of_cmi = Basename.replace_extension dep ~ext:".ml" in
+                let ml_current_source =
+                  Src_file.to_path_ml source_input |> Absolute_path.basename
+                in
+                if
+                  Basename.Set.mem ml_of_cmi src_file_names
+                  && not (Basename.equal ml_of_cmi ml_current_source)
+                then
                   [ Gen_file.compiled_ocaml_object_file
                     @@ Basename.replace_extension dep ~ext:".cmo"
                   ]
@@ -378,7 +378,7 @@ let lsp_ops build_dag_ocaml_compilation_only package compiler_backend =
     in
     let compiled_inputs =
       let pack_output =
-        let pack = Op.Pack.of_package_name (Package.name package) in
+        let pack = Op.Pack.create (Package.name package) compiler_backend in
         Op.Pack.compiled_ocaml_object_file pack
       in
       (* Add the package's internal modules pack to the dependencies of this
@@ -408,7 +408,7 @@ let lsp_ops build_dag_ocaml_compilation_only package compiler_backend =
       in
       let compiled_inputs =
         let pack_output =
-          let pack = Op.Pack.of_package_name (Package.name package) in
+          let pack = Op.Pack.create (Package.name package) compiler_backend in
           Op.Pack.compiled_ocaml_object_file pack
         in
         (* Add the package's internal modules pack to the dependencies of this
@@ -473,7 +473,7 @@ let create
         build_dag_ocaml_compilation_only
         build_config.compiler_backend
     in
-    let pack = Op.Pack.of_package_name (Package.name package) in
+    let pack = Op.Pack.create (Package.name package) build_config.compiler_backend in
     let pack_op = Pack_library { compiled_object_inputs = ocaml_object_files; pack } in
     let public_interface_to_open_ml =
       Module_name.public_interface_to_open (Package.name package)
@@ -488,6 +488,7 @@ let create
       Compile_public_interface_to_open.create
         ~generated_source_input:public_interface_to_open_ml
         ~internal_modules_pack:pack
+        build_config.compiler_backend
     in
     let compile_public_interface_to_open_op =
       Compile_public_interface_to_open compile_public_interface_to_open
@@ -499,7 +500,8 @@ let create
              [ Op.Pack.compiled_ocaml_object_file pack
              ; compile_public_interface_to_open.compiled_object_output
              ]
-           ~compiled_c_inputs:compiled_c_object_files)
+           ~compiled_c_inputs:compiled_c_object_files
+           build_config.compiler_backend)
     in
     [ pack_op
     ; generate_public_interface_to_open_op

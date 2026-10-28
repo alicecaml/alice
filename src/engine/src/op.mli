@@ -70,9 +70,9 @@ end
 module Pack : sig
   type t
 
+  val create : Package_name.t -> Compiler_backend.t -> t
   val equal : t -> t -> bool
-  val of_package_name : Alice_package.Package_name.t -> t
-  val package_name : t -> Alice_package.Package_name.t
+  val package_name : t -> Package_name.t
   val compiled_ocaml_object_file : t -> Gen_file.t
   val module_name : t -> Module_name.t
 end
@@ -128,7 +128,11 @@ module Compile_public_interface_to_open : sig
     ; compiled_interface_output : Gen_file.t
     }
 
-  val create : generated_source_input:Gen_file.t -> internal_modules_pack:Pack.t -> t
+  val create
+    :  generated_source_input:Gen_file.t
+    -> internal_modules_pack:Pack.t
+    -> Compiler_backend.t
+    -> t
 end
 
 module Link_library : sig
@@ -136,12 +140,13 @@ module Link_library : sig
     { compiled_object_inputs : Gen_file.t list
     ; compiled_c_inputs : Gen_file.t list
     ; ocaml_archive_output : Gen_file.t
-    ; archive_output : Gen_file.t
+    ; archive_output : Gen_file.t option
     }
 
   val of_inputs
     :  compiled_object_inputs:Gen_file.t list
     -> compiled_c_inputs:Gen_file.t list
+    -> Compiler_backend.t
     -> t
 end
 
