@@ -16,3 +16,9 @@ Test that programs run with `alice run` see the expected arguments via argv.
      Running build/packages/echo-0.1.0/native/debug/executable/echo
   
   foo bar baz
+
+  $ alice run --normalize-paths -b bytecode -- foo bar baz
+   Compiling echo v0.1.0
+     Running build/packages/echo-0.1.0/bytecode/debug/executable/echo
+  
+  foo bar baz

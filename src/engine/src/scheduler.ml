@@ -121,18 +121,17 @@ module Action_builder = struct
     let package = Package_with_deps.package package_with_deps in
     let transitive_dep_libs =
       Package_with_deps.transitive_dependency_closure_excluding_package package_with_deps
+      |> List.map ~f:Package.Typed.package
     in
-    let dep_package_base_dir dep =
+    let get_package_base_dir package =
       let build_dir =
         match built_artifacts_from_deps with
         | false -> Package_base_dir.build_dir package_base_dir
-        | true ->
-          let dep_package = Package.Typed.package dep in
-          Build_dir.of_project_root_path (Package.root dep_package)
+        | true -> Build_dir.of_project_root_path (Package.root package)
       in
       Build_dir.package_base_dir_of_build_config
         build_dir
-        (Package.Typed.id dep)
+        (Package.id package)
         build_config
     in
     let package_pack =
@@ -140,12 +139,8 @@ module Action_builder = struct
     in
     let dep_args =
       let ocaml_archive_files =
-        let transitive_dep_libs =
-          Package_with_deps.transitive_dependency_closure_excluding_package
-            package_with_deps
-        in
         List.map transitive_dep_libs ~f:(fun dep_lib ->
-          let public = dep_package_base_dir dep_lib |> Package_base_dir.public_dir in
+          let public = get_package_base_dir dep_lib |> Package_base_dir.public_dir in
           let archive =
             Gen_file.lib_ocaml_archive_file build_config.compiler_backend |> Gen_file.path
           in
@@ -163,7 +158,7 @@ module Action_builder = struct
       in
       let include_ =
         List.concat_map transitive_dep_libs ~f:(fun dep_lib ->
-          let public = dep_package_base_dir dep_lib |> Package_base_dir.public_dir in
+          let public = get_package_base_dir dep_lib |> Package_base_dir.public_dir in
           [ "-I"; Absolute_path.to_filename public ])
       in
       { ocaml_archive_files; open_; include_ }
@@ -208,9 +203,13 @@ module Action_builder = struct
     let dep_closure_builtin_modules =
       List.fold_left
         transitive_dep_libs
-        ~init:(Package_with_deps.builtin_modules package_with_deps)
-        ~f:(fun acc dep ->
-          Builtin_module.Set.union acc (Package.Typed.builtin_modules dep))
+        ~init:(Package.builtin_modules package)
+        ~f:(fun acc dep -> Builtin_module.Set.union acc (Package.builtin_modules dep))
+    in
+    let package_has_c_code package =
+      let src_dir = Package.src_dir_exn package in
+      List.exists src_dir.contents ~f:(fun (file : File_non_root.t) ->
+        Absolute_path.has_extension file.path ~ext:".c")
     in
     let custom_linker_args_for_bytecode_backend =
       lazy
@@ -218,15 +217,10 @@ module Action_builder = struct
          | Native -> []
          | Bytecode ->
            (* Bytecode executables must be linked with "-custom" if there is
-              any C code among the transitive closure of the package's
-              dependencies. *)
+              any C code in the package or among the transitive closure of the
+              package's dependencies. *)
            let c_code_in_transitive_closure =
-             List.exists transitive_dep_libs ~f:(fun dep ->
-               let c_dir_path =
-                 dep_package_base_dir dep |> Package_base_dir.private_c_dir
-               in
-               let c_dir = Alice_io.Read_hierarchy.read_dir_exn c_dir_path in
-               not (List.is_empty c_dir.contents))
+             List.exists (package :: transitive_dep_libs) ~f:package_has_c_code
            in
            if c_code_in_transitive_closure then [ "-custom" ] else [])
     in
@@ -387,8 +381,9 @@ module Action_builder = struct
       let builtin_module_args =
         Builtin_module.Set.to_list t.dep_closure_builtin_modules
         |> List.map ~f:(fun builtin_module ->
-          Ocaml_toolchain.builtin_module_cmxa
+          Ocaml_toolchain.builtin_module_ocaml_archive
             t.build_config.ocaml_toolchain
+            t.build_config.compiler_backend
             builtin_module
           |> Absolute_path.to_filename)
       in

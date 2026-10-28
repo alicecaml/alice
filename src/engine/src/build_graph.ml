@@ -210,7 +210,7 @@ let compute_ocaml_compilation_ops
       let compiled_inputs =
         List.concat_map deps.inputs ~f:(fun dep ->
           match Basename.extension dep with
-          | ".cmx" -> [ Gen_file.compiled_ocaml_object_file dep ]
+          | ".cmx" | ".cmo" -> [ Gen_file.compiled_ocaml_object_file dep ]
           | ".cmi" ->
             let cmx_of_cmi =
               match build_config.compiler_backend with
@@ -280,7 +280,7 @@ let compute_ocaml_compilation_ops
       let compiled_inputs =
         List.map deps.inputs ~f:(fun dep ->
           match Basename.extension dep with
-          | ".cmx" -> Gen_file.compiled_ocaml_object_file dep
+          | ".cmx" | ".cmo" -> Gen_file.compiled_ocaml_object_file dep
           | ".cmi" -> Gen_file.compiled_ocaml_interface_file dep
           | other ->
             panic

@@ -69,9 +69,44 @@ Print the dependency graph of the project:
     "public_interface_to_open_of_foo.ml" -> {}
   }
 
+Print the dependency graph of the project when building with the bytecode compiler:
+  $ alice dot artifacts --normalize-paths -b bytecode
+  digraph {
+    "bar.cmi" -> {"bar.ml"}
+    "bar.cmo" -> {"bar.ml"}
+    "bar.cmt" -> {"bar.ml"}
+    "foo" -> {"bar.cmo", "foo.cmo", "foo_dep.cmo", "lib.cmo", "main.cmo"}
+    "foo.cmi" -> {"foo.mli"}
+    "foo.cmi (for lsp)" -> {"bar.cmo", "foo.cmi", "foo.cmo", "internal_modules_of_foo.cmo", "lib.ml"}
+    "foo.cmo" -> {"foo.cmi", "foo.ml", "foo_dep.cmi", "foo_dep.cmo"}
+    "foo.cmt" -> {"foo.cmi", "foo.ml", "foo_dep.cmi", "foo_dep.cmo"}
+    "foo.cmt (for lsp)" -> {"bar.cmo", "foo.cmi", "foo.cmo", "internal_modules_of_foo.cmo", "lib.ml"}
+    "foo.cmti" -> {"foo.mli"}
+    "foo_dep.cmi" -> {"foo_dep.mli"}
+    "foo_dep.cmo" -> {"foo_dep.cmi", "foo_dep.ml"}
+    "foo_dep.cmt" -> {"foo_dep.cmi", "foo_dep.ml"}
+    "foo_dep.cmti" -> {"foo_dep.mli"}
+    "internal_modules_of_foo.cmo" -> {"bar.cmo", "foo.cmo", "foo_dep.cmo", "lib.cmo"}
+    "lib.cma" -> {"internal_modules_of_foo.cmo", "public_interface_to_open_of_foo.cmo"}
+    "lib.cmi" -> {"bar.cmo", "foo.cmi", "foo.cmo", "lib.ml"}
+    "lib.cmo" -> {"bar.cmo", "foo.cmi", "foo.cmo", "lib.ml"}
+    "lib.cmt" -> {"bar.cmo", "foo.cmi", "foo.cmo", "lib.ml"}
+    "main.cmi" -> {"lib.cmo", "main.ml"}
+    "main.cmo" -> {"lib.cmo", "main.ml"}
+    "main.cmt" -> {"lib.cmo", "main.ml"}
+    "public_interface_to_open_of_foo.cmo" -> {"internal_modules_of_foo.cmo", "public_interface_to_open_of_foo.ml"}
+    "public_interface_to_open_of_foo.ml" -> {}
+  }
+
 Test that the project can be built an run:
   $ alice run --normalize-paths
    Compiling foo v0.1.0
+     Running build/packages/foo-0.1.0/native/debug/executable/foo
+  
+  Hello, World!
+
+Test that the project can be built an run rebuilding with the bytecode compiler:
+  $ alice run --normalize-paths
      Running build/packages/foo-0.1.0/native/debug/executable/foo
   
   Hello, World!
