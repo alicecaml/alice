@@ -23,7 +23,7 @@ module Config = struct
     let command = command ocaml_toolchain in
     match Alice_io.Process.Blocking.run_command_capturing_stdout_lines command with
     | Ok (report, output) ->
-      Alice_io.Process.Report.error_unless_exit_0 report;
+      Alice_io.Process.Report.exn_unless_exit_0 report;
       output
     | Error (`Prog_not_available prog) ->
       user_exn

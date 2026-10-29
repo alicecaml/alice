@@ -16,7 +16,7 @@ module Report : sig
     }
 
   val is_exit_0 : t -> bool
-  val error_unless_exit_0 : t -> unit
+  val exn_unless_exit_0 : t -> unit
 end
 
 module Running : sig
@@ -36,6 +36,8 @@ end
 
 module Error : sig
   type t = [ `Prog_not_available of string ]
+
+  val user_exn : t -> unit
 end
 
 val run

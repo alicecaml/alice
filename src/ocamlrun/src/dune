@@ -1,6 +1,6 @@
 (library
  (package alice)
- (name alice_config_script)
+ (name alice_run_ocaml)
  (libraries
   alice_stdlib
   alice_error

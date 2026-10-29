@@ -31,6 +31,8 @@ include T
 module Map = Map.Make (T)
 module Set = Set.Make (T)
 
+let all = [ Unix; Str ]
+
 let to_string = function
   | Unix -> "unix"
   | Str -> "str"
@@ -47,3 +49,5 @@ let of_string_res s =
   | Some builtin -> Ok builtin
   | None -> Error [ Pp.textf "No such builtin module: %s" s ]
 ;;
+
+let of_string_exn s = of_string_res s |> Alice_error.User_error.get_or_panic
