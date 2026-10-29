@@ -11,6 +11,7 @@
   alice_log
   alice_installation
   alice_env
+  alice_run_ocaml
   climate
   sha))
 

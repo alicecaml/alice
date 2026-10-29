@@ -4,8 +4,11 @@ open Alice_engine
 open Alice_ocaml_toolchain
 open Climate
 
+val string_to_absolute_path : string -> Absolute_path.Root_or_non_root.t
+val string_to_absolute_path_non_root : string -> Absolute_path.non_root_t
+
 (** [parse_absolute_path ?dac names] returns a named argument parser of
-    absolute path *)
+    absolute path. *)
 val parse_absolute_path
   :  ?doc:string
   -> string list

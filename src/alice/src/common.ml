@@ -17,14 +17,28 @@ let parse_manifest_path_opt =
          (Basename.to_filename Alice_manifest.manifest_name))
 ;;
 
+let string_to_absolute_path path_str =
+  match Either_path.of_filename path_str with
+  | `Absolute p -> p
+  | `Relative p ->
+    Absolute_path.Root_or_non_root.concat_relative_exn Alice_env.initial_cwd p
+;;
+
+let string_to_absolute_path_non_root path_str =
+  match string_to_absolute_path path_str with
+  | `Root path ->
+    user_exn
+      [ Pp.textf
+          "Got path %S but root directory is not allowed here."
+          (Absolute_path.to_filename path)
+      ]
+  | `Non_root path -> path
+;;
+
 let parse_absolute_path ?doc names =
   let open Arg_parser in
   let+ path = named_opt names file ?doc ~value_name:"PATH" in
-  Option.map path ~f:(fun path_str ->
-    match Either_path.of_filename path_str with
-    | `Absolute p -> p
-    | `Relative p ->
-      Absolute_path.Root_or_non_root.concat_relative_exn Alice_env.initial_cwd p)
+  Option.map path ~f:string_to_absolute_path
 ;;
 
 let parse_manifest_path_and_validate =

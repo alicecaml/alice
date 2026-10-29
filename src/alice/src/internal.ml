@@ -174,6 +174,31 @@ let setup =
   Completion_script.make_bash installation
 ;;
 
+let run_ocaml =
+  let open Arg_parser in
+  let enum_builtin_module =
+    enum
+      ~default_value_name:"MODULE"
+      ~eq:Alice_builtin_module.equal
+      (List.map Alice_builtin_module.all ~f:(fun module_ ->
+         Alice_builtin_module.to_string module_, module_))
+  in
+  let+ () = Common.set_globals_from_flags
+  and+ source =
+    pos_req 0 file ~doc:"The OCaml source file to run" ~value_name:"FILE"
+    >>| Common.string_to_absolute_path_non_root
+  and+ builtin_modules =
+    named_multi
+      [ "builtin-module"; "m" ]
+      enum_builtin_module
+      ~doc:"Give access to builtin module (e.g. unix, str)"
+  in
+  let env = Alice_env.current_env () in
+  let os_type = Alice_env.Os_type.current () in
+  let ocaml_toolchain = Alice_which.ocaml_toolchain os_type env in
+  Alice_run_ocaml.run_ocaml_source_program ocaml_toolchain builtin_modules ~source
+;;
+
 let subcommand =
   let open Command in
   subcommand
@@ -186,5 +211,6 @@ let subcommand =
               ~doc:"Generate a completion script for Alice."
               [ subcommand "bash" print_completion_script_bash ])
        ; subcommand "setup" (singleton setup ~doc:"Install the env scripts for Alice.")
+       ; subcommand "run_ocaml" (singleton run_ocaml ~doc:"Run an OCaml source program.")
        ])
 ;;

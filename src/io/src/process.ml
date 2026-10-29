@@ -49,7 +49,7 @@ module Report = struct
     | _ -> false
   ;;
 
-  let error_unless_exit_0 t =
+  let exn_unless_exit_0 t =
     let error message =
       Alice_error.user_exn
         [ Pp.textf
@@ -72,14 +72,14 @@ end
 module Error = struct
   type t = [ `Prog_not_available of string ]
 
-  let user_error = function
+  let user_exn = function
     | `Prog_not_available prog ->
       Alice_error.user_exn [ Pp.textf "No such program: %s" prog ]
   ;;
 
-  let result_get_or_user_error = function
+  let result_get_or_user_exn = function
     | Ok x -> x
-    | Error e -> user_error e
+    | Error e -> user_exn e
   ;;
 end
 
@@ -268,7 +268,7 @@ let run_batch_map_stdout_lines commands num_jobs ~f =
     Array.init num_jobs ~f:(fun _ ->
       Option.map (next_command ()) ~f:(fun (i, command) ->
         let running =
-          run_command_capturing_stdout command |> Error.result_get_or_user_error
+          run_command_capturing_stdout command |> Error.result_get_or_user_exn
         in
         i, running))
   in
@@ -287,10 +287,10 @@ let run_batch_map_stdout_lines commands num_jobs ~f =
             <- next_command ()
                |> Option.map ~f:(fun (next_out_i, command) ->
                  let running =
-                   run_command_capturing_stdout command |> Error.result_get_or_user_error
+                   run_command_capturing_stdout command |> Error.result_get_or_user_exn
                  in
                  next_out_i, running);
-            Report.error_unless_exit_0 report;
+            Report.exn_unless_exit_0 report;
             let value = f lines in
             outputs.(out_i) <- Some value;
             remaining_outputs_to_compute := !remaining_outputs_to_compute - 1)))
