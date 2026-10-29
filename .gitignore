@@ -6,6 +6,9 @@ build
 *.out
 *.cmx
 *.cmi
+*.cmo
+*.cma
+*.cmxa
 *.o
 out
 result
