@@ -28,9 +28,9 @@ let make ~prefix ~suffix =
   path
 ;;
 
-let with_ ~prefix ~suffix ~f =
+let with_ ~prefix ~suffix ~keep ~f =
   let path = make ~prefix ~suffix in
   let ret = f path in
-  File_ops.rm_rf path;
+  if not keep then File_ops.rm_rf path;
   ret
 ;;

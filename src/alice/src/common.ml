@@ -120,7 +120,7 @@ let parse_profile =
   | false -> Profile.debug
 ;;
 
-let parse_compiler_backend =
+let parse_compiler_backend ~default =
   let open Arg_parser in
   let conv =
     enum
@@ -131,11 +131,12 @@ let parse_compiler_backend =
   in
   named_with_default
     [ "b"; "backend" ]
-    ~default:Compiler_backend.Native
+    ~default
     conv
     ~doc:
-      "Which compiler backend to use (\"native\" or \"bytecode\"). Defaults to \
-       \"native\"."
+      (sprintf
+         "Which compiler backend to use (\"native\" or \"bytecode\"). Defaults to %S."
+         (Compiler_backend.name default))
 ;;
 
 let parse_built_artifacts_from_deps =
@@ -207,10 +208,10 @@ let parse_debug_blocking_subprocesses =
     ~hidden:true
 ;;
 
-let parse_build_config =
+let parse_build_config ~default_compiler_backend =
   let open Arg_parser in
   let+ profile = parse_profile
-  and+ compiler_backend = parse_compiler_backend
+  and+ compiler_backend = parse_compiler_backend ~default:default_compiler_backend
   and+ num_jobs = parse_num_jobs in
   let env = Alice_env.current_env () in
   let os_type = Alice_env.Os_type.current () in

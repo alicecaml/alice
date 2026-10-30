@@ -1,6 +1,7 @@
 open! Alice_stdlib
 open Climate
 open Alice_hierarchy
+open Alice_engine
 open Alice_ui
 
 module Env_script = struct
@@ -174,7 +175,7 @@ let setup =
   Completion_script.make_bash installation
 ;;
 
-let run_ocaml =
+let run_source =
   let open Arg_parser in
   let enum_builtin_module =
     enum
@@ -184,19 +185,26 @@ let run_ocaml =
          Alice_builtin_module.to_string module_, module_))
   in
   let+ () = Common.set_globals_from_flags
-  and+ source =
+  and+ source_path =
     pos_req 0 file ~doc:"The OCaml source file to run" ~value_name:"FILE"
     >>| Common.string_to_absolute_path_non_root
+  and+ args =
+    pos_right 0 string ~doc:"Arguments to pass to the executable." ~value_name:"ARGS"
+  and+ build_config = Common.parse_build_config ~default_compiler_backend:Bytecode
   and+ builtin_modules =
     named_multi
       [ "builtin-module"; "m" ]
       enum_builtin_module
       ~doc:"Give access to builtin module (e.g. unix, str)"
+  and+ keep_artifacts =
+    flag [ "keep"; "k" ] ~doc:"Keep any artifacts generated to run the program."
   in
-  let env = Alice_env.current_env () in
-  let os_type = Alice_env.Os_type.current () in
-  let ocaml_toolchain = Alice_which.ocaml_toolchain os_type env in
-  Alice_run_ocaml.run_ocaml_source_program ocaml_toolchain builtin_modules ~source
+  Run_ocaml_source_program.run_ocaml_source_program
+    build_config
+    builtin_modules
+    ~source_path
+    ~keep_artifacts
+    ~args
 ;;
 
 let subcommand =
@@ -211,6 +219,8 @@ let subcommand =
               ~doc:"Generate a completion script for Alice."
               [ subcommand "bash" print_completion_script_bash ])
        ; subcommand "setup" (singleton setup ~doc:"Install the env scripts for Alice.")
-       ; subcommand "run_ocaml" (singleton run_ocaml ~doc:"Run an OCaml source program.")
+       ; subcommand
+           "run-source"
+           (singleton ~doc:"Run a single file OCaml source program." run_source)
        ])
 ;;

@@ -16,7 +16,7 @@ val parse_absolute_path
 
 val parse_project : Project.t Arg_parser.t
 val parse_profile : Profile.t Arg_parser.t
-val parse_compiler_backend : Compiler_backend.t Arg_parser.t
+val parse_compiler_backend : default:Compiler_backend.t -> Compiler_backend.t Arg_parser.t
 
 (** Parse the "--verbose" and "--quiet" and have the side effect of setting the
     global log level and print mode. *)
@@ -25,4 +25,7 @@ val set_globals_from_flags : unit Arg_parser.t
 val parse_num_jobs : Alice_io.Num_jobs.t Arg_parser.t
 val parse_debug_blocking_subprocesses : bool Arg_parser.t
 val parse_built_artifacts_from_deps : bool Arg_parser.t
-val parse_build_config : Build_config.t Arg_parser.t
+
+val parse_build_config
+  :  default_compiler_backend:Compiler_backend.t
+  -> Build_config.t Arg_parser.t

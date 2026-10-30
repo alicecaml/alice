@@ -10,6 +10,7 @@ val create : ocamlopt:Filename.t -> ocamlc:Filename.t -> ocaml:Filename.t -> Env
 
 val ocamlopt_command : t -> args:string list -> Command.t
 val ocamlc_command : t -> args:string list -> Command.t
+val compiler_command : Compiler_backend.t -> t -> args:string list -> Command.t
 val ocaml_command : t -> args:string list -> Command.t
 val env : t -> Env.t
 
