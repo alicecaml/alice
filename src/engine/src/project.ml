@@ -37,7 +37,17 @@ let write_dot_merlin_initial t =
 ;;
 
 let write_dot_merlin t root_package_with_deps build_config =
-  let text = Dot_merlin.dot_merlin_text root_package_with_deps t.build_dir build_config in
+  let config_script_dependency_graph =
+    Dependency_graph.of_package_config_script_deps
+      (Package_with_deps.package root_package_with_deps)
+  in
+  let text =
+    Dot_merlin.dot_merlin_text
+      root_package_with_deps
+      t.build_dir
+      build_config
+      ~config_script_dependency_graph
+  in
   File_ops.write_text_file (dot_merlin_path t) text
 ;;
 
@@ -62,9 +72,7 @@ let rec run_config_script t package build_config ~built_artifacts_from_deps =
   match Package.config_script_path package with
   | None -> ()
   | Some config_script_source_path ->
-    let build_config : Build_config.t =
-      { build_config with profile = Profile.minimal; compiler_backend = Bytecode }
-    in
+    let build_config = Build_config.for_config_script build_config in
     let config_script_dependency_graph =
       Dependency_graph.of_package_config_script_deps package
     in
