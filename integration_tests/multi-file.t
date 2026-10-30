@@ -100,19 +100,19 @@ Print the dependency graph of the project when building with the bytecode compil
 
 Test that the project can be built an run:
   $ alice run --normalize-paths
-   Compiling foo v0.1.0
-     Running build/packages/foo-0.1.0/native/debug/executable/foo
+     Compiling foo v0.1.0
+       Running build/packages/foo-0.1.0/native/debug/executable/foo
   
   Hello, World!
 
 Test that the project can be built an run rebuilding with the bytecode compiler:
   $ alice run --normalize-paths
-     Running build/packages/foo-0.1.0/native/debug/executable/foo
+       Running build/packages/foo-0.1.0/native/debug/executable/foo
   
   Hello, World!
 
   $ alice clean --normalize-paths
-    Removing build
+      Removing build
 
 Now test Alice's incremental recomputation by repeatedly changing files and
 rebuilding the project.
@@ -122,8 +122,8 @@ Unix and Windows because on Windows we don't use eio to launch subprocesses.
 
 Initial build:
   $ alice build --normalize-paths --verbose -j1 | sort
-    Finished debug build of package: 'foo v0.1.0'
-   Compiling foo v0.1.0
+      Finished debug build of package: 'foo v0.1.0'
+     Compiling foo v0.1.0
    [INFO] [foo v0.1.0] Analyzing dependencies of file: src/bar.ml
    [INFO] [foo v0.1.0] Analyzing dependencies of file: src/foo.ml
    [INFO] [foo v0.1.0] Analyzing dependencies of file: src/foo.mli
@@ -152,8 +152,8 @@ the dependency graph from this file to the output should be rebuilt:
   > EOF
 
   $ alice build --normalize-paths --verbose -j1 | sort
-    Finished debug build of package: 'foo v0.1.0'
-   Compiling foo v0.1.0
+      Finished debug build of package: 'foo v0.1.0'
+     Compiling foo v0.1.0
    [INFO] [foo v0.1.0] Analyzing dependencies of file: src/foo_dep.ml
    [INFO] [foo v0.1.0] Building targets: foo
    [INFO] [foo v0.1.0] Building targets: foo.cmi, foo.cmt
@@ -172,8 +172,8 @@ Change a shallow dependency and rebuild. Only the final build steps should run:
   > EOF
 
   $ alice build --normalize-paths --verbose -j1 | sort
-    Finished debug build of package: 'foo v0.1.0'
-   Compiling foo v0.1.0
+      Finished debug build of package: 'foo v0.1.0'
+     Compiling foo v0.1.0
    [INFO] [foo v0.1.0] Analyzing dependencies of file: src/main.ml
    [INFO] [foo v0.1.0] Building targets: foo
    [INFO] [foo v0.1.0] Building targets: main.cmi, main.cmt, main.cmx
@@ -186,8 +186,8 @@ Change an interface and rebuild:
   > EOF
 
   $ alice build --normalize-paths --verbose -j1 | sort
-    Finished debug build of package: 'foo v0.1.0'
-   Compiling foo v0.1.0
+      Finished debug build of package: 'foo v0.1.0'
+     Compiling foo v0.1.0
    [INFO] [foo v0.1.0] Analyzing dependencies of file: src/foo.mli
    [INFO] [foo v0.1.0] Building targets: foo
    [INFO] [foo v0.1.0] Building targets: foo.cmi, foo.cmt

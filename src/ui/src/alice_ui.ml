@@ -76,16 +76,18 @@ type verb =
   | `Creating
   | `Removing
   | `Finished
+  | `Configuring
   ]
 
 let verb_to_string_padded = function
-  | `Fetching -> "  Fetching"
-  | `Unpacking -> " Unpacking"
-  | `Compiling -> " Compiling"
-  | `Running -> "   Running"
-  | `Creating -> "  Creating"
-  | `Removing -> "  Removing"
-  | `Finished -> "  Finished"
+  | `Fetching -> "    Fetching"
+  | `Unpacking -> "   Unpacking"
+  | `Compiling -> "   Compiling"
+  | `Running -> "     Running"
+  | `Creating -> "    Creating"
+  | `Removing -> "    Removing"
+  | `Finished -> "    Finished"
+  | `Configuring -> " Configuring"
 ;;
 
 let verb_message ?(verb_style = default_verb_style) verb object_ =

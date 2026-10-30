@@ -6,6 +6,7 @@ type t =
   ; name : string
   }
 
+let minimal = { optimization_level = None; debug = true; name = "minimal" }
 let debug = { optimization_level = None; debug = true; name = "debug" }
 let release = { optimization_level = Some `O2; debug = false; name = "release" }
 let name { name; _ } = name
