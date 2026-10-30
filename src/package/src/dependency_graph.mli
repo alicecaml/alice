@@ -2,20 +2,18 @@ open! Alice_stdlib
 open Alice_package_meta
 module Builtin_module = Alice_builtin_module
 
-(** The type arguments determine what type of package is at the root of the
-    dependency graph. This is mostly for convenience, since then a dependency
-    graph completely captures all the things that need to be built in order to
-    build the root package. *)
-type ('exe, 'lib) t
+type t
 
-val to_dyn : (_, _) t -> Dyn.t
-val compute : ('exe, 'lib) Package.Typed.t -> ('exe, 'lib) t
-val dot : (_, _) t -> string
+val to_dyn : t -> Dyn.t
+val of_package_config_script_deps : Package.t -> t
 
 module Package_with_deps : sig
+  type dependency_graph := t
   type ('exe, 'lib) t
   type lib_only_t = (Type_bool.false_t, Type_bool.true_t) t
 
+  val of_package_typed : ('exe, 'lib) Package.Typed.t -> ('exe, 'lib) t
+  val dependency_graph : (_, _) t -> dependency_graph
   val package_typed : ('exe, 'lib) t -> ('exe, 'lib) Package.Typed.t
   val package : (_, _) t -> Package.t
   val package_id : (_, _) t -> Package_id.t
@@ -28,13 +26,12 @@ module Package_with_deps : sig
   val transitive_dependency_closure_excluding_package
     :  (_, _) t
     -> Package.Typed.lib_only_t list
+
+  val dot : (_, _) t -> string
 end
 
-(** Returns the transitive closure of dependencies excluding the package at the
-    root of the dependency graph. This lets us statically know that each
-    dependency is a library package, while the root package may not be. *)
 val transitive_dependency_closure_in_dependency_order
-  :  (_, _) t
+  :  t
   -> Package_with_deps.lib_only_t list
 
-val root_package_with_deps : ('exe, 'lib) t -> ('exe, 'lib) Package_with_deps.t
+val roots : t -> Package_with_deps.lib_only_t list

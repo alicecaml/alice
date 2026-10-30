@@ -58,7 +58,33 @@ end
 
 let write_dot_gitignore { package; _ } = Dot_gitignore.write (Package.root package)
 
-let build_single_package
+let rec run_config_script t package build_config ~built_artifacts_from_deps =
+  match Package.config_script_path package with
+  | None -> ()
+  | Some config_script_source_path ->
+    let build_config : Build_config.t =
+      { build_config with profile = Profile.minimal; compiler_backend = Bytecode }
+    in
+    let config_script_dependency_graph =
+      Dependency_graph.of_package_config_script_deps package
+    in
+    let any_dep_rebuilt =
+      build_dependency_graph
+        t
+        config_script_dependency_graph
+        build_config
+        ~built_artifacts_from_deps
+    in
+    Config_script.run
+      t.build_dir
+      build_config
+      (Package.meta package)
+      ~config_script_dependency_graph
+      ~config_script_source_path
+      ~any_dep_rebuilt
+
+(* Build a package, assuming all of its dependencies have already been built. *)
+and build_single_package
   : type exe lib.
     t
     -> (exe, lib) Package_with_deps.t
@@ -69,6 +95,7 @@ let build_single_package
   =
   fun t package_with_deps build_config ~any_dep_rebuilt ~built_artifacts_from_deps ->
   let package_typed = Package_with_deps.package_typed package_with_deps in
+  let package = Package.Typed.package package_typed in
   let build_graph = Build_graph.create package_typed t.build_dir build_config in
   let package_base_dir =
     Build_dir.package_base_dir_of_build_config
@@ -76,6 +103,7 @@ let build_single_package
       (Package_with_deps.id package_with_deps)
       build_config
   in
+  let () = run_config_script t package build_config ~built_artifacts_from_deps in
   Scheduler.run
     build_graph
     package_with_deps
@@ -83,9 +111,9 @@ let build_single_package
     build_config
     ~any_dep_rebuilt
     ~built_artifacts_from_deps
-;;
 
-let build_dependency_graph t dependency_graph build_config ~built_artifacts_from_deps =
+(* Returns true if any package was actually built. *)
+and build_dependency_graph t dependency_graph build_config ~built_artifacts_from_deps =
   let build_single_package package_with_deps ~any_dep_rebuilt =
     build_single_package
       t
@@ -94,13 +122,7 @@ let build_dependency_graph t dependency_graph build_config ~built_artifacts_from
       ~any_dep_rebuilt
       ~built_artifacts_from_deps
   in
-  let rec build_package_building_deps_first
-    : type exe lib.
-      (exe, lib) Package_with_deps.t
-      -> already_built_packages:Scheduler.Package_built.t Package_id.Map.t
-      -> Scheduler.Package_built.t * Scheduler.Package_built.t Package_id.Map.t
-    =
-    fun package_with_deps ~already_built_packages ->
+  let rec build_package_building_deps_first package_with_deps ~already_built_packages =
     let package_id = Package_with_deps.id package_with_deps in
     match Package_id.Map.find_opt package_id already_built_packages with
     | Some package_built -> package_built, already_built_packages
@@ -126,7 +148,32 @@ let build_dependency_graph t dependency_graph build_config ~built_artifacts_from
       in
       package_built, already_built_packages
   in
-  let root_package_with_deps = Dependency_graph.root_package_with_deps dependency_graph in
+  List.fold_left
+    (Dependency_graph.roots dependency_graph)
+    ~init:([], Package_id.Map.empty)
+    ~f:(fun (packages_built, already_built_packages) root ->
+      let package_built, already_built_packages =
+        build_package_building_deps_first root ~already_built_packages
+      in
+      package_built :: packages_built, already_built_packages)
+  |> fst
+  |> Scheduler.Package_built.any_rebuilt
+;;
+
+let build_package_with_deps
+      t
+      root_package_with_deps
+      build_config
+      ~built_artifacts_from_deps
+  =
+  let build_single_package package_with_deps ~any_dep_rebuilt =
+    build_single_package
+      t
+      package_with_deps
+      build_config
+      ~any_dep_rebuilt
+      ~built_artifacts_from_deps
+  in
   let _root_package_built : Scheduler.Package_built.t =
     if built_artifacts_from_deps
     then
@@ -135,22 +182,23 @@ let build_dependency_graph t dependency_graph build_config ~built_artifacts_from
          used when building multiple interdependent packages such as in a repo
          CI setting. *)
       build_single_package root_package_with_deps ~any_dep_rebuilt:true
-    else
-      build_package_building_deps_first
-        root_package_with_deps
-        ~already_built_packages:Package_id.Map.empty
-      |> fst
+    else (
+      let any_dep_rebuilt =
+        build_dependency_graph
+          t
+          (Package_with_deps.dependency_graph root_package_with_deps)
+          build_config
+          ~built_artifacts_from_deps
+      in
+      build_single_package root_package_with_deps ~any_dep_rebuilt)
   in
   ()
 ;;
 
 let build_package_typed t package_typed build_config ~built_artifacts_from_deps =
-  let dependency_graph = Dependency_graph.compute package_typed in
-  write_dot_merlin
-    t
-    (Dependency_graph.root_package_with_deps dependency_graph)
-    build_config;
-  build_dependency_graph t dependency_graph build_config ~built_artifacts_from_deps
+  let package_with_deps = Package_with_deps.of_package_typed package_typed in
+  write_dot_merlin t package_with_deps build_config;
+  build_package_with_deps t package_with_deps build_config ~built_artifacts_from_deps
 ;;
 
 let build_package t package build_config ~built_artifacts_from_deps =
@@ -237,6 +285,10 @@ let dot_build_artifacts t build_config =
 
 let dot_dependencies t =
   Package.with_typed
-    { f = (fun pt -> Dependency_graph.dot (Dependency_graph.compute pt)) }
+    { f =
+        (fun pt ->
+          Dependency_graph.Package_with_deps.dot
+            (Dependency_graph.Package_with_deps.of_package_typed pt))
+    }
     t.package
 ;;

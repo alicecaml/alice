@@ -192,12 +192,77 @@ module Parse_kdl_manifest = struct
     else Ok builtins_set
   ;;
 
+  module Config_script_field_name = struct
+    let dependencies = "dependencies"
+    let builtins = "builtins"
+    let all = [ dependencies; builtins ]
+  end
+
+  let config_script_node_children (children : Kdl.node list) =
+    let open Result.O in
+    let module F = Config_script_field_name in
+    let* _ : unit list =
+      let all_fields = String.Set.of_list F.all in
+      Result.List.all
+        (List.map children ~f:(fun (child : Kdl.node) ->
+           if String.Set.mem child.name all_fields
+           then Ok ()
+           else
+             Error
+               [ Pp.textf "Unexpected field in node \"config_script\": %S" child.name ]))
+    in
+    let find_node name =
+      List.find_opt children ~f:(fun (node : Kdl.node) -> String.equal node.name name)
+    in
+    let dependencies = find_node F.dependencies in
+    let builtin_modules = find_node F.builtins in
+    let* dependencies =
+      match dependencies with
+      | None ->
+        (* Dependencies are empty if unspecified. *)
+        Ok Dependencies.empty
+      | Some dependencies -> dependencies_node dependencies
+    in
+    let* builtin_modules =
+      match builtin_modules with
+      | None -> Ok Builtin_module.Set.empty
+      | Some builtins -> builtins_node builtins
+    in
+    let config_script =
+      Package_meta.Config_script_meta.create ~dependencies ~builtin_modules
+    in
+    Ok config_script
+  ;;
+
+  let config_script_node (config_script_node : Kdl.node) =
+    match config_script_node with
+    | { name; _ } when not (String.equal name "config_script") ->
+      Error
+        [ Pp.textf
+            "config_script node must be named \"config_script\". Found %S."
+            config_script_node.name
+        ]
+    | { annot = Some annot; _ } ->
+      Error
+        [ Pp.textf "config_script node must not have type annotation. Found %S." annot ]
+    | { args; _ } when not (List.is_empty args) ->
+      Format.pp_print_list Kdl.pp_annot_value Format.str_formatter args;
+      let args_s = Format.flush_str_formatter () in
+      Error [ Pp.textf "config_script node must not have arguments. Found %S." args_s ]
+    | { props; _ } when not (List.is_empty props) ->
+      Format.pp_print_list Kdl.pp_prop Format.str_formatter props;
+      let props_s = Format.flush_str_formatter () in
+      Error [ Pp.textf "config_script node must not have properties. Found %S." props_s ]
+    | { children; _ } -> config_script_node_children children
+  ;;
+
   module Package_field_names = struct
     let name = "name"
     let version = "version"
     let dependencies = "dependencies"
     let builtins = "builtins"
-    let all = [ name; version; dependencies; builtins ]
+    let config_script = "config_script"
+    let all = [ name; version; dependencies; builtins; config_script ]
   end
 
   let package_node_children (children : Kdl.node list) =
@@ -218,6 +283,7 @@ module Parse_kdl_manifest = struct
     let version = find_node F.version in
     let dependencies = find_node F.dependencies in
     let builtin_modules = find_node F.builtins in
+    let config_script = find_node F.config_script in
     match name, version with
     | None, _ ->
       Error [ Pp.textf "Node \"package\" is missing required field: %S" F.name ]
@@ -239,7 +305,12 @@ module Parse_kdl_manifest = struct
         | None -> Ok Builtin_module.Set.empty
         | Some builtins -> builtins_node builtins
       in
-      let meta = Package_meta.create ~id ~dependencies ~builtin_modules in
+      let* config_script =
+        match config_script with
+        | None -> Ok Package_meta.Config_script_meta.default
+        | Some config_script -> config_script_node config_script
+      in
+      let meta = Package_meta.create ~id ~dependencies ~builtin_modules ~config_script in
       Ok meta
   ;;
 

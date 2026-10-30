@@ -71,6 +71,14 @@ val run_command_capturing_stdout
   -> (Running_capturing_stdout.t, Error.t) result
 
 module Blocking : sig
+  open Alice_error
+
+  val result_to_user_result : (Report.t, Error.t) result -> unit User_error.result
+
+  val valued_result_to_user_result
+    :  (Report.t * 'a, Error.t) result
+    -> 'a User_error.result
+
   val run
     :  ?stdin:Unix.file_descr
     -> ?stdout:Unix.file_descr

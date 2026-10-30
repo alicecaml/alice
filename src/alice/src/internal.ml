@@ -204,7 +204,10 @@ let run_source =
     builtin_modules
     ~source_path
     ~keep_artifacts
+    ~extra_compile_args:[]
+    ~extra_link_args:[]
     ~args
+  |> Alice_error.User_error.get_or_panic
 ;;
 
 let subcommand =

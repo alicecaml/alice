@@ -1,4 +1,6 @@
 let () =
+  print_endline Hello.Foo.message;
+  Lib_with_c_sources.go ();
   Array.iteri (fun i arg -> print_endline (Printf.sprintf "arg %d: %s" i arg)) Sys.argv;
   match Sys.getenv_opt "FOO" with
   | None -> print_endline "env var \"FOO\" is unset"

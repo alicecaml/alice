@@ -9,6 +9,8 @@ let with_built_ocaml_program_command
       builtin_modules
       ~source_path
       ~keep_artifacts
+      ~extra_compile_args
+      ~extra_link_args
       ~args
       ~f
   =
@@ -52,6 +54,7 @@ let with_built_ocaml_program_command
             (builtin_module_plus_args
              @ builtin_module_cma_args
              @ Profile.ocaml_compiler_args build_config.profile
+             @ extra_compile_args
              @ [ Absolute_path.to_filename source_path
                ; "-c"
                ; "-o"
@@ -66,23 +69,21 @@ let with_built_ocaml_program_command
             (builtin_module_plus_args
              @ builtin_module_cma_args
              @ Profile.ocaml_compiler_args build_config.profile
+             @ extra_link_args
              @ [ Absolute_path.to_filename (dir_path / out_basename_obj)
                ; "-o"
                ; Absolute_path.to_filename (dir_path / out_basename_exe)
                ])
       in
-      let build () =
-        let result =
-          let open Result.O in
-          let* compile_report = Alice_io.Process.Blocking.run_command compile_command in
-          let+ link_report = Alice_io.Process.Blocking.run_command link_command in
-          [ compile_report; link_report ]
-        in
-        match result with
-        | Ok reports -> List.iter reports ~f:Alice_io.Process.Report.exn_unless_exit_0
-        | Error error -> Alice_io.Process.Error.user_exn error
+      let open Result.O in
+      let* () =
+        Process.Blocking.run_command compile_command
+        |> Process.Blocking.result_to_user_result
       in
-      build ();
+      let* () =
+        Process.Blocking.run_command link_command
+        |> Process.Blocking.result_to_user_result
+      in
       let run_command =
         Command.create
           (Absolute_path.to_filename (dir_path / out_basename_exe))
@@ -97,6 +98,8 @@ let run_ocaml_source_program
       builtin_modules
       ~source_path
       ~keep_artifacts
+      ~extra_compile_args
+      ~extra_link_args
       ~args
   =
   with_built_ocaml_program_command
@@ -104,23 +107,26 @@ let run_ocaml_source_program
     builtin_modules
     ~source_path
     ~keep_artifacts
+    ~extra_compile_args
+    ~extra_link_args
     ~args
     ~f:(fun command ->
-      match Alice_io.Process.Blocking.run_command command with
-      | Ok report ->
-        if keep_artifacts
-        then
-          print_endline
-            (sprintf "Build artifacts kept at: %s" (Filename.dirname command.prog));
-        Alice_io.Process.Report.exn_unless_exit_0 report
-      | Error (`Prog_not_available program) ->
-        Alice_error.panic [ Pp.textf "Failed to find output executable: %s" program ])
+      let open Result.O in
+      let+ () =
+        Process.Blocking.run_command command |> Process.Blocking.result_to_user_result
+      in
+      if keep_artifacts
+      then
+        print_endline
+          (sprintf "Build artifacts kept at: %s" (Filename.dirname command.prog)))
 ;;
 
 let run_ocaml_source_program_capturing_stdout_lines
       build_config
       builtin_modules
       ~source_path
+      ~extra_compile_args
+      ~extra_link_args
       ~args
   =
   with_built_ocaml_program_command
@@ -128,11 +134,10 @@ let run_ocaml_source_program_capturing_stdout_lines
     builtin_modules
     ~source_path
     ~keep_artifacts:false
+    ~extra_compile_args
+    ~extra_link_args
     ~args
     ~f:(fun command ->
-      match Alice_io.Process.Blocking.run_command_capturing_stdout_lines command with
-      | Ok (report, lines) ->
-        if Alice_io.Process.Report.is_exit_0 report then Ok lines else Error report.status
-      | Error (`Prog_not_available program) ->
-        Alice_error.panic [ Pp.textf "Failed to find output executable: %s" program ])
+      Process.Blocking.run_command_capturing_stdout_lines command
+      |> Process.Blocking.valued_result_to_user_result)
 ;;

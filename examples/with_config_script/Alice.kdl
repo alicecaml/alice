@@ -2,12 +2,13 @@ package {
   name with_config_script
   version "0.1.0"
 
-  dependencies {
-  }
-
-  // Allow access to these modules from the standard library.
-  builtins {
-    unix
-    str
+  config_script {
+    dependencies {
+      hello path="../hello_project"
+      lib_with_c_sources path="../lib_with_c_sources"
+    }
+    builtins {
+      unix
+    }
   }
 }

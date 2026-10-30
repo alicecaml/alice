@@ -49,33 +49,37 @@ module Report = struct
     | _ -> false
   ;;
 
-  let exn_unless_exit_0 t =
+  let error_unless_exit_0 t =
     let error message =
-      Alice_error.user_exn
-        [ Pp.textf
-            "Tried to run command %s"
-            (Command.to_string_ignore_env_backticks t.command)
-        ; Pp.text "... but it exited unexpectedly for the following reason:"
-        ; Pp.newline
-        ; message
-        ]
+      [ Pp.textf
+          "Tried to run command %s"
+          (Command.to_string_ignore_env_backticks t.command)
+      ; Pp.text "... but it exited unexpectedly for the following reason:"
+      ; Pp.newline
+      ; message
+      ]
     in
     match t.status with
-    | Exited 0 -> ()
+    | Exited 0 -> Ok ()
     | Exited x ->
-      error (Pp.textf "Process exited with non-zero status: %s" (format_exit_code x))
-    | Signaled x -> error (Pp.textf "Process exited due to an unhandled signal: %d" x)
-    | Stopped x -> error (Pp.textf "Process was stopped by a signal: %d" x)
+      Error
+        (error (Pp.textf "Process exited with non-zero status: %s" (format_exit_code x)))
+    | Signaled x ->
+      Error (error (Pp.textf "Process exited due to an unhandled signal: %d" x))
+    | Stopped x -> Error (error (Pp.textf "Process was stopped by a signal: %d" x))
   ;;
+
+  let exn_unless_exit_0 t = error_unless_exit_0 t |> Alice_error.User_error.get_or_panic
 end
 
 module Error = struct
   type t = [ `Prog_not_available of string ]
 
-  let user_exn = function
-    | `Prog_not_available prog ->
-      Alice_error.user_exn [ Pp.textf "No such program: %s" prog ]
+  let user_error = function
+    | `Prog_not_available prog -> [ Pp.textf "No such program: %s" prog ]
   ;;
+
+  let user_exn t = Alice_error.user_exn (user_error t)
 
   let result_get_or_user_exn = function
     | Ok x -> x
@@ -204,6 +208,19 @@ let run_command_capturing_stdout
 ;;
 
 module Blocking = struct
+  let result_to_user_result = function
+    | Ok report -> Report.error_unless_exit_0 report
+    | Error e -> Error (Error.user_error e)
+  ;;
+
+  let valued_result_to_user_result = function
+    | Ok (report, value) ->
+      let open Result.O in
+      let+ () = Report.error_unless_exit_0 report in
+      value
+    | Error e -> Error (Error.user_error e)
+  ;;
+
   let run
         ?(stdin = Unix.stdin)
         ?(stdout = Unix.stdout)

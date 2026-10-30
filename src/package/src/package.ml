@@ -49,6 +49,12 @@ let src_dir_path t = Absolute_path.Root_or_non_root.concat_basename (root t) src
 let src_dir_exn t = src_dir_path t |> read_dir_exn
 let contains_exe t = File_ops.exists (src_dir_path t / exe_root_ml)
 let contains_lib t = File_ops.exists (src_dir_path t / lib_root_ml)
+let config_script = Basename.of_filename "config.ml"
+
+let config_script_path t =
+  let path = Absolute_path.Root_or_non_root.concat_basename (root t) config_script in
+  if File_ops.exists path then Some path else None
+;;
 
 module Typed = struct
   type ('exe, 'lib) type_ =

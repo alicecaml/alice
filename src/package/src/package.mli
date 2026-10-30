@@ -18,6 +18,7 @@ val version : t -> Semantic_version.t
 val dependencies : t -> Dependencies.t
 val dependency_names : t -> Package_name.t list
 val builtin_modules : t -> Builtin_module.Set.t
+val config_script_path : t -> Absolute_path.non_root_t option
 
 (** The file inside the source directory containing the entry point for the
     executable. *)

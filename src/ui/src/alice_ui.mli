@@ -34,6 +34,7 @@ type verb =
   | `Creating
   | `Removing
   | `Finished
+  | `Configuring
   ]
 
 val verb_message : ?verb_style:Ansi_style.t -> verb -> string -> message
