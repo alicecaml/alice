@@ -240,13 +240,11 @@ module Action_builder = struct
   ;;
 
   let ocaml_compiler_command t args =
-    let ocaml_compiler_command_base =
-      match t.build_config.compiler_backend with
-      | Native -> Ocaml_toolchain.ocamlopt_command
-      | Bytecode -> Ocaml_toolchain.ocamlc_command
-    in
     let args = Profile.ocaml_compiler_args t.build_config.profile @ args in
-    ocaml_compiler_command_base t.build_config.ocaml_toolchain ~args
+    Ocaml_toolchain.compiler_command
+      t.build_config.compiler_backend
+      t.build_config.ocaml_toolchain
+      ~args
   ;;
 
   let op_action t op : Action.t =

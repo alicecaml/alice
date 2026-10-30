@@ -39,7 +39,7 @@ module Remote_tarball = struct
   let install { name; version; url_base; url_file; top_level_dir; sha256 } env ~dst =
     let url = String.cat url_base url_file in
     let open Alice_ui in
-    Temp_dir.with_ ~prefix:"alice." ~suffix:".tools" ~f:(fun dir ->
+    Temp_dir.with_ ~prefix:"alice." ~suffix:".tools" ~keep:false ~f:(fun dir ->
       let tarball_file = dir / Basename.of_filename (sprintf "%s.tar.gz" name) in
       println (verb_message `Fetching (sprintf "%s.%s (%s)..." name version url_file));
       Fetch.fetch env ~url ~output_file:tarball_file;

@@ -6,7 +6,7 @@ let dot_artifacts =
   let open Arg_parser in
   let+ () = Common.set_globals_from_flags
   and+ project = Common.parse_project
-  and+ build_config = Common.parse_build_config in
+  and+ build_config = Common.parse_build_config ~default_compiler_backend:Native in
   print_endline @@ Project.dot_build_artifacts project build_config
 ;;
 

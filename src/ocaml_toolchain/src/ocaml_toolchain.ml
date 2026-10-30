@@ -13,11 +13,18 @@ type t =
 let create ~ocamlopt ~ocamlc ~ocaml env = { ocamlopt; ocamlc; ocaml; env }
 let ocamlopt_command { ocamlopt; env; _ } ~args = Command.create ocamlopt ~args env
 let ocamlc_command { ocamlc; env; _ } ~args = Command.create ocamlc ~args env
+
+let compiler_command (backend : Compiler_backend.t) t ~args =
+  match backend with
+  | Native -> ocamlopt_command t ~args
+  | Bytecode -> ocamlc_command t ~args
+;;
+
 let ocaml_command { ocaml; env; _ } ~args = Command.create ocaml ~args env
 let env { env; _ } = env
 
 module Config = struct
-  let command ocaml_toolchain = ocamlopt_command ocaml_toolchain ~args:[ "-config" ]
+  let command ocaml_toolchain = ocamlc_command ocaml_toolchain ~args:[ "-config" ]
 
   let run_lines ocaml_toolchain =
     let command = command ocaml_toolchain in
@@ -58,7 +65,7 @@ end
 
 module Depend = struct
   let command ocaml_toolchain args =
-    ocamlopt_command ocaml_toolchain ~args:("-depend" :: args)
+    ocamlc_command ocaml_toolchain ~args:("-depend" :: args)
   ;;
 
   module Deps = struct

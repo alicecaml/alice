@@ -6,7 +6,7 @@ let run_ =
   let open Arg_parser in
   let+ () = Common.set_globals_from_flags
   and+ project = Common.parse_project
-  and+ build_config = Common.parse_build_config
+  and+ build_config = Common.parse_build_config ~default_compiler_backend:Native
   and+ built_artifacts_from_deps = Common.parse_built_artifacts_from_deps
   and+ args =
     pos_all string ~doc:"Arguments to pass to the executable." ~value_name:"ARGS"
