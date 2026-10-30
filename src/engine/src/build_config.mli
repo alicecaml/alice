@@ -8,3 +8,5 @@ type t =
   ; num_jobs : Alice_io.Num_jobs.t
   ; os_type : Alice_env.Os_type.t
   }
+
+val for_config_script : t -> t
