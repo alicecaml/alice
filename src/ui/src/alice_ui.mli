@@ -1,5 +1,6 @@
 open! Alice_stdlib
 open Alice_hierarchy
+open Alice_package_meta
 
 val set_mode : [ `Standard | `Quiet ] -> unit
 
@@ -39,3 +40,6 @@ type verb =
 
 val verb_message : ?verb_style:Ansi_style.t -> verb -> string -> message
 val done_message : ?style:Ansi_style.t -> unit -> message
+val config_script_message_begin : Package_id.t -> message
+val config_script_message_line : string -> message
+val config_script_message_end : Package_id.t -> message
