@@ -4,6 +4,11 @@
 
 ### Added
 
+- Add support for config scripts. If a package has a `config.ml` file at its
+  top level, Alice will build and run that file before compiling the package
+  and parse directives from its stdout that can affect how the package is
+  built. Currently this mechanism can be used to print messages and to add c
+  linker args.
 - Add "--backend" argument to for choosing the compiler backend. Alice builds
   with the native backend by defdault, but now supports the bytecode backend
   too if `--backend bytecode` is passed.
