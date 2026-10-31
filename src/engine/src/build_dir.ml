@@ -36,6 +36,7 @@ module Package_base_dir = struct
     }
 
   let build_dir { build_dir; _ } = build_dir
+  let path { path; _ } = path
   let generated_src_dir t = t.path / b "generated_src"
   let private_dir t = t.path / b "private"
 

@@ -5,3 +5,4 @@ module Map : Map.S with type key = string
 val is_empty : t -> bool
 val lsplit2 : t -> on:char -> (t * t) option
 val split_on_char_nonempty : t -> sep:char -> t Nonempty_list.t
+val drop_prefix : t -> prefix:t -> t option

@@ -12,18 +12,6 @@ module Package_base_dir = Build_dir.Package_base_dir
 module Gen_file = Op.Gen_file
 module Src_file = Op.Src_file
 
-module Package_built = struct
-  type t =
-    | Rebuilt
-    | Not_rebuilt
-
-  let any_rebuilt ts =
-    List.exists ts ~f:(function
-      | Rebuilt -> true
-      | Not_rebuilt -> false)
-  ;;
-end
-
 module Generated_public_interface_to_open = struct
   type t =
     { output_path : Absolute_path.non_root_t
@@ -110,12 +98,14 @@ module Action_builder = struct
     ; dirs : dirs
     ; dep_closure_builtin_modules : Builtin_module.Set.t
     ; custom_linker_args_for_bytecode_backend : string list lazy_t
+    ; linker_args_from_config_script_output : string list
     }
 
   let create
         package_with_deps
         package_base_dir
         (build_config : Build_config.t)
+        (config_script_output : Config_script.Output.t)
         ~built_artifacts_from_deps
     =
     let package = Package_with_deps.package package_with_deps in
@@ -224,6 +214,10 @@ module Action_builder = struct
            in
            if c_code_in_transitive_closure then [ "-custom" ] else [])
     in
+    let linker_args_from_config_script_output =
+      List.concat_map config_script_output.c_linker_args ~f:(fun c_linker_arg ->
+        [ "-cclib"; c_linker_arg ])
+    in
     { package_with_deps
     ; package_base_dir
     ; build_config
@@ -232,6 +226,7 @@ module Action_builder = struct
     ; dirs
     ; dep_closure_builtin_modules
     ; custom_linker_args_for_bytecode_backend
+    ; linker_args_from_config_script_output
     }
   ;;
 
@@ -370,6 +365,7 @@ module Action_builder = struct
            (t.dep_args.include_
             @ List.map compiled_c_inputs ~f:(gen_file_absolute_filename t)
             @ List.map compiled_object_inputs ~f:(gen_file_absolute_filename t)
+            @ t.linker_args_from_config_script_output
             @ [ "-a"
               ; "-o"
               ; Absolute_path.to_filename
@@ -393,6 +389,7 @@ module Action_builder = struct
             @ t.dep_args.ocaml_archive_files
             @ List.map compiled_c_inputs ~f:(gen_file_absolute_filename t)
             @ List.map compiled_object_inputs ~f:(gen_file_absolute_filename t)
+            @ t.linker_args_from_config_script_output
             @ [ "-o"
               ; Absolute_path.to_filename @@ (t.dirs.executable / Gen_file.path exe_output)
               ]))
@@ -608,7 +605,8 @@ let make_action_graph
       package_with_deps
       package_base_dir
       build_config
-      ~any_dep_rebuilt
+      config_script_output
+      ~any_dep_built
       ~built_artifacts_from_deps
   =
   let action_builder =
@@ -616,17 +614,18 @@ let make_action_graph
       package_with_deps
       package_base_dir
       build_config
+      config_script_output
       ~built_artifacts_from_deps
   in
   let package_id = Dependency_graph.Package_with_deps.package_id package_with_deps in
   let files_to_build =
-    if any_dep_rebuilt
-    then
+    match (any_dep_built : Built_status.t) with
+    | Built ->
       (* At least one of this package's dependencies was just rebuilt.
          Rebuild this entire package. *)
       List.fold_left build_plans ~init:Gen_file.Set.empty ~f:(fun acc build_plan ->
         Gen_file.Set.union acc (Build_plan.transitive_closure_outputs build_plan))
-    else
+    | Reused ->
       (* No deps were rebuilt, so only rebuild the artifacts which are
          missing or whose inputs have changed since the last build. *)
       List.fold_left build_plans ~init:Gen_file.Set.empty ~f:(fun acc build_plan ->
@@ -677,15 +676,17 @@ let run
     -> (exe, lib) Package_with_deps.t
     -> Package_base_dir.t
     -> Build_config.t
-    -> any_dep_rebuilt:bool
+    -> Config_script.Output.t
+    -> any_dep_built:Built_status.t
     -> built_artifacts_from_deps:bool
-    -> Package_built.t
+    -> Built_status.t
   =
   fun build_graph
     package_with_deps
     package_base_dir
     build_config
-    ~any_dep_rebuilt
+    config_script_output
+    ~any_dep_built
     ~built_artifacts_from_deps ->
   let open Alice_ui in
   let build_plans =
@@ -705,10 +706,11 @@ let run
       package_with_deps
       package_base_dir
       build_config
-      ~any_dep_rebuilt
+      config_script_output
+      ~any_dep_built
       ~built_artifacts_from_deps
   with
-  | None -> Package_built.Not_rebuilt
+  | None -> Built_status.Reused
   | Some action_graph ->
     println
       (verb_message
@@ -716,5 +718,5 @@ let run
          (Package_id.name_v_version_string (Package_with_deps.id package_with_deps)));
     Package_base_dir.dirs package_base_dir |> List.iter ~f:File_ops.mkdir_p;
     Action_graph.run_parallel action_graph build_config.num_jobs;
-    Rebuilt
+    Built
 ;;

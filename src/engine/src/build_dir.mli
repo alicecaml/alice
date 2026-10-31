@@ -24,6 +24,7 @@ module Package_base_dir : sig
   type t
 
   val build_dir : t -> build_dir
+  val path : t -> Absolute_path.non_root_t
   val generated_src_dir : t -> Absolute_path.non_root_t
   val private_dir : t -> Absolute_path.non_root_t
   val private_c_dir : t -> Absolute_path.non_root_t
