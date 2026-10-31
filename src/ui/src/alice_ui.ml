@@ -95,6 +95,18 @@ let verb_message ?(verb_style = default_verb_style) verb object_ =
   [ Pp.text (verb_to_string_padded verb) |> Pp.tag verb_style; Pp.space; Pp.text object_ ]
 ;;
 
+let package_id_style = Ansi_style.create ~bold:true ()
+
+let package_message ?(verb_style = default_verb_style) verb package_id ~extra =
+  let object_ = Package_id.name_v_version_string package_id in
+  let extra = Option.map extra ~f:Pp.text |> Option.to_list in
+  [ Pp.text (verb_to_string_padded verb) |> Pp.tag verb_style
+  ; Pp.space
+  ; Pp.text object_ |> Pp.tag package_id_style
+  ]
+  @ extra
+;;
+
 let default_done_style = Ansi_style.create ~bold:true ~color:`Green ()
 let done_message ?(style = default_done_style) () = [ Pp.text "Done!" |> Pp.tag style ]
 
@@ -109,12 +121,10 @@ let once f =
 ;;
 
 let println_once pps = once (fun () -> println pps)
-let package_name_style = Ansi_style.create ~bold:true ()
 
 let config_script_message_begin package_id =
   [ Pp.text "Message from config script of package "
-  ; Pp.textf "%s" (Package_id.name_v_version_string package_id)
-    |> Pp.tag package_name_style
+  ; Pp.textf "%s" (Package_id.name_v_version_string package_id) |> Pp.tag package_id_style
   ; Pp.text ":"
   ]
 ;;
@@ -123,8 +133,7 @@ let config_script_message_line text = [ Pp.textf ">  %s" text ]
 
 let config_script_message_end package_id =
   [ Pp.text "End of message ("
-  ; Pp.textf "%s" (Package_id.name_v_version_string package_id)
-    |> Pp.tag package_name_style
+  ; Pp.textf "%s" (Package_id.name_v_version_string package_id) |> Pp.tag package_id_style
   ; Pp.text ")."
   ]
 ;;

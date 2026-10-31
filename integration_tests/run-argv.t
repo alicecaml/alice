@@ -12,13 +12,13 @@ Test that programs run with `alice run` see the expected arguments via argv.
   > EOF
 
   $ alice run --normalize-paths -- foo bar baz
-     Compiling echo v0.1.0
+     Compiling echo v0.1.0 (native)
        Running build/packages/echo-0.1.0/native/debug/executable/echo
   
   foo bar baz
 
   $ alice run --normalize-paths -b bytecode -- foo bar baz
-     Compiling echo v0.1.0
+     Compiling echo v0.1.0 (bytecode)
        Running build/packages/echo-0.1.0/bytecode/debug/executable/echo
   
   foo bar baz

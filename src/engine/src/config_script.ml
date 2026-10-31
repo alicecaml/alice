@@ -187,10 +187,7 @@ let run
   let lines, built_status =
     if need_to_rebuild
     then (
-      println
-        (verb_message
-           `Configuring
-           (Package_id.name_v_version_string (Package_meta.id package_meta)));
+      println (package_message `Configuring (Package_meta.id package_meta) ~extra:None);
       Log.info
         ~package_id:(Package_meta.id package_meta)
         [ Pp.textf

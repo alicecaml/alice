@@ -5,11 +5,11 @@ Build a package with dependencies.
   > }
 
   $ alice run --normalize-paths --manifest-path app/Alice.kdl -j1
-     Compiling c v0.1.0
-     Compiling b v0.1.0
-     Compiling a v0.1.0
-     Compiling d v0.1.0
-     Compiling app v0.1.0
+     Compiling c v0.1.0 (native)
+     Compiling b v0.1.0 (native)
+     Compiling a v0.1.0 (native)
+     Compiling d v0.1.0 (native)
+     Compiling app v0.1.0 (native)
        Running app/build/packages/app-0.1.0/native/debug/executable/app
   
   Hello, World!
@@ -40,10 +40,10 @@ Make a new package to test some things which are not allowed:
   > }
   > EOF
   $ alice build --normalize-paths --manifest-path bad/Alice.kdl -j1
-     Compiling c v0.1.0
-     Compiling b v0.1.0
-     Compiling a v0.1.0
-     Compiling bad v0.1.0
+     Compiling c v0.1.0 (native)
+     Compiling b v0.1.0 (native)
+     Compiling a v0.1.0 (native)
+     Compiling bad v0.1.0 (native)
       Finished debug build of package: 'bad v0.1.0'
 
 Even though the package "c" is in the transitive dependency closure of "bad",
@@ -52,7 +52,7 @@ Even though the package "c" is in the transitive dependency closure of "bad",
   > let () = print_endline C.Message.message
   > EOF
   $ alice build --normalize-paths --manifest-path bad/Alice.kdl -j1 2>&1 | sanitize
-     Compiling bad v0.1.0
+     Compiling bad v0.1.0 (native)
   1 | let () = print_endline C.Message.message
                              ^^^^^^^^^^^^^^^^^
   Error: Unbound module C
@@ -66,7 +66,7 @@ to access the transitive dependency "c" from "bad" via this module.
   > let () = print_endline Internal_modules_of_c.Lib.Message.message
   > EOF
   $ alice build --normalize-paths --manifest-path bad/Alice.kdl -j1 2>&1 | sanitize
-     Compiling bad v0.1.0
+     Compiling bad v0.1.0 (native)
   1 | let () = print_endline Internal_modules_of_c.Lib.Message.message
                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Alert deprecated: module Public_interface_to_open_of_a.Internal_modules_of_c
@@ -85,7 +85,7 @@ client code, even when the package is an immediate dependency.
   > let () = print_endline Public_interface_to_open_of_a.A.C.Message.message
   > EOF
   $ alice build --normalize-paths --manifest-path bad/Alice.kdl -j1 2>&1 | sanitize
-     Compiling bad v0.1.0
+     Compiling bad v0.1.0 (native)
   1 | let () = print_endline Public_interface_to_open_of_a.A.C.Message.message
                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Alert deprecated: module Public_interface_to_open_of_a.Public_interface_to_open_of_a
