@@ -1,5 +1,6 @@
 open! Alice_stdlib
 open Alice_hierarchy
+open Alice_package_meta
 module Raw = Alice_print.Raw
 
 let mode : [ `Standard | `Quiet ] ref = ref `Standard
@@ -108,3 +109,22 @@ let once f =
 ;;
 
 let println_once pps = once (fun () -> println pps)
+let package_name_style = Ansi_style.create ~bold:true ()
+
+let config_script_message_begin package_id =
+  [ Pp.text "Message from config script of package "
+  ; Pp.textf "%s" (Package_id.name_v_version_string package_id)
+    |> Pp.tag package_name_style
+  ; Pp.text ":"
+  ]
+;;
+
+let config_script_message_line text = [ Pp.textf ">  %s" text ]
+
+let config_script_message_end package_id =
+  [ Pp.text "End of message ("
+  ; Pp.textf "%s" (Package_id.name_v_version_string package_id)
+    |> Pp.tag package_name_style
+  ; Pp.text ")."
+  ]
+;;

@@ -712,6 +712,12 @@ let run
   with
   | None -> Built_status.Reused
   | Some action_graph ->
+    if not (List.is_empty config_script_output.lines_to_print)
+    then (
+      println (config_script_message_begin (Package_with_deps.id package_with_deps));
+      List.iter config_script_output.lines_to_print ~f:(fun line ->
+        println (config_script_message_line line));
+      println (config_script_message_end (Package_with_deps.id package_with_deps)));
     println
       (verb_message
          `Compiling

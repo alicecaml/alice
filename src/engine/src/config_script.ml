@@ -140,20 +140,26 @@ module Directive = struct
 end
 
 module Output = struct
-  type t = { c_linker_args : string list }
+  type t =
+    { lines_to_print : string list
+    ; c_linker_args : string list
+    }
 
-  let default = { c_linker_args = [] }
+  let default = { lines_to_print = []; c_linker_args = [] }
 
   let of_lines lines =
     let open Result.O in
     let+ directives = Directive.multi_of_lines lines in
-    List.fold_left directives ~init:default ~f:(fun acc directive ->
-      match (directive : Directive.t) with
-      | Add_c_linker_args c_linker_args ->
-        { c_linker_args = acc.c_linker_args @ c_linker_args }
-      | Print_line line ->
-        print_endline line;
-        acc)
+    let with_lists_reversed =
+      List.fold_left directives ~init:default ~f:(fun acc directive ->
+        match (directive : Directive.t) with
+        | Add_c_linker_args c_linker_args ->
+          { acc with c_linker_args = c_linker_args @ acc.c_linker_args }
+        | Print_line line -> { acc with lines_to_print = line :: acc.lines_to_print })
+    in
+    { lines_to_print = List.rev with_lists_reversed.lines_to_print
+    ; c_linker_args = List.rev with_lists_reversed.c_linker_args
+    }
   ;;
 end
 

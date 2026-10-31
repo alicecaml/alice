@@ -3,7 +3,10 @@ open Alice_package
 open Alice_hierarchy
 
 module Output : sig
-  type t = { c_linker_args : string list }
+  type t =
+    { lines_to_print : string list
+    ; c_linker_args : string list
+    }
 
   val default : t
 end

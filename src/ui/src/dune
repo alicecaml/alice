@@ -1,4 +1,9 @@
 (library
  (package alice)
  (name alice_ui)
- (libraries alice_stdlib alice_hierarchy alice_print alice_env))
+ (libraries
+  alice_stdlib
+  alice_hierarchy
+  alice_print
+  alice_env
+  alice_package_meta))
