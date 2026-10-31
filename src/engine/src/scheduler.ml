@@ -719,9 +719,11 @@ let run
         println (config_script_message_line line));
       println (config_script_message_end (Package_with_deps.id package_with_deps)));
     println
-      (verb_message
+      (package_message
          `Compiling
-         (Package_id.name_v_version_string (Package_with_deps.id package_with_deps)));
+         (Package_with_deps.id package_with_deps)
+         ~extra:
+           (Some (sprintf " (%s)" (Compiler_backend.name build_config.compiler_backend))));
     Package_base_dir.dirs package_base_dir |> List.iter ~f:File_ops.mkdir_p;
     Action_graph.run_parallel action_graph build_config.num_jobs;
     Built

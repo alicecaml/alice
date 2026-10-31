@@ -1,0 +1,13 @@
+package {
+  name some_lib_with_config_script
+  version "0.1.0"
+
+  dependencies {
+  }
+
+  // Allow access to these modules from the standard library.
+  builtins {
+    unix
+    str
+  }
+}

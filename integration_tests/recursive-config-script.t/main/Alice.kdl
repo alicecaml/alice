@@ -1,0 +1,17 @@
+package {
+  name main
+  version "0.1.0"
+
+  dependencies {
+    some_lib path="../some_lib"
+    some_lib_with_config_script path="../some_lib_with_config_script"
+  }
+
+  config_script {
+    dependencies {
+      config_script_helper path="../config_script_helper"
+      some_lib path="../some_lib"
+      some_lib_with_config_script path="../some_lib_with_config_script"
+    }
+  }
+}
