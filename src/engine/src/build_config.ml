@@ -9,6 +9,4 @@ type t =
   ; os_type : Alice_env.Os_type.t
   }
 
-let for_config_script t =
-  { t with profile = Profile.minimal; compiler_backend = Bytecode }
-;;
+let for_config_script t = { t with profile = Profile.debug; compiler_backend = Bytecode }
