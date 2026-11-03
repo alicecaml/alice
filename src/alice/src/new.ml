@@ -7,10 +7,8 @@ open Alice_package
 module Project = Alice_engine.Project
 
 let make_project name path kind =
-  let src_path = Absolute_path.Root_or_non_root.concat_basename path Package.src in
-  let manifest_path =
-    Absolute_path.Root_or_non_root.concat_basename path Alice_manifest.manifest_name
-  in
+  let src_path = Absolute_path.concat_basename path Package.src in
+  let manifest_path = Absolute_path.concat_basename path Alice_manifest.manifest_name in
   if File_ops.exists manifest_path
   then
     user_exn
@@ -92,12 +90,14 @@ let new_ =
   let package_name = Alice_package_meta.Package_name.of_string_exn name in
   let path =
     match path with
-    | Some path -> path
+    | Some path ->
+      (match path with
+       | `Root _ -> user_exn [ Pp.text "Project path may not be root directory." ]
+       | `Non_root root -> root)
     | None ->
-      `Non_root
-        (Absolute_path.Root_or_non_root.concat_basename
-           Alice_env.initial_cwd
-           (Basename.of_filename name))
+      Absolute_path.Root_or_non_root.concat_basename
+        Alice_env.initial_cwd
+        (Basename.of_filename name)
   in
   let kind =
     match exe, lib with
@@ -111,11 +111,7 @@ let new_ =
     | `Lib -> "library"
   in
   let open Alice_ui in
-  let path_string =
-    match path with
-    | `Root p -> absolute_path_to_string p
-    | `Non_root p -> absolute_path_to_string p
-  in
+  let path_string = absolute_path_to_string path in
   println
     (verb_message
        `Creating

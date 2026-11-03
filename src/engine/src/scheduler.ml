@@ -235,7 +235,10 @@ module Action_builder = struct
   ;;
 
   let ocaml_compiler_command t args =
-    let args = Profile.ocaml_compiler_args t.build_config.profile @ args in
+    let args =
+      Profile.ocaml_compiler_args t.build_config.profile t.build_config.compiler_backend
+      @ args
+    in
     Ocaml_toolchain.compiler_command
       t.build_config.compiler_backend
       t.build_config.ocaml_toolchain
@@ -720,10 +723,14 @@ let run
       println (config_script_message_end (Package_with_deps.id package_with_deps)));
     println
       (package_message
-         `Compiling
+         `Building
          (Package_with_deps.id package_with_deps)
-         ~extra:
-           (Some (sprintf " (%s)" (Compiler_backend.name build_config.compiler_backend))));
+         ~post:
+           [ Pp.textf
+               " (%s, %s)"
+               (Compiler_backend.name build_config.compiler_backend)
+               (Profile.name build_config.profile)
+           ]);
     Package_base_dir.dirs package_base_dir |> List.iter ~f:File_ops.mkdir_p;
     Action_graph.run_parallel action_graph build_config.num_jobs;
     Built

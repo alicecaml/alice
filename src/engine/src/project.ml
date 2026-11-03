@@ -26,9 +26,7 @@ let package_base_dir_of_build_config t build_config =
 ;;
 
 let dot_merlin_path { package; _ } =
-  Absolute_path.Root_or_non_root.concat_basename
-    (Package.root package)
-    Dot_merlin.basename
+  Absolute_path.concat_basename (Package.root package) Dot_merlin.basename
 ;;
 
 let write_dot_merlin_initial t =
@@ -52,11 +50,7 @@ let write_dot_merlin t root_package_with_deps build_config =
 ;;
 
 module Dot_gitignore = struct
-  let path root =
-    Absolute_path.Root_or_non_root.concat_basename
-      root
-      (Basename.of_filename ".gitignore")
-  ;;
+  let path root = Absolute_path.concat_basename root (Basename.of_filename ".gitignore")
 
   let text () =
     let files = [ Build_dir.basename; Dot_merlin.basename ] in
@@ -191,7 +185,7 @@ let build_package_with_deps
       ~any_dep_built
       ~built_artifacts_from_deps
   in
-  let _root_package_built : Built_status.t =
+  let root_package_built : Built_status.t =
     if built_artifacts_from_deps
     then
       (* If using built artifacts from deps, only build the root package. This
@@ -209,13 +203,42 @@ let build_package_with_deps
       in
       build_single_package root_package_with_deps ~any_dep_built)
   in
-  ()
+  root_package_built
 ;;
 
 let build_package_typed t package_typed build_config ~built_artifacts_from_deps =
+  let open Alice_ui in
+  let get_time () = Unix.gettimeofday () in
+  let time_start_s = get_time () in
   let package_with_deps = Package_with_deps.of_package_typed package_typed in
   write_dot_merlin t package_with_deps build_config;
-  build_package_with_deps t package_with_deps build_config ~built_artifacts_from_deps
+  let root_package_built =
+    build_package_with_deps t package_with_deps build_config ~built_artifacts_from_deps
+  in
+  match (root_package_built : Built_status.t) with
+  | Reused -> ()
+  | Built ->
+    let time_end_s = get_time () in
+    let duration_s = Float.sub time_end_s time_start_s in
+    let time_message =
+      match Alice_ui.show_time () with
+      | `Show_time -> [ Pp.space; Pp.text "in"; Pp.space; Pp.textf "%.2fs" duration_s ]
+      | `Hide_time -> []
+    in
+    println
+      (package_message
+         `Built
+         (Package.id t.package)
+         ~post:
+           (List.concat
+              [ [ Pp.space
+                ; Pp.textf
+                    "(%s, %s)"
+                    (Compiler_backend.name build_config.compiler_backend)
+                    (Profile.name build_config.profile)
+                ]
+              ; time_message
+              ]))
 ;;
 
 let build_package t package build_config ~built_artifacts_from_deps =
@@ -228,15 +251,7 @@ let build_package t package build_config ~built_artifacts_from_deps =
 ;;
 
 let build t (build_config : Build_config.t) ~built_artifacts_from_deps =
-  let open Alice_ui in
-  build_package t t.package build_config ~built_artifacts_from_deps;
-  println
-    (verb_message
-       `Finished
-       (sprintf
-          "%s build of package: '%s'"
-          (Profile.name build_config.profile)
-          (Package_id.name_v_version_string (Package.id t.package))))
+  build_package t t.package build_config ~built_artifacts_from_deps
 ;;
 
 let run t (build_config : Build_config.t) ~args ~built_artifacts_from_deps =
@@ -259,7 +274,7 @@ let run t (build_config : Build_config.t) ~args ~built_artifacts_from_deps =
     / exe_name
   in
   let exe_filename = Absolute_path.to_filename exe_path in
-  println (verb_message `Running (absolute_path_to_string exe_path));
+  println (package_message `Running (Package.id t.package));
   print_newline ();
   match
     Alice_io.Process.Blocking.run

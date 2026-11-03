@@ -5,12 +5,13 @@ Build a package with dependencies.
   > }
 
   $ alice run --normalize-paths --manifest-path app/Alice.kdl -j1
-     Compiling c v0.1.0 (native)
-     Compiling b v0.1.0 (native)
-     Compiling a v0.1.0 (native)
-     Compiling d v0.1.0 (native)
-     Compiling app v0.1.0 (native)
-       Running app/build/packages/app-0.1.0/native/debug/executable/app
+   Building c v0.1.0 (native, debug)
+   Building b v0.1.0 (native, debug)
+   Building a v0.1.0 (native, debug)
+   Building d v0.1.0 (native, debug)
+   Building app v0.1.0 (native, debug)
+      Built app v0.1.0 (native, debug) in 1.02s
+    Running app v0.1.0
   
   Hello, World!
   Hello, World!
@@ -29,7 +30,7 @@ Build a package with dependencies.
 
 Make a new package to test some things which are not allowed:
   $ alice new --normalize-paths --exe bad
-      Creating new executable package "bad" in bad
+   Creating new executable package "bad" in bad
   $ cat > bad/Alice.kdl << EOF
   > package {
   >   name bad
@@ -40,11 +41,11 @@ Make a new package to test some things which are not allowed:
   > }
   > EOF
   $ alice build --normalize-paths --manifest-path bad/Alice.kdl -j1
-     Compiling c v0.1.0 (native)
-     Compiling b v0.1.0 (native)
-     Compiling a v0.1.0 (native)
-     Compiling bad v0.1.0 (native)
-      Finished debug build of package: 'bad v0.1.0'
+   Building c v0.1.0 (native, debug)
+   Building b v0.1.0 (native, debug)
+   Building a v0.1.0 (native, debug)
+   Building bad v0.1.0 (native, debug)
+      Built bad v0.1.0 (native, debug) in 0.69s
 
 Even though the package "c" is in the transitive dependency closure of "bad",
 "bad" cannot refer directly to "c".
@@ -52,7 +53,7 @@ Even though the package "c" is in the transitive dependency closure of "bad",
   > let () = print_endline C.Message.message
   > EOF
   $ alice build --normalize-paths --manifest-path bad/Alice.kdl -j1 2>&1 | sanitize
-     Compiling bad v0.1.0 (native)
+   Building bad v0.1.0 (native, debug)
   1 | let () = print_endline C.Message.message
                              ^^^^^^^^^^^^^^^^^
   Error: Unbound module C
@@ -66,7 +67,7 @@ to access the transitive dependency "c" from "bad" via this module.
   > let () = print_endline Internal_modules_of_c.Lib.Message.message
   > EOF
   $ alice build --normalize-paths --manifest-path bad/Alice.kdl -j1 2>&1 | sanitize
-     Compiling bad v0.1.0 (native)
+   Building bad v0.1.0 (native, debug)
   1 | let () = print_endline Internal_modules_of_c.Lib.Message.message
                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Alert deprecated: module Public_interface_to_open_of_a.Internal_modules_of_c
@@ -85,7 +86,7 @@ client code, even when the package is an immediate dependency.
   > let () = print_endline Public_interface_to_open_of_a.A.C.Message.message
   > EOF
   $ alice build --normalize-paths --manifest-path bad/Alice.kdl -j1 2>&1 | sanitize
-     Compiling bad v0.1.0 (native)
+   Building bad v0.1.0 (native, debug)
   1 | let () = print_endline Public_interface_to_open_of_a.A.C.Message.message
                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Alert deprecated: module Public_interface_to_open_of_a.Public_interface_to_open_of_a

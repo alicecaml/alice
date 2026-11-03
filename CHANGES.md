@@ -4,6 +4,7 @@
 
 ### Added
 
+- Build output includes duration.
 - Add support for config scripts. If a package has a `config.ml` file at its
   top level, Alice will build and run that file before compiling the package
   and parse directives from its stdout that can affect how the package is

@@ -7,11 +7,12 @@ standard library outside stdlib (such as Unix and Str).
   Alice.kdl
   src
 
-  $ alice run --normalize-paths
-     Compiling requires_str v0.1.0 (native)
-     Compiling requires_unix v0.1.0 (native)
-     Compiling main v0.1.0 (native)
-       Running build/packages/main-0.1.0/native/debug/executable/main
+  $ alice run --normalize-paths --hide-time
+   Building requires_str v0.1.0 (native, debug)
+   Building requires_unix v0.1.0 (native, debug)
+   Building main v0.1.0 (native, debug)
+      Built main v0.1.0 (native, debug)
+    Running main v0.1.0
   
 
   $ ls | sort
@@ -24,11 +25,12 @@ Repeat the test with the bytecode compiler:
 
   $ rm -rf build hello
 
-  $ alice run --normalize-paths -b bytecode
-     Compiling requires_str v0.1.0 (bytecode)
-     Compiling requires_unix v0.1.0 (bytecode)
-     Compiling main v0.1.0 (bytecode)
-       Running build/packages/main-0.1.0/bytecode/debug/executable/main
+  $ alice run --normalize-paths --hide-time -b bytecode
+   Building requires_str v0.1.0 (bytecode, debug)
+   Building requires_unix v0.1.0 (bytecode, debug)
+   Building main v0.1.0 (bytecode, debug)
+      Built main v0.1.0 (bytecode, debug)
+    Running main v0.1.0
   
 
   $ ls | sort

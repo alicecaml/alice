@@ -53,7 +53,9 @@ let with_built_ocaml_program_command
           ~args:
             (builtin_module_plus_args
              @ builtin_module_cma_args
-             @ Profile.ocaml_compiler_args build_config.profile
+             @ Profile.ocaml_compiler_args
+                 build_config.profile
+                 build_config.compiler_backend
              @ extra_compile_args
              @ [ Absolute_path.to_filename source_path
                ; "-c"
@@ -68,7 +70,9 @@ let with_built_ocaml_program_command
           ~args:
             (builtin_module_plus_args
              @ builtin_module_cma_args
-             @ Profile.ocaml_compiler_args build_config.profile
+             @ Profile.ocaml_compiler_args
+                 build_config.profile
+                 build_config.compiler_backend
              @ extra_link_args
              @ [ Absolute_path.to_filename (dir_path / out_basename_obj)
                ; "-o"

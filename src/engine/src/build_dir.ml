@@ -7,16 +7,7 @@ type t = { path : Absolute_path.non_root_t }
 
 let b = Basename.of_filename
 let basename = b "build"
-
-let of_project_root_path project_root_path =
-  let path =
-    match project_root_path with
-    | `Root path -> path / basename
-    | `Non_root path -> path / basename
-  in
-  { path }
-;;
-
+let of_project_root_path project_root_path = { path = project_root_path / basename }
 let path { path } = path
 
 let package_dir t package_id =

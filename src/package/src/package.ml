@@ -8,29 +8,22 @@ module File_ops = Alice_io.File_ops
 module Builtin_module = Alice_builtin_module
 
 type t =
-  { root : Absolute_path.Root_or_non_root.t
+  { root : Absolute_path.non_root_t
   ; meta : Package_meta.t
   }
 
 let to_dyn { root; meta } =
-  Dyn.record
-    [ "root", Absolute_path.Root_or_non_root.to_dyn root
-    ; "meta", Package_meta.to_dyn meta
-    ]
+  Dyn.record [ "root", Absolute_path.to_dyn root; "meta", Package_meta.to_dyn meta ]
 ;;
 
 let equal t { root; meta } =
-  Absolute_path.Root_or_non_root.equal t.root root && Package_meta.equal t.meta meta
+  Absolute_path.equal t.root root && Package_meta.equal t.meta meta
 ;;
 
 let create ~root ~meta = { root; meta }
 
 let read_root root =
-  let meta =
-    match root with
-    | `Root dir_path -> Alice_manifest.read_package_dir ~dir_path
-    | `Non_root dir_path -> Alice_manifest.read_package_dir ~dir_path
-  in
+  let meta = Alice_manifest.read_package_dir ~dir_path:root in
   create ~root ~meta
 ;;
 
@@ -45,14 +38,14 @@ let builtin_modules { meta; _ } = Package_meta.builtin_modules meta
 let exe_root_ml = Basename.of_filename "main.ml"
 let lib_root_ml = Basename.of_filename "lib.ml"
 let src = Basename.of_filename "src"
-let src_dir_path t = Absolute_path.Root_or_non_root.concat_basename (root t) src
+let src_dir_path t = Absolute_path.concat_basename (root t) src
 let src_dir_exn t = src_dir_path t |> read_dir_exn
 let contains_exe t = File_ops.exists (src_dir_path t / exe_root_ml)
 let contains_lib t = File_ops.exists (src_dir_path t / lib_root_ml)
 let config_script = Basename.of_filename "config.ml"
 
 let config_script_path t =
-  let path = Absolute_path.Root_or_non_root.concat_basename (root t) config_script in
+  let path = Absolute_path.concat_basename (root t) config_script in
   if File_ops.exists path then Some path else None
 ;;
 
