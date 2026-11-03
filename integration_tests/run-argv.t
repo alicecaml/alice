@@ -1,7 +1,7 @@
 Test that programs run with `alice run` see the expected arguments via argv.
 
-  $ alice new --normalize-paths --exe echo
-      Creating new executable package "echo" in echo
+  $ alice new --normalize-paths --hide-time --exe echo
+   Creating new executable package "echo" in echo
 
   $ cd echo
 
@@ -11,14 +11,16 @@ Test that programs run with `alice run` see the expected arguments via argv.
   >   print_endline (String.concat " " args)
   > EOF
 
-  $ alice run --normalize-paths -- foo bar baz
-     Compiling echo v0.1.0 (native)
-       Running build/packages/echo-0.1.0/native/debug/executable/echo
+  $ alice run --normalize-paths --hide-time -- foo bar baz
+   Building echo v0.1.0 (native, debug)
+      Built echo v0.1.0 (native, debug)
+    Running echo v0.1.0
   
   foo bar baz
 
-  $ alice run --normalize-paths -b bytecode -- foo bar baz
-     Compiling echo v0.1.0 (bytecode)
-       Running build/packages/echo-0.1.0/bytecode/debug/executable/echo
+  $ alice run --normalize-paths --hide-time -b bytecode -- foo bar baz
+   Building echo v0.1.0 (bytecode, debug)
+      Built echo v0.1.0 (bytecode, debug)
+    Running echo v0.1.0
   
   foo bar baz

@@ -1,37 +1,41 @@
 Test that Alice can build projects with a mix of OCaml and C source code.
 
-  $ alice run --normalize-paths -m ./exe_with_c_sources/Alice.kdl
-     Compiling exe_with_c_source v0.1.0 (native)
-       Running exe_with_c_sources/build/packages/exe_with_c_source-0.1.0/native/debug/executable/exe_with_c_source
+  $ alice run --normalize-paths --hide-time -m ./exe_with_c_sources/Alice.kdl
+   Building exe_with_c_source v0.1.0 (native, debug)
+      Built exe_with_c_source v0.1.0 (native, debug)
+    Running exe_with_c_source v0.1.0
   
   Hello, World!
 
   $ alice build -m ./lib_with_c_sources/Alice.kdl
-     Compiling lib_with_c_sources v0.1.0 (native)
-      Finished debug build of package: 'lib_with_c_sources v0.1.0'
+   Building lib_with_c_sources v0.1.0 (native, debug)
+      Built lib_with_c_sources v0.1.0 (native, debug) in 0.23s
 
-  $ alice run --normalize-paths -m ./depend_on_lib_with_c_sources/Alice.kdl
-     Compiling lib_with_c_sources v0.1.0 (native)
-     Compiling depend_on_lib_with_c_sources v0.1.0 (native)
-       Running depend_on_lib_with_c_sources/build/packages/depend_on_lib_with_c_sources-0.1.0/native/debug/executable/depend_on_lib_with_c_sources
+  $ alice run --normalize-paths --hide-time -m ./depend_on_lib_with_c_sources/Alice.kdl
+   Building lib_with_c_sources v0.1.0 (native, debug)
+   Building depend_on_lib_with_c_sources v0.1.0 (native, debug)
+      Built depend_on_lib_with_c_sources v0.1.0 (native, debug)
+    Running depend_on_lib_with_c_sources v0.1.0
   
   Hello, World!
 
 Repeat the test with the bytecode compiler:
 
-  $ alice run --normalize-paths -m ./exe_with_c_sources/Alice.kdl -b bytecode
-     Compiling exe_with_c_source v0.1.0 (bytecode)
-       Running exe_with_c_sources/build/packages/exe_with_c_source-0.1.0/bytecode/debug/executable/exe_with_c_source
+  $ alice run --normalize-paths --hide-time -m ./exe_with_c_sources/Alice.kdl -b bytecode
+   Building exe_with_c_source v0.1.0 (bytecode, debug)
+      Built exe_with_c_source v0.1.0 (bytecode, debug)
+    Running exe_with_c_source v0.1.0
   
   Hello, World!
 
   $ alice build -m ./lib_with_c_sources/Alice.kdl -b bytecode
-     Compiling lib_with_c_sources v0.1.0 (bytecode)
-      Finished debug build of package: 'lib_with_c_sources v0.1.0'
+   Building lib_with_c_sources v0.1.0 (bytecode, debug)
+      Built lib_with_c_sources v0.1.0 (bytecode, debug) in 0.08s
 
-  $ alice run --normalize-paths -m ./depend_on_lib_with_c_sources/Alice.kdl -b bytecode
-     Compiling lib_with_c_sources v0.1.0 (bytecode)
-     Compiling depend_on_lib_with_c_sources v0.1.0 (bytecode)
-       Running depend_on_lib_with_c_sources/build/packages/depend_on_lib_with_c_sources-0.1.0/bytecode/debug/executable/depend_on_lib_with_c_sources
+  $ alice run --normalize-paths --hide-time -m ./depend_on_lib_with_c_sources/Alice.kdl -b bytecode
+   Building lib_with_c_sources v0.1.0 (bytecode, debug)
+   Building depend_on_lib_with_c_sources v0.1.0 (bytecode, debug)
+      Built depend_on_lib_with_c_sources v0.1.0 (bytecode, debug)
+    Running depend_on_lib_with_c_sources v0.1.0
   
   Hello, World!

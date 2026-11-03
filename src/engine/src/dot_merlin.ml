@@ -60,9 +60,10 @@ let dot_merlin_text
     List.map build_abs_paths ~f:(Absolute_path.chop_prefix ~prefix)
   in
   let build_rel_paths =
-    match Package_with_deps.package package_with_deps |> Alice_package.Package.root with
-    | `Root prefix -> to_relative_paths ~prefix
-    | `Non_root prefix -> to_relative_paths ~prefix
+    let prefix =
+      Package_with_deps.package package_with_deps |> Alice_package.Package.root
+    in
+    to_relative_paths ~prefix
   in
   let source_rel_path = Relative_path.of_basename Alice_package.Package.src in
   let ocamllib_path_line =

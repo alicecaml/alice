@@ -56,7 +56,18 @@ let load_dependency package dep =
       match dir_path with
       | `Absolute root -> root
       | `Relative rel_root ->
-        Absolute_path.Root_or_non_root.concat_relative_exn (Package.root package) rel_root
+        Absolute_path.concat_relative_exn (Package.root package) rel_root
+    in
+    let dep_root =
+      match dep_root with
+      | `Root _ ->
+        user_exn
+          [ Pp.textf
+              "The package %S would be loaded from the filesystem root directory which \
+               is not allowed."
+              (Dependency.name dep |> Package_name.to_string)
+          ]
+      | `Non_root non_root -> non_root
     in
     let package = Package.read_root dep_root in
     (match Package_name.equal (Dependency.name dep) (Package.name package) with

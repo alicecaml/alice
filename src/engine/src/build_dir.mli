@@ -7,7 +7,7 @@ open Alice_ocaml_toolchain
 type t
 
 val basename : Basename.t
-val of_project_root_path : Absolute_path.Root_or_non_root.t -> t
+val of_project_root_path : Absolute_path.non_root_t -> t
 val path : t -> Absolute_path.non_root_t
 
 val package_ocamldeps_cache_file

@@ -40,7 +40,7 @@ Create a multi-file project:
   > EOF
 
 Print the dependency graph of the project:
-  $ alice dot artifacts --normalize-paths
+  $ alice dot artifacts --normalize-paths --hide-time
   digraph {
     "bar.cmi" -> {"bar.ml"}
     "bar.cmt" -> {"bar.ml"}
@@ -70,7 +70,7 @@ Print the dependency graph of the project:
   }
 
 Print the dependency graph of the project when building with the bytecode compiler:
-  $ alice dot artifacts --normalize-paths -b bytecode
+  $ alice dot artifacts --normalize-paths --hide-time -b bytecode
   digraph {
     "bar.cmi" -> {"bar.ml"}
     "bar.cmo" -> {"bar.ml"}
@@ -99,20 +99,21 @@ Print the dependency graph of the project when building with the bytecode compil
   }
 
 Test that the project can be built an run:
-  $ alice run --normalize-paths
-     Compiling foo v0.1.0 (native)
-       Running build/packages/foo-0.1.0/native/debug/executable/foo
+  $ alice run --normalize-paths --hide-time
+   Building foo v0.1.0 (native, debug)
+      Built foo v0.1.0 (native, debug)
+    Running foo v0.1.0
   
   Hello, World!
 
 Test that the project can be built an run rebuilding with the bytecode compiler:
-  $ alice run --normalize-paths
-       Running build/packages/foo-0.1.0/native/debug/executable/foo
+  $ alice run --normalize-paths --hide-time
+    Running foo v0.1.0
   
   Hello, World!
 
-  $ alice clean --normalize-paths
-      Removing build
+  $ alice clean --normalize-paths --hide-time
+   Removing build
 
 Now test Alice's incremental recomputation by repeatedly changing files and
 rebuilding the project.
@@ -121,9 +122,9 @@ Note that the output is sorted as the order of built targets varies between
 Unix and Windows because on Windows we don't use eio to launch subprocesses.
 
 Initial build:
-  $ alice build --normalize-paths --verbose -j1 | sort
-      Finished debug build of package: 'foo v0.1.0'
-     Compiling foo v0.1.0 (native)
+  $ alice build --normalize-paths --hide-time --verbose -j1 | sort
+      Built foo v0.1.0 (native, debug)
+   Building foo v0.1.0 (native, debug)
    [INFO] [foo v0.1.0] Analyzing dependencies of file: src/bar.ml
    [INFO] [foo v0.1.0] Analyzing dependencies of file: src/foo.ml
    [INFO] [foo v0.1.0] Analyzing dependencies of file: src/foo.mli
@@ -151,9 +152,9 @@ the dependency graph from this file to the output should be rebuilt:
   > let message = "Hi"
   > EOF
 
-  $ alice build --normalize-paths --verbose -j1 | sort
-      Finished debug build of package: 'foo v0.1.0'
-     Compiling foo v0.1.0 (native)
+  $ alice build --normalize-paths --hide-time --verbose -j1 | sort
+      Built foo v0.1.0 (native, debug)
+   Building foo v0.1.0 (native, debug)
    [INFO] [foo v0.1.0] Analyzing dependencies of file: src/foo_dep.ml
    [INFO] [foo v0.1.0] Building targets: foo
    [INFO] [foo v0.1.0] Building targets: foo.cmi, foo.cmt
@@ -171,9 +172,9 @@ Change a shallow dependency and rebuild. Only the final build steps should run:
   > let () = print_endline (Printf.sprintf "%s...%s!" Foo.hello Bar.world)
   > EOF
 
-  $ alice build --normalize-paths --verbose -j1 | sort
-      Finished debug build of package: 'foo v0.1.0'
-     Compiling foo v0.1.0 (native)
+  $ alice build --normalize-paths --hide-time --verbose -j1 | sort
+      Built foo v0.1.0 (native, debug)
+   Building foo v0.1.0 (native, debug)
    [INFO] [foo v0.1.0] Analyzing dependencies of file: src/main.ml
    [INFO] [foo v0.1.0] Building targets: foo
    [INFO] [foo v0.1.0] Building targets: main.cmi, main.cmt, main.cmx
@@ -185,9 +186,9 @@ Change an interface and rebuild:
   > val hello : string
   > EOF
 
-  $ alice build --normalize-paths --verbose -j1 | sort
-      Finished debug build of package: 'foo v0.1.0'
-     Compiling foo v0.1.0 (native)
+  $ alice build --normalize-paths --hide-time --verbose -j1 | sort
+      Built foo v0.1.0 (native, debug)
+   Building foo v0.1.0 (native, debug)
    [INFO] [foo v0.1.0] Analyzing dependencies of file: src/foo.mli
    [INFO] [foo v0.1.0] Building targets: foo
    [INFO] [foo v0.1.0] Building targets: foo.cmi, foo.cmt

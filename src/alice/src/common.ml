@@ -108,8 +108,9 @@ let parse_manifest_path_and_validate =
 let parse_project =
   let open Arg_parser in
   let+ manifest_path = parse_manifest_path_and_validate in
-  Alice_package.Package.read_root (Absolute_path.parent manifest_path)
-  |> Project.of_package
+  match Absolute_path.parent manifest_path with
+  | `Root _ -> user_exn [ Pp.text "Projects may not be at filesystem root." ]
+  | `Non_root path -> Project.of_package (Alice_package.Package.read_root path)
 ;;
 
 let parse_profile =
@@ -181,11 +182,18 @@ let set_normalized_paths_from_flag =
   if normalized_paths then Alice_ui.set_normalized_paths ()
 ;;
 
+let set_hide_time_from_flag =
+  let open Arg_parser in
+  let+ hide_time = flag [ "hide-time" ] ~doc:"Hide times in output." ~hidden:true in
+  if hide_time then Alice_ui.set_hide_time ()
+;;
+
 let set_globals_from_flags =
   let open Arg_parser in
   let+ () = set_log_level_from_verbose_flag
   and+ () = set_print_mode_from_quiet_flag
-  and+ () = set_normalized_paths_from_flag in
+  and+ () = set_normalized_paths_from_flag
+  and+ () = set_hide_time_from_flag in
   ()
 ;;
 

@@ -9,6 +9,9 @@ val set_mode : [ `Standard | `Quiet ] -> unit
     the current system's path separator. *)
 val set_normalized_paths : unit -> unit
 
+val set_hide_time : unit -> unit
+val show_time : unit -> [ `Show_time | `Hide_time ]
+
 type message
 
 val print : message -> unit
@@ -30,24 +33,23 @@ val raw_message : ?style:Ansi_style.t -> string -> message
 type verb =
   [ `Fetching
   | `Unpacking
-  | `Compiling
+  | `Building
   | `Running
   | `Creating
   | `Removing
-  | `Finished
-  | `Configuring
+  | `Built
   ]
 
 val verb_message : ?verb_style:Ansi_style.t -> verb -> string -> message
 
 val package_message
   :  ?verb_style:Ansi_style.t
+  -> ?pre:Ansi_style.t Pp.t list
+  -> ?post:Ansi_style.t Pp.t list
   -> verb
   -> Package_id.t
-  -> extra:string option
   -> message
 
-val done_message : ?style:Ansi_style.t -> unit -> message
 val config_script_message_begin : Package_id.t -> message
 val config_script_message_line : string -> message
 val config_script_message_end : Package_id.t -> message

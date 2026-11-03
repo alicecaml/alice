@@ -8,9 +8,9 @@ type t
 
 val to_dyn : t -> Dyn.t
 val equal : t -> t -> bool
-val create : root:Absolute_path.Root_or_non_root.t -> meta:Package_meta.t -> t
-val read_root : Absolute_path.Root_or_non_root.t -> t
-val root : t -> Absolute_path.Root_or_non_root.t
+val create : root:Absolute_path.non_root_t -> meta:Package_meta.t -> t
+val read_root : Absolute_path.non_root_t -> t
+val root : t -> Absolute_path.non_root_t
 val meta : t -> Package_meta.t
 val id : t -> Package_id.t
 val name : t -> Package_name.t

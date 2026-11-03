@@ -7,6 +7,9 @@ let mode : [ `Standard | `Quiet ] ref = ref `Standard
 let set_mode mode' = mode := mode'
 let path_style : [ `Native | `Normalized ] ref = ref `Native
 let set_normalized_paths () = path_style := `Normalized
+let show_time_ref : [ `Show_time | `Hide_time ] ref = ref `Show_time
+let set_hide_time () = show_time_ref := `Hide_time
+let show_time () = !show_time_ref
 
 type message = Ansi_style.t Pp.t list
 
@@ -72,23 +75,21 @@ let default_verb_style = Ansi_style.create ~bold:true ~color:`Green ()
 type verb =
   [ `Fetching
   | `Unpacking
-  | `Compiling
+  | `Building
   | `Running
   | `Creating
   | `Removing
-  | `Finished
-  | `Configuring
+  | `Built
   ]
 
 let verb_to_string_padded = function
-  | `Fetching -> "    Fetching"
-  | `Unpacking -> "   Unpacking"
-  | `Compiling -> "   Compiling"
-  | `Running -> "     Running"
-  | `Creating -> "    Creating"
-  | `Removing -> "    Removing"
-  | `Finished -> "    Finished"
-  | `Configuring -> " Configuring"
+  | `Fetching -> " Fetching"
+  | `Unpacking -> "Unpacking"
+  | `Building -> " Building"
+  | `Running -> "  Running"
+  | `Creating -> " Creating"
+  | `Removing -> " Removing"
+  | `Built -> "    Built"
 ;;
 
 let verb_message ?(verb_style = default_verb_style) verb object_ =
@@ -97,18 +98,21 @@ let verb_message ?(verb_style = default_verb_style) verb object_ =
 
 let package_id_style = Ansi_style.create ~bold:true ()
 
-let package_message ?(verb_style = default_verb_style) verb package_id ~extra =
+let package_message
+      ?(verb_style = default_verb_style)
+      ?(pre = [])
+      ?(post = [])
+      verb
+      package_id
+  =
   let object_ = Package_id.name_v_version_string package_id in
-  let extra = Option.map extra ~f:Pp.text |> Option.to_list in
-  [ Pp.text (verb_to_string_padded verb) |> Pp.tag verb_style
-  ; Pp.space
-  ; Pp.text object_ |> Pp.tag package_id_style
-  ]
-  @ extra
+  List.concat
+    [ [ Pp.text (verb_to_string_padded verb) |> Pp.tag verb_style; Pp.space ]
+    ; pre
+    ; [ Pp.text object_ |> Pp.tag package_id_style ]
+    ; post
+    ]
 ;;
-
-let default_done_style = Ansi_style.create ~bold:true ~color:`Green ()
-let done_message ?(style = default_done_style) () = [ Pp.text "Done!" |> Pp.tag style ]
 
 (* Returns a thunk than invokes a given think the first time it's called. *)
 let once f =
