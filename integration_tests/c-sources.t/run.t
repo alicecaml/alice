@@ -7,9 +7,9 @@ Test that Alice can build projects with a mix of OCaml and C source code.
   
   Hello, World!
 
-  $ alice build -m ./lib_with_c_sources/Alice.kdl
+  $ alice build --hide-time -m ./lib_with_c_sources/Alice.kdl
    Building lib_with_c_sources v0.1.0 (native, debug)
-      Built lib_with_c_sources v0.1.0 (native, debug) in 0.23s
+      Built lib_with_c_sources v0.1.0 (native, debug)
 
   $ alice run --normalize-paths --hide-time -m ./depend_on_lib_with_c_sources/Alice.kdl
    Building lib_with_c_sources v0.1.0 (native, debug)
@@ -28,9 +28,9 @@ Repeat the test with the bytecode compiler:
   
   Hello, World!
 
-  $ alice build -m ./lib_with_c_sources/Alice.kdl -b bytecode
+  $ alice build --hide-time -m ./lib_with_c_sources/Alice.kdl -b bytecode
    Building lib_with_c_sources v0.1.0 (bytecode, debug)
-      Built lib_with_c_sources v0.1.0 (bytecode, debug) in 0.08s
+      Built lib_with_c_sources v0.1.0 (bytecode, debug)
 
   $ alice run --normalize-paths --hide-time -m ./depend_on_lib_with_c_sources/Alice.kdl -b bytecode
    Building lib_with_c_sources v0.1.0 (bytecode, debug)
