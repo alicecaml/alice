@@ -45,9 +45,10 @@ let absolute_path_to_string : type is_root. is_root Absolute_path.t -> string =
          else path
        in
        let filename =
-         Absolute_path.to_filename path
-         |> Filename.chop_prefix
-              ~prefix:(Absolute_path.Root_or_non_root.to_filename Alice_env.initial_cwd)
+         Absolute_path.Root_or_non_root.relative_path_between
+           ~from:Alice_env.initial_cwd
+           ~to_:(`Non_root path)
+         |> Relative_path.to_filename
        in
        (* The start of the path will always be a period. Skip it. *)
        let components =

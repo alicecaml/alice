@@ -67,6 +67,7 @@ module Absolute_path : sig
 
     val concat_relative_exn : t -> Relative_path.t -> t
     val concat_basename : t -> Basename.t -> non_root_t
+    val relative_path_between : from:t -> to_:t -> Relative_path.t
   end
 
   module Non_root_map : Map.S with type key = non_root_t
