@@ -110,9 +110,7 @@ let chop_prefix_opt ~prefix t =
 let chop_prefix ~prefix t =
   match chop_prefix_opt ~prefix t with
   | Some t -> t
-  | None ->
-    raise
-      (Invalid_argument (Printf.sprintf "Path %S doesn't start with prefix %S" t prefix))
+  | None -> Panic.panic (Printf.sprintf "Path %S doesn't start with prefix %S" t prefix)
 ;;
 
 let is_prefix ~prefix t = Option.is_some (chop_prefix_opt ~prefix t)

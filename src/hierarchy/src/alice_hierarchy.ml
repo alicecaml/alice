@@ -89,6 +89,17 @@ module Relative_path = struct
   ;;
 
   let to_filename t = t
+  let current_dir_name = Filename.current_dir_name
+
+  let normalize t =
+    match Filename.normalize t with
+    | Ok filename -> of_filename filename
+    | Error `Would_traverse_beyond_the_start_of_absolute_path ->
+      panic [ Pp.textf "Illegal absolute path where relative path expected: %s" t ]
+  ;;
+
+  let concat a b = normalize (of_filename (Filename.concat a b))
+  let concat_parent_dir_name t = concat t Filename.parent_dir_name
 end
 
 module Absolute_path = struct
@@ -264,6 +275,34 @@ module Absolute_path = struct
       match t with
       | `Root path -> concat_basename path basename
       | `Non_root path -> concat_basename path basename
+    ;;
+
+    let chop_prefix t ~prefix =
+      let filename = Filename.chop_prefix (to_filename t) ~prefix:(to_filename prefix) in
+      Relative_path.of_filename filename
+    ;;
+
+    let is_prefix t ~prefix =
+      Filename.is_prefix (to_filename t) ~prefix:(to_filename prefix)
+    ;;
+
+    let relative_path_between ~(from : t) ~(to_ : t) =
+      let common_ancestor_rel, common_ancestor_abs =
+        let rec loop ~rel_acc ~abs_acc =
+          match abs_acc with
+          | `Root _ -> rel_acc, abs_acc
+          | `Non_root path ->
+            if is_prefix to_ ~prefix:abs_acc
+            then rel_acc, abs_acc
+            else
+              loop
+                ~rel_acc:(Relative_path.concat_parent_dir_name rel_acc)
+                ~abs_acc:(parent path)
+        in
+        loop ~abs_acc:from ~rel_acc:Relative_path.current_dir_name
+      in
+      let suffix = chop_prefix to_ ~prefix:common_ancestor_abs in
+      Relative_path.concat common_ancestor_rel suffix
     ;;
   end
 end
