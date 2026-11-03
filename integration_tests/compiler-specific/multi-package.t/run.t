@@ -4,13 +4,13 @@ Build a package with dependencies.
   > cat | sed -E '/Command failed: /d' | sed -E '/File .*, line [0-9]+, characters/d' | sed -E 's/Unbound module "([^ ]*)"/Unbound module \1/'
   > }
 
-  $ alice run --normalize-paths --manifest-path app/Alice.kdl -j1
+  $ alice run --normalize-paths --hide-time --manifest-path app/Alice.kdl -j1
    Building c v0.1.0 (native, debug)
    Building b v0.1.0 (native, debug)
    Building a v0.1.0 (native, debug)
    Building d v0.1.0 (native, debug)
    Building app v0.1.0 (native, debug)
-      Built app v0.1.0 (native, debug) in 1.02s
+      Built app v0.1.0 (native, debug)
     Running app v0.1.0
   
   Hello, World!
@@ -20,7 +20,7 @@ Build a package with dependencies.
   foo bar baz
   Hello, World! blah blah blah
 
-  $ alice dot packages --normalize-paths --manifest-path app/Alice.kdl
+  $ alice dot packages --normalize-paths --hide-time --manifest-path app/Alice.kdl
   digraph {
     "a v0.1.0" -> {"b v0.1.0"}
     "app v0.1.0" -> {"a v0.1.0", "d v0.1.0"}
@@ -29,7 +29,7 @@ Build a package with dependencies.
   }
 
 Make a new package to test some things which are not allowed:
-  $ alice new --normalize-paths --exe bad
+  $ alice new --normalize-paths --hide-time --exe bad
    Creating new executable package "bad" in bad
   $ cat > bad/Alice.kdl << EOF
   > package {
@@ -45,7 +45,7 @@ Make a new package to test some things which are not allowed:
    Building b v0.1.0 (native, debug)
    Building a v0.1.0 (native, debug)
    Building bad v0.1.0 (native, debug)
-      Built bad v0.1.0 (native, debug) in 0.69s
+      Built bad v0.1.0 (native, debug) in 2.11s
 
 Even though the package "c" is in the transitive dependency closure of "bad",
 "bad" cannot refer directly to "c".
