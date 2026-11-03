@@ -3,17 +3,17 @@ package containing a config script among its dependency closure.
 
   $ cd main
   $ alice run --normalize-paths --hide-time
+  Message from config script of package lib_with_script v0.1.0:
+  >  Hello from lib_with_script's config script
+  End of message (lib_with_script v0.1.0).
+   Building lib_with_script v0.1.0 (native, debug)
    Building some_lib v0.1.0 (native, debug)
-  Message from config script of package some_lib_with_config_script v0.1.0:
-  >  Hello from some_lib_with_config_script's config script
-  End of message (some_lib_with_config_script v0.1.0).
-   Building some_lib_with_config_script v0.1.0 (native, debug)
    Building config_script_helper v0.1.0 (bytecode, debug)
+  Message from config script of package lib_with_script v0.1.0:
+  >  Hello from lib_with_script's config script
+  End of message (lib_with_script v0.1.0).
+   Building lib_with_script v0.1.0 (bytecode, debug)
    Building some_lib v0.1.0 (bytecode, debug)
-  Message from config script of package some_lib_with_config_script v0.1.0:
-  >  Hello from some_lib_with_config_script's config script
-  End of message (some_lib_with_config_script v0.1.0).
-   Building some_lib_with_config_script v0.1.0 (bytecode, debug)
   Message from config script of package main v0.1.0:
   >  First line
   >  Second line
