@@ -40,19 +40,19 @@ Make a new package to test some things which are not allowed:
   >   }
   > }
   > EOF
-  $ alice build --normalize-paths --manifest-path bad/Alice.kdl -j1
+  $ alice build --normalize-paths --hide-time --manifest-path bad/Alice.kdl -j1
    Building c v0.1.0 (native, debug)
    Building b v0.1.0 (native, debug)
    Building a v0.1.0 (native, debug)
    Building bad v0.1.0 (native, debug)
-      Built bad v0.1.0 (native, debug) in 2.11s
+      Built bad v0.1.0 (native, debug)
 
 Even though the package "c" is in the transitive dependency closure of "bad",
 "bad" cannot refer directly to "c".
   $ cat > bad/src/main.ml << EOF
   > let () = print_endline C.Message.message
   > EOF
-  $ alice build --normalize-paths --manifest-path bad/Alice.kdl -j1 2>&1 | sanitize
+  $ alice build --normalize-paths --hide-time --manifest-path bad/Alice.kdl -j1 2>&1 | sanitize
    Building bad v0.1.0 (native, debug)
   1 | let () = print_endline C.Message.message
                              ^^^^^^^^^^^^^^^^^
@@ -66,7 +66,7 @@ to access the transitive dependency "c" from "bad" via this module.
   $ cat > bad/src/main.ml << EOF
   > let () = print_endline Internal_modules_of_c.Lib.Message.message
   > EOF
-  $ alice build --normalize-paths --manifest-path bad/Alice.kdl -j1 2>&1 | sanitize
+  $ alice build --normalize-paths --hide-time --manifest-path bad/Alice.kdl -j1 2>&1 | sanitize
    Building bad v0.1.0 (native, debug)
   1 | let () = print_endline Internal_modules_of_c.Lib.Message.message
                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -85,7 +85,7 @@ client code, even when the package is an immediate dependency.
   $ cat > bad/src/main.ml << EOF
   > let () = print_endline Public_interface_to_open_of_a.A.C.Message.message
   > EOF
-  $ alice build --normalize-paths --manifest-path bad/Alice.kdl -j1 2>&1 | sanitize
+  $ alice build --normalize-paths --hide-time --manifest-path bad/Alice.kdl -j1 2>&1 | sanitize
    Building bad v0.1.0 (native, debug)
   1 | let () = print_endline Public_interface_to_open_of_a.A.C.Message.message
                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
