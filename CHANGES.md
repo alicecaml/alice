@@ -4,6 +4,7 @@
 
 ### Added
 
+- Add `--bin` flag as an alias for `--exe` in arguments to `alice new`.
 - Build output includes duration.
 - Add support for config scripts. If a package has a `config.ml` file at its
   top level, Alice will build and run that file before compiling the package
