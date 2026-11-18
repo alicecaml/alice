@@ -7,15 +7,8 @@ open Alice_package
 type t
 
 val of_package : Package.t -> t
-val build : t -> Build_config.t -> built_artifacts_from_deps:bool -> unit
-
-val run
-  :  t
-  -> Build_config.t
-  -> args:string list
-  -> built_artifacts_from_deps:bool
-  -> unit
-
+val build : t -> Build_config.t -> unit
+val run : t -> Build_config.t -> args:string list -> unit
 val clean : t -> unit
 val dot_build_artifacts : t -> Build_config.t -> string
 val dot_dependencies : t -> string

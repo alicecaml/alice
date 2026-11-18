@@ -14,14 +14,6 @@
 - Add "--backend" argument to for choosing the compiler backend. Alice builds
   with the native backend by defdault, but now supports the bytecode backend
   too if `--backend bytecode` is passed.
-- Add hidden "--built-artifacts-from-deps" flag to "build" command for
-  re-using built artifacts from dependency package direrctories rather than
-  rebuilding them in the current project. This prevents the need to rebuild
-  dependencies when building multiple different packages, which speeds up
-  builds when building an entire package repository. This feature is used by
-  the [package porting effort](https://github.com/alicecaml/alice-ports). The
-  flag is hidden because it's not appropriate to use this feature in regular
-  development workflows.
 - Add a `builtins` field to manifests for listing the modules from the standard
   library to make available to the project. By default new projects will
   specify `unix` and `str` here.

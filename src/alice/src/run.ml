@@ -7,11 +7,10 @@ let run_ =
   let+ () = Common.set_globals_from_flags
   and+ project = Common.parse_project
   and+ build_config = Common.parse_build_config ~default_compiler_backend:Native
-  and+ built_artifacts_from_deps = Common.parse_built_artifacts_from_deps
   and+ args =
     pos_all string ~doc:"Arguments to pass to the executable." ~value_name:"ARGS"
   in
-  Project.run project build_config ~args ~built_artifacts_from_deps
+  Project.run project build_config ~args
 ;;
 
 let subcommand =
