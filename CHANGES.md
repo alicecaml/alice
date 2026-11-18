@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6.0
 
 ### Added
 
@@ -22,6 +22,8 @@
   in the project.
 
 ## 0.5.0
+
+### Added
 
 - Parallel builds
 
