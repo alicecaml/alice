@@ -62,7 +62,7 @@ end
 
 let write_dot_gitignore { package; _ } = Dot_gitignore.write (Package.root package)
 
-let rec run_config_script t package package_build_config ~built_artifacts_from_deps =
+let rec run_config_script t package package_build_config =
   match Package.config_script_path package with
   | None -> Config_script.Output.default, Built_status.Reused
   | Some config_script_source_path ->
@@ -76,11 +76,7 @@ let rec run_config_script t package package_build_config ~built_artifacts_from_d
       (* Build the config scripts dependencies using the config script's build
          config so the resulting library archives are compatible with the way
          we'll build the config script. *)
-      build_dependency_graph
-        t
-        config_script_dependency_graph
-        config_script_build_config
-        ~built_artifacts_from_deps
+      build_dependency_graph t config_script_dependency_graph config_script_build_config
     in
     Config_script.run
       t.build_dir
@@ -98,10 +94,9 @@ and build_single_package
     -> (exe, lib) Package_with_deps.t
     -> Build_config.t
     -> any_dep_built:Built_status.t
-    -> built_artifacts_from_deps:bool
     -> Built_status.t
   =
-  fun t package_with_deps build_config ~any_dep_built ~built_artifacts_from_deps ->
+  fun t package_with_deps build_config ~any_dep_built ->
   let package_typed = Package_with_deps.package_typed package_with_deps in
   let package = Package.Typed.package package_typed in
   let build_graph = Build_graph.create package_typed t.build_dir build_config in
@@ -112,7 +107,7 @@ and build_single_package
       build_config
   in
   let config_script_output, config_script_built =
-    run_config_script t package build_config ~built_artifacts_from_deps
+    run_config_script t package build_config
   in
   Scheduler.run
     build_graph
@@ -121,17 +116,11 @@ and build_single_package
     build_config
     config_script_output
     ~any_dep_built:(Built_status.either_built any_dep_built config_script_built)
-    ~built_artifacts_from_deps
 
 (* Returns whether any package was built. *)
-and build_dependency_graph t dependency_graph build_config ~built_artifacts_from_deps =
+and build_dependency_graph t dependency_graph build_config =
   let build_single_package package_with_deps ~any_dep_built =
-    build_single_package
-      t
-      package_with_deps
-      build_config
-      ~any_dep_built
-      ~built_artifacts_from_deps
+    build_single_package t package_with_deps build_config ~any_dep_built
   in
   let rec build_package_building_deps_first package_with_deps ~already_built_packages =
     let package_id = Package_with_deps.id package_with_deps in
@@ -171,50 +160,29 @@ and build_dependency_graph t dependency_graph build_config ~built_artifacts_from
   |> Built_status.any_built
 ;;
 
-let build_package_with_deps
-      t
-      root_package_with_deps
-      build_config
-      ~built_artifacts_from_deps
-  =
+let build_package_with_deps t root_package_with_deps build_config =
   let build_single_package package_with_deps ~any_dep_built =
-    build_single_package
-      t
-      package_with_deps
-      build_config
-      ~any_dep_built
-      ~built_artifacts_from_deps
+    build_single_package t package_with_deps build_config ~any_dep_built
   in
   let root_package_built : Built_status.t =
-    if built_artifacts_from_deps
-    then
-      (* If using built artifacts from deps, only build the root package. This
-         assumes all deps have already been built. This is intended to only be
-         used when building multiple interdependent packages such as in a repo
-         CI setting. *)
-      build_single_package root_package_with_deps ~any_dep_built:Built
-    else (
-      let any_dep_built =
-        build_dependency_graph
-          t
-          (Package_with_deps.dependency_graph root_package_with_deps)
-          build_config
-          ~built_artifacts_from_deps
-      in
-      build_single_package root_package_with_deps ~any_dep_built)
+    let any_dep_built =
+      build_dependency_graph
+        t
+        (Package_with_deps.dependency_graph root_package_with_deps)
+        build_config
+    in
+    build_single_package root_package_with_deps ~any_dep_built
   in
   root_package_built
 ;;
 
-let build_package_typed t package_typed build_config ~built_artifacts_from_deps =
+let build_package_typed t package_typed build_config =
   let open Alice_ui in
   let get_time () = Unix.gettimeofday () in
   let time_start_s = get_time () in
   let package_with_deps = Package_with_deps.of_package_typed package_typed in
   write_dot_merlin t package_with_deps build_config;
-  let root_package_built =
-    build_package_with_deps t package_with_deps build_config ~built_artifacts_from_deps
-  in
+  let root_package_built = build_package_with_deps t package_with_deps build_config in
   match (root_package_built : Built_status.t) with
   | Reused -> ()
   | Built ->
@@ -241,20 +209,15 @@ let build_package_typed t package_typed build_config ~built_artifacts_from_deps 
               ]))
 ;;
 
-let build_package t package build_config ~built_artifacts_from_deps =
+let build_package t package build_config =
   Package.with_typed
-    { f =
-        (fun package_typed ->
-          build_package_typed t package_typed build_config ~built_artifacts_from_deps)
-    }
+    { f = (fun package_typed -> build_package_typed t package_typed build_config) }
     package
 ;;
 
-let build t (build_config : Build_config.t) ~built_artifacts_from_deps =
-  build_package t t.package build_config ~built_artifacts_from_deps
-;;
+let build t (build_config : Build_config.t) = build_package t t.package build_config
 
-let run t (build_config : Build_config.t) ~args ~built_artifacts_from_deps =
+let run t (build_config : Build_config.t) ~args =
   let open Alice_ui in
   let package_typed =
     match Package.typed t.package with
@@ -262,7 +225,7 @@ let run t (build_config : Build_config.t) ~args ~built_artifacts_from_deps =
     | `Exe_only pt -> pt
     | `Exe_and_lib pt -> Package.Typed.limit_to_exe_only pt
   in
-  build_package_typed t package_typed build_config ~built_artifacts_from_deps;
+  build_package_typed t package_typed build_config;
   let exe_name =
     Package.name t.package
     |> Package_name.to_string

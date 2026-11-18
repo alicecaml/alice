@@ -106,7 +106,6 @@ module Action_builder = struct
         package_base_dir
         (build_config : Build_config.t)
         (config_script_output : Config_script.Output.t)
-        ~built_artifacts_from_deps
     =
     let package = Package_with_deps.package package_with_deps in
     let transitive_dep_libs =
@@ -114,11 +113,7 @@ module Action_builder = struct
       |> List.map ~f:Package.Typed.package
     in
     let get_package_base_dir package =
-      let build_dir =
-        match built_artifacts_from_deps with
-        | false -> Package_base_dir.build_dir package_base_dir
-        | true -> Build_dir.of_project_root_path (Package.root package)
-      in
+      let build_dir = Package_base_dir.build_dir package_base_dir in
       Build_dir.package_base_dir_of_build_config
         build_dir
         (Package.id package)
@@ -610,7 +605,6 @@ let make_action_graph
       build_config
       config_script_output
       ~any_dep_built
-      ~built_artifacts_from_deps
   =
   let action_builder =
     Action_builder.create
@@ -618,7 +612,6 @@ let make_action_graph
       package_base_dir
       build_config
       config_script_output
-      ~built_artifacts_from_deps
   in
   let package_id = Dependency_graph.Package_with_deps.package_id package_with_deps in
   let files_to_build =
@@ -681,7 +674,6 @@ let run
     -> Build_config.t
     -> Config_script.Output.t
     -> any_dep_built:Built_status.t
-    -> built_artifacts_from_deps:bool
     -> Built_status.t
   =
   fun build_graph
@@ -689,8 +681,7 @@ let run
     package_base_dir
     build_config
     config_script_output
-    ~any_dep_built
-    ~built_artifacts_from_deps ->
+    ~any_dep_built ->
   let open Alice_ui in
   let build_plans =
     match Package_with_deps.type_ package_with_deps with
@@ -711,7 +702,6 @@ let run
       build_config
       config_script_output
       ~any_dep_built
-      ~built_artifacts_from_deps
   with
   | None -> Built_status.Reused
   | Some action_graph ->
