@@ -12,10 +12,10 @@ Make a repo directory with some interdependent libraries:
    Creating new library package "baz" in baz
 
   $ echo 'let foo = `Foo (Bar.bar, Baz.baz)' > foo/src/lib.ml
-  $ sed -i '/dependencies/abar path="../bar"\nbaz path="../baz"' foo/Alice.kdl
+  $ awk '/dependencies/{print; print "bar path=\"../bar\"\nbaz path=\"../baz\""; next}1' foo/Alice.kdl > tmp && mv tmp foo/Alice.kdl
 
   $ echo 'let bar = `Bar Baz.baz' > bar/src/lib.ml
-  $ sed -i '/dependencies/abaz path="../baz"' bar/Alice.kdl
+  $ awk '/dependencies/{print; print "baz path=\"../baz\""; next}1' bar/Alice.kdl > tmp && mv tmp bar/Alice.kdl
 
   $ echo 'let baz = `Baz' > baz/src/lib.ml
 
@@ -27,7 +27,7 @@ Make a project that depends on one of the libraries:
   $ alice new --exe project --normalize-paths --hide-time
    Creating new executable package "project" in project
   $ cd project
-  $ sed -i '/dependencies/afoo path="../../repo/foo"' Alice.kdl
+  $ awk '/dependencies/{print; print"foo path=\"../../repo/foo\""; next}1' Alice.kdl > tmp && mv tmp Alice.kdl
   $ echo 'let () = let `Foo _ = Foo.foo in print_endline "hello"' > src/main.ml
   $ alice run --normalize-paths --hide-time
    Building baz v0.1.0 (native, debug)
