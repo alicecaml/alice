@@ -11,9 +11,9 @@
 
 (license MIT)
 
-(authors "Stephen Sherratt <stephen@sherra.tt>")
+(authors "Stephen Sherratt <inconstevable@gmail.com>")
 
-(maintainers "Stephen Sherratt <stephen@sherra.tt>")
+(maintainers "Stephen Sherratt <inconstevable@gmail.com>")
 
 (cram enable)
 
